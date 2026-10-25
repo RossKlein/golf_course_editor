@@ -30,9 +30,9 @@ def process(name, out, retries, base):
         shutil.rmtree(tmp, ignore_errors=True)
         os.makedirs(tmp)
         dem = os.path.join(tmp, "dem_1m.tif")
-        code, msg = run([PY, "fetch_3dep.py", "--name", name, "--out", dem])
+        code, msg = run([PY, os.path.join(HERE, "fetch_3dep.py"), "--name", name, "--out", dem])
         if code == 0:
-            code, msg = run([PY, "course_stack.py", "--dem", dem, "--out", tmp])
+            code, msg = run([PY, os.path.join(HERE, "course_stack.py"), "--dem", dem, "--out", tmp])
         last = msg[0]
         if code == 0:
             shutil.rmtree(final, ignore_errors=True)
@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--only", nargs="+")
     a = ap.parse_args()
+    a.out = os.path.abspath(a.out)  # child scripts run from this folder, so paths must not be relative
     os.makedirs(a.out, exist_ok=True)
 
     with open(os.path.join(HERE, "course_bounds.csv")) as f:

@@ -7,8 +7,11 @@ game's loader is the consumer.
 - `course_maker/`: Python package: the compiler (bake, validate) and the FastAPI server that uses it.
   All types are pydantic models (`course_maker/models.py`).
 - `web/`: React + Vite app (TypeScript). Its API types are generated from the pydantic models.
-- `fetch_3dep.py`, `course_stack.py`, `run_all.py`: acquire a course's DEM and imagery as `course_stack.tif`
-  (see `HANDOFF.md` and `plan.md`).
+- `tif_generation/`: scripts that acquire a course's DEM and imagery as `course_stack.tif` (`fetch_3dep.py`,
+  `course_stack.py`, `run_all.py`), their course list (`course_bounds.csv`), the Augusta source files in
+  `sources/`, and `HANDOFF.md`. See `tif_generation/README.md`.
+- `augusta/`, `courses_test10/`: generated course stacks (data, gitignored). `bundles/`: baked bundles.
+- `plan.md`: the overall course-asset plan.
 
 ## Setup (once)
 

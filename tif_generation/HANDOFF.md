@@ -18,8 +18,9 @@ Build, for golf courses, one co-registered GeoTIFF with **elevation + aerial ima
 | Per-hole geometry (tee/green/fairway etc.) | **Not started** |
 
 ## Files in this folder
+(Moved into `tif_generation/`: scripts and `course_bounds.csv` live here; the Augusta DEMs, HAR and Bing zip are in `sources/`. Run scripts from anywhere; they resolve their own paths.)
 - `course_stack.py`: the main script (usage below).
-- `augusta_national_dem_1m.tif`: Augusta elevation, EPSG:4326, float32 metres, 1645x1298, about 1.0 m cells.
+- `sources/augusta_national_dem_1m.tif`: Augusta elevation, EPSG:4326, float32 metres, 1645x1298, about 1.0 m cells.
 - `course_bounds.csv`: 1,301 courses from the site's `terrainList` in `terrain.js` (name, source, min/max lat/lon, nlat, nlon, `encoding_mm`, `in_conus_box`, `res_m_lat`).
 - (A stray duplicate of these three files may exist at `C:\Users\Ross\golf-courses`; safe to delete.)
 
@@ -29,7 +30,7 @@ cd B:\code\golf_courses
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install pystac-client planetary-computer rasterio pillow numpy shapely
-python course_stack.py --dem augusta_national_dem_1m.tif --out augusta
+python tif_generation/course_stack.py --dem tif_generation/sources/augusta_national_dem_1m.tif --out augusta
 ```
 Outputs in `augusta\`:
 - `course_stack.tif`: float32, 4 bands [red, green, blue, elevation_m], NAIP's UTM CRS (EPSG:26917 for Augusta), pixel = NAIP native (about 0.6 m; `--res` overrides). RGB stored as float 0-255; 0 means no imagery; nodata = NaN.

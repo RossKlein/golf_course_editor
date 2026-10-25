@@ -3,7 +3,7 @@
 
   python fetch_3dep.py --name AugustaNational --out augusta_3dep_1m.tif
 """
-import argparse, csv, json, sys, urllib.parse, urllib.request
+import argparse, csv, json, os, sys, urllib.parse, urllib.request
 import numpy as np
 import rasterio
 from rasterio.warp import transform_bounds
@@ -14,7 +14,8 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--pad", type=float, default=0.0005, help="degrees of padding around the bounds")
 a = ap.parse_args()
 
-rows = [r for r in csv.DictReader(open("course_bounds.csv")) if r["name"].split(".")[0] == a.name.split(".")[0]]
+BOUNDS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "course_bounds.csv")
+rows = [r for r in csv.DictReader(open(BOUNDS)) if r["name"].split(".")[0] == a.name.split(".")[0]]
 if not rows:
     sys.exit(f"{a.name} not in course_bounds.csv")
 r = rows[0]

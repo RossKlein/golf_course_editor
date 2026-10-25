@@ -12,10 +12,10 @@ courses more interesting than the raw data.
 
 ## What exists today
 
-- `course_bounds.csv`: list of courses with bounds (~805 flagged `in_conus_box`).
-- `fetch_3dep.py`: clips the USGS 3DEP 1 m bare-earth DEM to a course.
-- `course_stack.py`: builds the per-course raster stack (imagery + elevation).
-- `run_all.py`: batch runner (workers, backoff, resumable, `results.csv` log).
+- `tif_generation/course_bounds.csv`: list of courses with bounds (~805 flagged `in_conus_box`).
+- `tif_generation/fetch_3dep.py`: clips the USGS 3DEP 1 m bare-earth DEM to a course.
+- `tif_generation/course_stack.py`: builds the per-course raster stack (imagery + elevation).
+- `tif_generation/run_all.py`: batch runner (workers, backoff, resumable, `results.csv` log).
 - Test runs: ~92 MB per course. 10 workers did ~9 real courses in ~4 min.
   Full set estimated at ~5-6 h and up to ~70 GB. Many in-box entries are
   Canadian (no 3DEP coverage, skipped by design).

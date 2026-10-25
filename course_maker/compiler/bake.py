@@ -1,4 +1,4 @@
-"""Bake a course bundle from a course_stack.tif (NAIP + elevation) as produced by course_stack.py.
+"""Bake a course bundle from a course_stack.tif (NAIP + elevation) as produced by tif_generation/course_stack.py.
 
     python -m course_maker bake augusta --name "Augusta National"
 
