@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Source data and generated output: large and reproducible
+*.tif
+*.tif.aux.xml
+*.zip
+*.har
+*.lnk
+*.log
+augusta/
+courses_test10/
+bundles/
