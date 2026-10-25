@@ -1,16 +1,14 @@
 """Bake a course bundle from a course_stack.tif (NAIP + elevation) as produced by course_stack.py.
 
-    python -m compiler.bake --stack augusta/course_stack.tif --name "Augusta National" --out bundles/augusta
+    python -m course_maker bake augusta --name "Augusta National"
 
 Slice 1: writes the macro heightmap from the stack's elevation band, plus an empty class map, empty bounds
 map, no trees and no holes. Annotations, patches and trees come from later stages.
 """
 from __future__ import annotations
 
-import argparse
-import json
 import math
-import sys
+import os
 from pathlib import Path
 
 import numpy as np
@@ -19,10 +17,9 @@ from affine import Affine
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
 
-from . import schema as S
+from .. import spec as S
+from ..models import BakeSource, Course, Grid, TreesRef
 from .codec import encode_height, write_png
-from .schema import Course, Grid, TreesRef
-from .validate import format_report, validate_bundle
 
 DEFAULT_ATTRIBUTION = "Elevation: USGS 3DEP. Imagery: NAIP."
 EDGE_MARGIN_M = 1.0  # keep grid points inside the stack so bilinear resampling never reads past its edge
@@ -36,14 +33,16 @@ def macro_grid_from_stack(stack_path) -> tuple[np.ndarray, float, float, str]:
     Returns (heights float64 [rows, cols], E0, N0, crs).
     """
     with rasterio.open(stack_path) as ds:
+        if ds.crs is None or ds.crs.is_geographic or abs(ds.crs.linear_units_factor[1] - 1) > 1e-9:
+            raise ValueError("baking needs a projected raster in metres, such as course_stack.tif (UTM)")
         if ds.transform.b or ds.transform.d or ds.transform.a <= 0 or ds.transform.e >= 0:
-            raise SystemExit("stack must be north-up (no rotation)")
+            raise ValueError("stack must be north-up (no rotation)")
         band = (list(ds.descriptions).index("elevation_m") + 1) if "elevation_m" in ds.descriptions else ds.count
         width_m, height_m = ds.width * ds.transform.a, ds.height * -ds.transform.e
         cols = math.floor(width_m - 2 * EDGE_MARGIN_M + 1e-9) + 1
         rows = math.floor(height_m - 2 * EDGE_MARGIN_M + 1e-9) + 1
         if cols < 2 or rows < 2:
-            raise SystemExit("stack is too small")
+            raise ValueError("stack is too small")
         e0, n0 = ds.transform.c + EDGE_MARGIN_M, ds.transform.f - EDGE_MARGIN_M
         elev = np.full((rows, cols), np.nan, np.float32)
         # dst pixel centres land exactly on the grid points
@@ -51,7 +50,7 @@ def macro_grid_from_stack(stack_path) -> tuple[np.ndarray, float, float, str]:
                   dst_crs=ds.crs, src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.bilinear)
         crs = ds.crs.to_string()
     if np.isnan(elev).any():
-        raise SystemExit(f"elevation has {int(np.isnan(elev).sum())} empty cells inside the course grid")
+        raise ValueError(f"elevation has {int(np.isnan(elev).sum())} empty cells inside the course grid")
     return elev.astype(np.float64), e0, n0, crs
 
 
@@ -76,27 +75,28 @@ def bake(stack_path, out_dir, name: str, attribution: str = DEFAULT_ATTRIBUTION)
 
     course = Course(
         name=name, attribution=attribution, crs=crs, originEasting=e0, originNorthing=n0, hMin=h_min, hMax=h_max,
-        height=Grid(f["height"], cols, rows, S.HEIGHT_RES), class_=Grid(f["class"], cw, ch, S.CLASS_RES),
-        bounds=Grid(f["bounds"], bw, bh, S.BOUNDS_RES), trees=TreesRef(f["trees"], 0),
+        height=Grid(file=f["height"], cols=cols, rows=rows, res=S.HEIGHT_RES),
+        class_=Grid(file=f["class"], cols=cw, rows=ch, res=S.CLASS_RES),
+        bounds=Grid(file=f["bounds"], cols=bw, rows=bh, res=S.BOUNDS_RES), trees=TreesRef(file=f["trees"], count=0), holes=[],
     )
-    (out / "course.json").write_text(json.dumps(course.to_dict(), indent=2) + "\n", encoding="utf-8")
+    course.write(out / "course.json")
+    source = source_path(out)
+    source.write_text(BakeSource(stack=os.path.relpath(Path(stack_path).resolve(), source.parent.resolve()))
+                      .model_dump_json(indent=2) + "\n", encoding="utf-8")
     return course
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--stack", required=True, help="course_stack.tif from course_stack.py")
-    ap.add_argument("--out", required=True, help="bundle output directory")
-    ap.add_argument("--name", required=True, help="course display name")
-    ap.add_argument("--attribution", default=DEFAULT_ATTRIBUTION)
-    a = ap.parse_args(argv)
-    course = bake(a.stack, a.out, a.name, a.attribution)
-    print(f"{course.name}: {course.height.cols}x{course.height.rows} m macro grid, "
-          f"height {course.hMin:.3f}..{course.hMax:.3f} m")
-    report = validate_bundle(a.out)
-    print(format_report(report))
-    return 0 if report.ok else 1
+def source_path(bundle_dir) -> Path:
+    """Compiler-only sidecar next to (not inside) the bundle, so it never ships with the game files."""
+    bundle_dir = Path(bundle_dir)
+    return bundle_dir.with_name(bundle_dir.name + ".source.json")
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def read_source(bundle_dir) -> Path | None:
+    """The stack a bundle was baked from, if recorded and still present."""
+    path = source_path(bundle_dir)
+    if not path.is_file():
+        return None
+    stack = (path.parent / BakeSource.model_validate_json(path.read_text(encoding="utf-8")).stack).resolve()
+    return stack if stack.is_file() else None
+

@@ -12,3 +12,9 @@ __pycache__/
 augusta/
 courses_test10/
 bundles/
+uploads/
+.course_maker_cache/
+
+# Web app
+web/node_modules/
+web/dist/

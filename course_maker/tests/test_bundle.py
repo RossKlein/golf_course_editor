@@ -1,4 +1,4 @@
-"""Run from golf_courses/:  python -m unittest discover -s compiler/tests -t ."""
+"""Run from the repo root:  python -m unittest discover -s course_maker/tests -t ."""
 import json
 import shutil
 import tempfile
@@ -9,11 +9,13 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_origin
 
-from compiler import schema as S
-from compiler.bake import bake
-from compiler.codec import decode_height, encode_height, read_png, sample_bilinear, write_png
-from compiler.schema import Course, SchemaError
-from compiler.validate import validate_bundle
+from pydantic import ValidationError
+
+from course_maker import spec as S
+from course_maker.compiler.bake import bake, read_source
+from course_maker.compiler.codec import decode_height, encode_height, read_png, sample_bilinear, write_png
+from course_maker.compiler.validate import validate_bundle
+from course_maker.models import Course, Landmark
 
 LEFT, TOP = 404000.0, 3708000.0
 
@@ -54,14 +56,19 @@ class CodecTests(unittest.TestCase):
         self.assertAlmostEqual(float(sample_bilinear(grid, 1.0, 99, 99)), float(grid[-1, -1]))
 
 
-class SchemaTests(unittest.TestCase):
+class ModelTests(unittest.TestCase):
     def test_unknown_key_is_rejected(self):
-        with self.assertRaises(SchemaError):
-            Course.parse({"nope": 1})
+        with self.assertRaises(ValidationError):
+            Course.model_validate({"nope": 1})
 
-    def test_booleans_are_not_numbers(self):
-        with self.assertRaises(SchemaError):
-            S._num(True, "x")
+    def test_booleans_and_strings_are_not_numbers(self):
+        for bad in (True, "3"):
+            with self.assertRaises(ValidationError):
+                Landmark.model_validate({"name": "a", "kind": "b", "x": bad, "z": 1})
+
+    def test_blank_names_are_rejected(self):
+        with self.assertRaises(ValidationError):
+            Landmark.model_validate({"name": "  ", "kind": "b", "x": 1, "z": 1})
 
 
 class BundleTests(unittest.TestCase):
@@ -96,6 +103,21 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(report.errors, [])
         self.assertEqual((self.course.height.cols, self.course.height.rows), (119, 95))
         self.assertEqual((self.course.class_.cols, self.course.class_.rows), (236, 188))
+
+    def test_bake_records_its_source_stack(self):
+        self.assertEqual(read_source(self.tmp / "base"), (self.tmp / "stack.tif").resolve())
+
+    def test_course_json_round_trips_through_the_model(self):
+        d = self.course_json()
+        self.assertIn("class", d)
+        self.assertEqual(json.loads(Course.model_validate(d).model_dump_json(by_alias=True, exclude_none=True)), d)
+
+    def test_bake_refuses_a_geographic_raster(self):
+        with rasterio.open(self.tmp / "geo.tif", "w", driver="GTiff", count=1, dtype="float32", width=4, height=4,
+                           crs="EPSG:4326", transform=from_origin(-82, 33.5, 1e-5, 1e-5)) as ds:
+            ds.write(np.ones((1, 4, 4), np.float32))
+        with self.assertRaises(ValueError):
+            bake(self.tmp / "geo.tif", self.tmp / "geo_out", "Geo")
 
     def test_heights_land_on_the_right_ground(self):
         img, _ = read_png(self.dir / "height.png")

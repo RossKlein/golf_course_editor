@@ -1,0 +1,10 @@
+numpy
+rasterio
+pillow
+shapely
+pydantic>=2.12
+fastapi
+uvicorn
+httpx
+pystac-client
+planetary-computer

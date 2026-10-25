@@ -1,0 +1,1092 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Course Maker",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/index": {
+      "get": {
+        "summary": "Index",
+        "operationId": "index_api_index_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Index"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tif": {
+      "get": {
+        "summary": "Tif View",
+        "operationId": "tif_view_api_tif_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TifView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tif/rgb.jpg": {
+      "get": {
+        "summary": "Tif Rgb",
+        "operationId": "tif_rgb_api_tif_rgb_jpg_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tif/elevation.png": {
+      "get": {
+        "summary": "Tif Elevation",
+        "operationId": "tif_elevation_api_tif_elevation_png_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tifs/upload": {
+      "put": {
+        "summary": "Upload",
+        "description": "Store the raw request body as uploads/<name>. The name must be a plain .tif/.tiff file name.",
+        "operationId": "upload_api_tifs_upload_put",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TifEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle": {
+      "get": {
+        "summary": "Bundle Course",
+        "operationId": "bundle_course_api_bundle_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Course"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/validate": {
+      "get": {
+        "summary": "Bundle Validate",
+        "operationId": "bundle_validate_api_bundle_validate_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/aerial": {
+      "get": {
+        "summary": "Bundle Aerial",
+        "operationId": "bundle_aerial_api_bundle_aerial_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AerialMeta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{rel}": {
+      "get": {
+        "summary": "Bundle File",
+        "description": "A file of a bundle (course.json, PNGs, trees.bin), exactly as the game will download it.",
+        "operationId": "bundle_file_files__rel__get",
+        "parameters": [
+          {
+            "name": "rel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rel"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bake": {
+      "post": {
+        "summary": "Bake Bundle",
+        "operationId": "bake_bundle_api_bake_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BakeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AerialMeta": {
+        "properties": {
+          "stack": {
+            "type": "string",
+            "title": "Stack"
+          },
+          "x0": {
+            "type": "number",
+            "title": "X0"
+          },
+          "z0": {
+            "type": "number",
+            "title": "Z0"
+          },
+          "res": {
+            "type": "number",
+            "title": "Res"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stack",
+          "x0",
+          "z0",
+          "res",
+          "width",
+          "height"
+        ],
+        "title": "AerialMeta",
+        "description": "Where a bundle's aerial image sits in course metres (x east, z south) and its pixel size."
+      },
+      "BakeRequest": {
+        "properties": {
+          "stack": {
+            "type": "string",
+            "title": "Stack"
+          },
+          "out": {
+            "type": "string",
+            "title": "Out"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "attribution": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Attribution",
+            "default": "Elevation: USGS 3DEP. Imagery: NAIP."
+          },
+          "overwrite": {
+            "type": "boolean",
+            "title": "Overwrite",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stack",
+          "out",
+          "name"
+        ],
+        "title": "BakeRequest"
+      },
+      "BakeResult": {
+        "properties": {
+          "bundle": {
+            "type": "string",
+            "title": "Bundle"
+          },
+          "report": {
+            "$ref": "#/components/schemas/Report"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bundle",
+          "report"
+        ],
+        "title": "BakeResult"
+      },
+      "BundleEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "name"
+        ],
+        "title": "BundleEntry"
+      },
+      "Course": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "attribution": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Attribution"
+          },
+          "crs": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Crs"
+          },
+          "originEasting": {
+            "type": "number",
+            "title": "Origineasting"
+          },
+          "originNorthing": {
+            "type": "number",
+            "title": "Originnorthing"
+          },
+          "hMin": {
+            "type": "number",
+            "title": "Hmin"
+          },
+          "hMax": {
+            "type": "number",
+            "title": "Hmax"
+          },
+          "height": {
+            "$ref": "#/components/schemas/Grid"
+          },
+          "class": {
+            "$ref": "#/components/schemas/Grid"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/Grid"
+          },
+          "patches": {
+            "items": {
+              "$ref": "#/components/schemas/Patch"
+            },
+            "type": "array",
+            "title": "Patches",
+            "default": []
+          },
+          "trees": {
+            "$ref": "#/components/schemas/TreesRef"
+          },
+          "landmarks": {
+            "items": {
+              "$ref": "#/components/schemas/Landmark"
+            },
+            "type": "array",
+            "title": "Landmarks",
+            "default": []
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/Hole"
+            },
+            "type": "array",
+            "title": "Holes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "attribution",
+          "crs",
+          "originEasting",
+          "originNorthing",
+          "hMin",
+          "hMax",
+          "height",
+          "class",
+          "bounds",
+          "patches",
+          "trees",
+          "landmarks",
+          "holes"
+        ],
+        "title": "Course"
+      },
+      "ElevationLayer": {
+        "properties": {
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "hMin": {
+            "type": "number",
+            "title": "Hmin"
+          },
+          "hMax": {
+            "type": "number",
+            "title": "Hmax"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "width",
+          "height",
+          "hMin",
+          "hMax"
+        ],
+        "title": "ElevationLayer",
+        "description": "16-bit heights in R/G of a PNG, as in the bundle format; A = 0 marks no data."
+      },
+      "Grid": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "File"
+          },
+          "cols": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Cols"
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rows"
+          },
+          "res": {
+            "type": "number",
+            "title": "Res",
+            "gt": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file",
+          "cols",
+          "rows",
+          "res"
+        ],
+        "title": "Grid"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Hole": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Number"
+          },
+          "par": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Par"
+          },
+          "route": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Route"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "number",
+          "par",
+          "route"
+        ],
+        "title": "Hole"
+      },
+      "Index": {
+        "properties": {
+          "root": {
+            "type": "string",
+            "title": "Root"
+          },
+          "tifs": {
+            "items": {
+              "$ref": "#/components/schemas/TifEntry"
+            },
+            "type": "array",
+            "title": "Tifs"
+          },
+          "bundles": {
+            "items": {
+              "$ref": "#/components/schemas/BundleEntry"
+            },
+            "type": "array",
+            "title": "Bundles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "root",
+          "tifs",
+          "bundles"
+        ],
+        "title": "Index"
+      },
+      "Landmark": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Kind"
+          },
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          },
+          "rotation": {
+            "type": "number",
+            "title": "Rotation",
+            "default": 0.0
+          },
+          "scale": {
+            "type": "number",
+            "title": "Scale",
+            "default": 1.0,
+            "gt": 0
+          },
+          "y": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "x",
+          "z",
+          "rotation",
+          "scale",
+          "y"
+        ],
+        "title": "Landmark"
+      },
+      "Patch": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "File"
+          },
+          "x0": {
+            "type": "integer",
+            "title": "X0"
+          },
+          "z0": {
+            "type": "integer",
+            "title": "Z0"
+          },
+          "cellsX": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Cellsx"
+          },
+          "cellsZ": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Cellsz"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file",
+          "x0",
+          "z0",
+          "cellsX",
+          "cellsZ"
+        ],
+        "title": "Patch"
+      },
+      "RasterLayer": {
+        "properties": {
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "RasterLayer"
+      },
+      "Report": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
+          },
+          "sizes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Sizes",
+            "default": {}
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "readOnly": true
+          },
+          "total_bytes": {
+            "type": "integer",
+            "title": "Total Bytes",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "errors",
+          "warnings",
+          "sizes",
+          "ok",
+          "total_bytes"
+        ],
+        "title": "Report",
+        "description": "The result of validating a bundle."
+      },
+      "TifEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "modified": {
+            "type": "number",
+            "title": "Modified"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "size",
+          "modified"
+        ],
+        "title": "TifEntry"
+      },
+      "TifView": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "default": ""
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "dtypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dtypes"
+          },
+          "descriptions": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Descriptions"
+          },
+          "crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crs"
+          },
+          "geographic": {
+            "type": "boolean",
+            "title": "Geographic"
+          },
+          "decimation": {
+            "type": "integer",
+            "title": "Decimation"
+          },
+          "transform": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Transform"
+          },
+          "resX": {
+            "type": "number",
+            "title": "Resx"
+          },
+          "resZ": {
+            "type": "number",
+            "title": "Resz"
+          },
+          "rgb": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RasterLayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elevation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ElevationLayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bakeable": {
+            "type": "boolean",
+            "title": "Bakeable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "width",
+          "height",
+          "count",
+          "dtypes",
+          "descriptions",
+          "crs",
+          "geographic",
+          "decimation",
+          "transform",
+          "resX",
+          "resZ",
+          "rgb",
+          "elevation",
+          "bakeable"
+        ],
+        "title": "TifView",
+        "description": "A GeoTIFF rendered for the viewer. Rendered pixels may be decimated from the source."
+      },
+      "TreesRef": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "File"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file",
+          "count"
+        ],
+        "title": "TreesRef"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

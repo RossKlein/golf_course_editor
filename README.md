@@ -1,37 +1,74 @@
-# Golf course compiler
+# Golf course maker
 
 Turns real golf courses (USGS 3DEP elevation + NAIP imagery) into baked bundles for the Rally Club golf game.
 The bundle format is specified in the game repo: `docs/golf-course-format.md`. This repo is the producer; the
 game's loader is the consumer.
 
-## Setup
+- `course_maker/`: Python package: the compiler (bake, validate) and the FastAPI server that uses it.
+  All types are pydantic models (`course_maker/models.py`).
+- `web/`: React + Vite app (TypeScript). Its API types are generated from the pydantic models.
+- `fetch_3dep.py`, `course_stack.py`, `run_all.py`: acquire a course's DEM and imagery as `course_stack.tif`
+  (see `HANDOFF.md` and `plan.md`).
+
+## Setup (once)
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install pystac-client planetary-computer rasterio pillow numpy shapely
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+cd web
+npm install
+npm run build
 ```
 
-## Pipeline
+## Run
 
-1. `fetch_3dep.py`, `course_stack.py`, `run_all.py`: acquire a course's DEM and imagery as `course_stack.tif`
-   (see `HANDOFF.md` and `plan.md`).
-2. `python -m compiler.bake --stack augusta/course_stack.tif --name "Augusta National" --out bundles/augusta`
-   writes a bundle (macro heightmap, empty class/bounds maps, no trees or holes yet) and validates it.
-3. `python -m compiler.validate bundles/augusta` checks any bundle against the spec and prints a size report.
+```powershell
+.\.venv\Scripts\python.exe -m course_maker serve
+```
 
-4. `python -m viewer --bundle bundles/augusta --stack augusta/course_stack.tif` serves a localhost viewer at
-   http://127.0.0.1:8765: aerial, hillshade, surface class, hole ownership and per-hole out-of-bounds layers, patch
-   outlines, trees, hole routes, landmarks, and a readout of height, class, owner and bounds under the cursor.
-   The page decodes the bundle the same way the game's loader will. The aerial is built from the stack on first
-   load and cached in `bundles/.viewer-cache/`.
+Open http://127.0.0.1:8765. The server indexes the current folder (or `--data <folder>`) for GeoTIFFs and
+bundles, skipping hidden folders and `.venv`.
+
+- **GeoTIFFs**: pick one to view its imagery and/or elevation (as hillshade), with pixel, coordinate and
+  elevation readouts. Works for `course_stack.tif`, plain RGB images and 1-band DEMs (including lat/lon ones).
+  Large rasters are shown decimated. Renders are cached in `.course_maker_cache/`.
+- **Load TIF…** (or drop .tif files on the map) copies GeoTIFFs into `uploads/` and indexes them.
+- **Bake**: a projected, metre-based raster with an elevation band (a `course_stack.tif`) can be baked into a
+  bundle from its panel. Existing bundles are only replaced when you tick the box.
+- **Bundles**: view a bundle exactly as the game will decode it: aerial (from the stack it was baked from),
+  hillshade, surface class, hole ownership and out-of-bounds layers, patches, trees, routes, landmarks, and the
+  validation report.
+
+## Develop the web app
+
+Run the server as above, then in `web/`:
+
+```powershell
+npm run dev
+```
+
+and open http://127.0.0.1:5173. Vite proxies `/api` and `/files` to the server on 8765.
+
+After changing a pydantic model, regenerate the TypeScript types:
+
+```powershell
+.\.venv\Scripts\python.exe -m course_maker openapi   # writes web/openapi.json
+cd web; npm run types                               # writes web/src/api/schema.d.ts
+```
+
+## Command line
+
+```powershell
+.\.venv\Scripts\python.exe -m course_maker bake augusta/course_stack.tif --name "Augusta National" --out bundles/augusta
+.\.venv\Scripts\python.exe -m course_maker validate bundles/augusta
+```
+
+Baking also writes `bundles/augusta.source.json` next to the bundle (not inside it), recording the stack for the
+aerial layer. It is compiler-only and never ships with the game files.
 
 ## Tests
 
 ```powershell
-python -m unittest discover -s compiler/tests -t .
-python -m unittest discover -s viewer/tests -t .
+.\.venv\Scripts\python.exe -m unittest discover -s course_maker/tests -t .
+cd web; npm run typecheck
 ```
-
-`compiler/`: `schema.py` (course.json + constants), `codec.py` (height encoding, PNG IO, bilinear sampling),
-`validate.py`, `bake.py`. `viewer/`: `server.py` (stdlib HTTP server), `aerial.py`, `static/` (the page).
