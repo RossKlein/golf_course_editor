@@ -1,6 +1,7 @@
 import { api, fileUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import type { Layer, ReadoutLine, Scene } from "../map/scene";
+import type { Formatter } from "../units/units";
 
 // docs/golf-course-format.md: class map R = surface, G = owning hole; bounds = one in-bounds bit per hole.
 export const CLASS_NAMES = ["rough", "fairway", "green", "collar", "tee", "bunker", "water", "path", "woods"];
@@ -139,11 +140,11 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     },
   });
 
-  const readout = (x: number, z: number): ReadoutLine[] => {
-    const lines: ReadoutLine[] = [{ text: `x ${x.toFixed(1)} m   z ${z.toFixed(1)} m` }];
+  const readout = (x: number, z: number, f: Formatter): ReadoutLine[] => {
+    const lines: ReadoutLine[] = [{ text: `x ${f.distance(x)}   z ${f.distance(z)}` }];
     if (x < 0 || z < 0 || x > extent.w || z > extent.h) return [...lines, { text: "outside the course grid" }];
     const height = sampleGrid(grid, x / course.height.res, z / course.height.res);
-    lines.push({ text: `height ${height?.toFixed(2) ?? "?"} m` });
+    lines.push({ text: `height ${height === null ? "?" : f.height(height)}` });
     const c = Math.min(classPx.width - 1, Math.floor(x / course.class.res));
     const r = Math.min(classPx.height - 1, Math.floor(z / course.class.res));
     const klass = classPx.data[(r * classPx.width + c) * 4];
@@ -165,7 +166,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     scene: {
       key: `bundle:${path}`,
       title: course.name,
-      subtitle: `${path} · ${extent.w} x ${extent.h} m, ${course.holes.length} holes`,
+      subtitle: (f) => `${path} · ${f.distance(extent.w, 0)} x ${f.distance(extent.h, 0)}, ${course.holes.length} holes`,
       extent, layers, readout,
     },
   };

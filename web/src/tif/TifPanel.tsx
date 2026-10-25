@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type BakeResult, type TifView } from "../api/api";
 import ReportView from "../report/ReportView";
+import { useFormatter } from "../units/useUnits";
 
 type Props = { view: TifView; onBaked: (bundle: string) => void };
 
@@ -15,6 +16,7 @@ function slugFor(path: string): string {
 const titleFor = (slug: string) => slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
 export default function TifPanel({ view, onBaked }: Props) {
+  const fmt = useFormatter();
   const slug = slugFor(view.path);
   const [name, setName] = useState(titleFor(slug));
   const [out, setOut] = useState(`bundles/${slug}`);
@@ -49,7 +51,7 @@ export default function TifPanel({ view, onBaked }: Props) {
           <tr><td>Pixel</td><td>{(view.resX / view.decimation).toFixed(2)} x {(view.resZ / view.decimation).toFixed(2)} m</td></tr>
           {view.decimation > 1 && <tr><td>Shown at</td><td>1/{view.decimation} resolution</td></tr>}
           <tr><td>Layers</td><td>{[view.rgb && "imagery", view.elevation && "elevation"].filter(Boolean).join(", ")}</td></tr>
-          {view.elevation && <tr><td>Elevation</td><td>{view.elevation.hMin.toFixed(1)} to {view.elevation.hMax.toFixed(1)} m</td></tr>}
+          {view.elevation && <tr><td>Elevation</td><td>{fmt.height(view.elevation.hMin)} to {fmt.height(view.elevation.hMax)}</td></tr>}
         </tbody>
       </table>
 

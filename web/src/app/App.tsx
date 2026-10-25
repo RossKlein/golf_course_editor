@@ -11,6 +11,7 @@ import LayerControls, { ExaggerationSlider } from "../panel/LayerControls";
 import { hashFor, useSelection } from "../selection/selection";
 import TifPanel from "../tif/TifPanel";
 import { loadTifScene } from "../tif/tifScene";
+import { useFormatter, useUnits } from "../units/useUnits";
 
 type Loaded =
   | { kind: "tif"; scene: Scene; view: TifView; editor: EditorState }
@@ -28,6 +29,8 @@ function saveText(s: SaveStatus): { text: string; error: boolean } | null {
 
 export default function App() {
   const selection = useSelection();
+  const units = useUnits();
+  const fmt = useFormatter();
   const [index, setIndex] = useState<Index | null>(null);
   const [indexError, setIndexError] = useState("");
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -129,7 +132,7 @@ export default function App() {
   };
 
   const scene = loaded?.scene ?? null;
-  const readout = scene && hover ? scene.readout(hover.x, hover.z) : null;
+  const readout = scene && hover ? scene.readout(hover.x, hover.z, fmt) : null;
   const saved = saveText(saveStatus);
 
   return (
@@ -148,6 +151,7 @@ export default function App() {
           scene={scene}
           layerState={editor.layers}
           params={{ exaggeration: editor.exaggeration, hole: editor.hole }}
+          units={units}
           initialViewport={loaded?.editor.viewport ?? null}
           onViewChange={onViewChange}
           onHover={setHover}
@@ -159,7 +163,7 @@ export default function App() {
       {loaded && (
         <aside className="panel">
           <h1>{loaded.scene.title}</h1>
-          <p className="muted">{loaded.scene.subtitle}</p>
+          <p className="muted">{loaded.scene.subtitle(fmt)}</p>
           <LayerControls layers={loaded.scene.layers} state={editor.layers} onChange={setLayer} />
           {loaded.scene.layers.some((l) => l.id === "hillshade") && (
             <ExaggerationSlider value={editor.exaggeration} onCommit={setExaggeration} />

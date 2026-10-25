@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import type { Index } from "../api/api";
 import { hashFor, type Selection } from "../selection/selection";
+import { setUnits, useUnits } from "../units/useUnits";
+import type { Units } from "../units/units";
 
 type Props = {
   index: Index | null;
@@ -26,6 +28,7 @@ function Entry({ kind, path, title, detail, active }: Selection & { title: strin
 /** The indexed data folder: bundles and GeoTIFFs, plus rescan and upload. */
 export default function FileList({ index, error, selection, onRescan, onUpload }: Props) {
   const input = useRef<HTMLInputElement>(null);
+  const units = useUnits();
   const is = (kind: Selection["kind"], path: string) => selection?.kind === kind && selection.path === path;
   return (
     <nav className="files">
@@ -47,6 +50,20 @@ export default function FileList({ index, error, selection, onRescan, onUpload }
               e.target.value = "";
             }}
           />
+        </div>
+        <div className="units" role="group" aria-label="Display units">
+          {(["us", "metric"] as Units[]).map((u) => (
+            <button
+              key={u}
+              type="button"
+              className={units === u ? "on" : undefined}
+              aria-pressed={units === u}
+              title={u === "us" ? "Yards for distances, feet for heights" : "Metres"}
+              onClick={() => setUnits(u)}
+            >
+              {u === "us" ? "US (yd, ft)" : "Metric (m)"}
+            </button>
+          ))}
         </div>
         <p className="muted">{error || index?.root || "Indexing…"}</p>
       </header>

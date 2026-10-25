@@ -5,7 +5,7 @@ import { defaultEditorState, mergeSaved, serialise, viewFromViewport, viewportFr
 
 const layer = (id: string, visible: boolean, opacity = 1): Layer => ({ id, label: id, visible, opacity });
 const scene = (...layers: Layer[]): Scene => ({
-  key: "bundle:x", title: "x", subtitle: "", extent: { x: 0, z: 0, w: 10, h: 10 }, layers, readout: () => [],
+  key: "bundle:x", title: "x", subtitle: () => "", extent: { x: 0, z: 0, w: 10, h: 10 }, layers, readout: () => [],
 });
 const saved = (patch: Partial<EditorState>): EditorState => ({ ...defaultEditorState(), ...patch });
 

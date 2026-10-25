@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { Viewport } from "../api/api";
 import { viewFromViewport, viewportFromView } from "../editor/editorState";
+import { scaleBar, type Units } from "../units/units";
 import type { LayerState, Params, Scene } from "./scene";
 
 type Props = {
   scene: Scene | null;
   layerState: LayerState;
   params: Params;
+  units: Units;
   /** Where to put the view when the scene changes; null fits the course. */
   initialViewport: Viewport | null;
   /** Called after the user pans, zooms or fits (not for the initial placement). */
@@ -16,14 +18,12 @@ type Props = {
 
 type View = { scale: number; ox: number; oz: number }; // screen = (world - origin) * scale, in CSS pixels
 
-const SCALE_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
-
 /** Pan/zoom canvas that draws a scene's layers. Drag to pan, wheel to zoom, F to fit. */
-export default function MapView({ scene, layerState, params, initialViewport, onViewChange, onHover }: Props) {
+export default function MapView({ scene, layerState, params, units, initialViewport, onViewChange, onHover }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const view = useRef<View>({ scale: 1, ox: 0, oz: 0 });
-  const latest = useRef({ scene, layerState, params, initialViewport, onViewChange, onHover });
-  latest.current = { scene, layerState, params, initialViewport, onViewChange, onHover };
+  const latest = useRef({ scene, layerState, params, units, initialViewport, onViewChange, onHover });
+  latest.current = { scene, layerState, params, units, initialViewport, onViewChange, onHover };
 
   const emitView = useCallback(() => {
     const canvas = canvasRef.current;
@@ -64,10 +64,10 @@ export default function MapView({ scene, layerState, params, initialViewport, on
 
     // scale bar, in screen space
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const metres = SCALE_STEPS.find((m) => m * v.scale >= 80) ?? SCALE_STEPS[SCALE_STEPS.length - 1];
+    const bar = scaleBar(latest.current.units, v.scale);
     const x = 16;
     const y = canvas.clientHeight - 20;
-    const w = metres * v.scale;
+    const w = bar.metres * v.scale;
     ctx.strokeStyle = ctx.fillStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -77,7 +77,7 @@ export default function MapView({ scene, layerState, params, initialViewport, on
     ctx.lineTo(x + w, y - 5);
     ctx.stroke();
     ctx.font = "12px system-ui";
-    ctx.fillText(metres >= 1000 ? `${metres / 1000} km` : `${metres} m`, x, y - 9);
+    ctx.fillText(bar.label, x, y - 9);
   }, []);
 
   const fit = useCallback(() => {
@@ -105,7 +105,7 @@ export default function MapView({ scene, layerState, params, initialViewport, on
       fit();
     }
   }, [scene, fit, draw]);
-  useEffect(draw, [layerState, params, draw]);
+  useEffect(draw, [layerState, params, units, draw]);
 
   useEffect(() => {
     const canvas = canvasRef.current!;

@@ -35,6 +35,8 @@ bundles, skipping hidden folders and `.venv`.
 - **GeoTIFFs**: pick one to view its imagery and/or elevation (as hillshade), with pixel, coordinate and
   elevation readouts. Works for `course_stack.tif`, plain RGB images and 1-band DEMs (including lat/lon ones).
   Large rasters are shown decimated. Renders are cached in `.course_maker_cache/`.
+- **Units**: a US / Metric toggle in the left panel. US shows yards for distances and feet for elevations; files and
+  the API are always metres. UTM coordinates, grid and pixel sizes stay metric.
 - **Load TIF…** (or drop .tif files on the map) copies GeoTIFFs into `uploads/` and indexes them.
 - **Bake**: a projected, metre-based raster with an elevation band (a `course_stack.tif`) can be baked into a
   bundle from its panel. An existing bundle is only rebuilt when you tick Replace, and even then the old bundle is

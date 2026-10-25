@@ -1,6 +1,7 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
 import type { Layer, ReadoutLine, Scene } from "../map/scene";
+import type { Formatter } from "../units/units";
 
 /** A GeoTIFF on the map, in metres from its top-left corner (x east, z south). */
 export async function loadTifScene(path: string): Promise<{ scene: Scene; view: TifView }> {
@@ -29,7 +30,7 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     });
   }
 
-  const readout = (x: number, z: number): ReadoutLine[] => {
+  const readout = (x: number, z: number, fmt: Formatter): ReadoutLine[] => {
     const col = x / view.resX;
     const row = z / view.resZ;
     if (col < 0 || row < 0 || col > w || row > h) return [{ text: "outside the raster" }];
@@ -38,18 +39,17 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     const lines: ReadoutLine[] = [
       { text: `pixel ${Math.floor(col * view.decimation)}, ${Math.floor(row * view.decimation)}` },
       { text: view.geographic ? `lon ${cx.toFixed(6)}  lat ${cy.toFixed(6)}` : `E ${cx.toFixed(1)}  N ${cy.toFixed(1)}` },
-      { text: `${x.toFixed(1)} m east, ${z.toFixed(1)} m south of the corner` },
+      { text: `${fmt.distance(x)} east, ${fmt.distance(z)} south of the corner` },
     ];
     if (grid) {
       const height = sampleGrid(grid, col - 0.5, row - 0.5);
-      lines.push({ text: height === null ? "elevation: no data" : `elevation ${height.toFixed(2)} m` });
+      lines.push({ text: height === null ? "elevation: no data" : `elevation ${fmt.height(height)}` });
     }
     return lines;
   };
 
-  const sizeText = `${view.width} x ${view.height} px, ${rect.w.toFixed(0)} x ${rect.h.toFixed(0)} m`;
   return {
     view,
-    scene: { key: `tif:${path}`, title: path.split("/").pop()!, subtitle: `${path} · ${sizeText}`, extent: rect, layers, readout },
+    scene: { key: `tif:${path}`, title: path.split("/").pop()!, subtitle: (fmt) => `${path} · ${view.width} x ${view.height} px, ${fmt.distance(rect.w, 0)} x ${fmt.distance(rect.h, 0)}`, extent: rect, layers, readout },
   };
 }
