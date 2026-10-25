@@ -12,10 +12,11 @@ from rasterio.transform import from_origin
 from pydantic import ValidationError
 
 from course_maker import spec as S
-from course_maker.compiler.bake import bake, read_source
+from course_maker.compiler.bake import bake
 from course_maker.compiler.codec import decode_height, encode_height, read_png, sample_bilinear, write_png
 from course_maker.compiler.validate import validate_bundle
 from course_maker.models import Course, Landmark
+from course_maker.project.store import read_project, stack_for
 
 LEFT, TOP = 404000.0, 3708000.0
 
@@ -104,8 +105,19 @@ class BundleTests(unittest.TestCase):
         self.assertEqual((self.course.height.cols, self.course.height.rows), (119, 95))
         self.assertEqual((self.course.class_.cols, self.course.class_.rows), (236, 188))
 
-    def test_bake_records_its_source_stack(self):
-        self.assertEqual(read_source(self.tmp / "base"), (self.tmp / "stack.tif").resolve())
+    def test_bake_records_its_source_stack_in_project_json(self):
+        base = self.tmp / "base"
+        self.assertEqual(stack_for(base), (self.tmp / "stack.tif").resolve())
+        project = read_project(base)
+        self.assertEqual(project.stack, "../stack.tif")  # relative to the bundle folder, forward slashes
+        self.assertEqual(project.bake.name, "Test Course")
+        self.assertFalse((self.tmp / "base.source.json").exists())  # the old sidecar is gone
+
+    def test_the_hidden_project_folder_does_not_affect_validation(self):
+        (self.dir / ".course_maker" / "annotations").mkdir(parents=True)
+        (self.dir / ".course_maker" / "annotations" / "x.json").write_text("{}")
+        self.assertEqual(validate_bundle(self.dir).errors, [])
+        self.assertNotIn(".course_maker", " ".join(validate_bundle(self.dir).sizes))
 
     def test_course_json_round_trips_through_the_model(self):
         d = self.course_json()

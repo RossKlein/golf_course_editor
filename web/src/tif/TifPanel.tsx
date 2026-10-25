@@ -18,7 +18,7 @@ export default function TifPanel({ view, onBaked }: Props) {
   const slug = slugFor(view.path);
   const [name, setName] = useState(titleFor(slug));
   const [out, setOut] = useState(`bundles/${slug}`);
-  const [overwrite, setOverwrite] = useState(false);
+  const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<BakeResult | null>(null);
@@ -28,7 +28,7 @@ export default function TifPanel({ view, onBaked }: Props) {
     setError("");
     setResult(null);
     try {
-      const res = await api.bake({ stack: view.path, out, name, overwrite });
+      const res = await api.bake({ stack: view.path, out, name, replace });
       setResult(res);
       onBaked(res.bundle);
     } catch (e) {
@@ -59,7 +59,7 @@ export default function TifPanel({ view, onBaked }: Props) {
           <label>Course name <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></label>
           <label>Bundle folder <input type="text" value={out} onChange={(e) => setOut(e.target.value)} /></label>
           <label className="check">
-            <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} /> Replace an existing bundle
+            <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace an existing bundle (keeps its editor state)
           </label>
           <button className="primary" type="button" disabled={busy || !name.trim() || !out.trim()} onClick={bake}>
             {busy ? "Baking…" : "Bake"}

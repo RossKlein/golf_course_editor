@@ -18,6 +18,8 @@ def main(argv: list[str] | None = None) -> int:
     bake.add_argument("--out", required=True, help="bundle folder to write")
     bake.add_argument("--name", required=True, help="course display name")
     bake.add_argument("--attribution", default=None)
+    bake.add_argument("--replace", action="store_true",
+                      help="rebuild an existing bundle (built beside it first; .course_maker/ is carried over)")
 
     validate = sub.add_parser("validate", help="check a bundle against the format spec")
     validate.add_argument("bundle", help="bundle folder containing course.json")
@@ -50,8 +52,8 @@ def main(argv: list[str] | None = None) -> int:
         from .compiler.bake import DEFAULT_ATTRIBUTION, bake as run_bake
 
         try:
-            course = run_bake(a.stack, a.out, a.name, a.attribution or DEFAULT_ATTRIBUTION)
-        except ValueError as exc:
+            course = run_bake(a.stack, a.out, a.name, a.attribution or DEFAULT_ATTRIBUTION, replace=a.replace)
+        except (ValueError, FileExistsError) as exc:
             print(f"error: {exc}")
             return 1
         print(f"{course.name}: {course.height.cols}x{course.height.rows} m macro grid, "

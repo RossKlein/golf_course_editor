@@ -37,7 +37,9 @@ bundles, skipping hidden folders and `.venv`.
   Large rasters are shown decimated. Renders are cached in `.course_maker_cache/`.
 - **Load TIF…** (or drop .tif files on the map) copies GeoTIFFs into `uploads/` and indexes them.
 - **Bake**: a projected, metre-based raster with an elevation band (a `course_stack.tif`) can be baked into a
-  bundle from its panel. Existing bundles are only replaced when you tick the box.
+  bundle from its panel. An existing bundle is only rebuilt when you tick Replace, and even then the old bundle is
+  never deleted first: the new one is built beside it, `.course_maker/` is carried over, and it is swapped in only
+  if it validates.
 - **Bundles**: view a bundle exactly as the game will decode it: aerial (from the stack it was baked from),
   hillshade, surface class, hole ownership and out-of-bounds layers, patches, trees, routes, landmarks, and the
   validation report.
@@ -66,8 +68,18 @@ cd web; npm run types                               # writes web/src/api/schema.
 .\.venv\Scripts\python.exe -m course_maker validate bundles/augusta
 ```
 
-Baking also writes `bundles/augusta.source.json` next to the bundle (not inside it), recording the stack for the
-aerial layer. It is compiler-only and never ships with the game files.
+Add `--replace` to rebuild an existing bundle (safely, as above).
+
+## Editor state
+
+Each bundle has a hidden `.course_maker/` folder (like `.vscode/`):
+
+- `editor.json`: how you were working: map view, layer visibility and opacity, relief exaggeration, selected hole.
+  Saved automatically, restored when you reopen the bundle. Per user; gitignored by a `.gitignore` inside the folder.
+- `project.json`: the source stack and bake settings. Records the stack for the aerial layer.
+
+Neither is part of the game bundle, and neither is served to the browser as a bundle file. See
+`docs/editor-project-file.md`.
 
 ## Tests
 

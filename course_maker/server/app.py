@@ -5,7 +5,6 @@ Every path in the API is relative to the data folder (forward slashes). Nothing 
 from __future__ import annotations
 
 import os
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -16,9 +15,22 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from rasterio.errors import RasterioError
 
-from ..compiler.bake import bake, read_source
+from ..compiler.bake import BUILDING_SUFFIX, REPLACED_SUFFIX, BakeError, bake
 from ..compiler.validate import validate_bundle
-from ..models import AerialMeta, BakeRequest, BakeResult, BundleEntry, Course, Index, Report, TifEntry, TifView
+from ..models import (
+    AerialMeta,
+    BakeRequest,
+    BakeResult,
+    BundleEntry,
+    Course,
+    EditorResponse,
+    EditorState,
+    Index,
+    Report,
+    TifEntry,
+    TifView,
+)
+from ..project.store import read_editor, stack_for, write_editor
 from . import rasters
 from .aerial import aerial_meta, relative_to
 
@@ -39,7 +51,7 @@ def scan(root: Path) -> Index:
             if name.lower().endswith(TIF_SUFFIXES):
                 st = path.stat()
                 tifs.append(TifEntry(path=path.relative_to(root).as_posix(), size=st.st_size, modified=st.st_mtime))
-            elif name == "course.json":
+            elif name == "course.json" and not here.name.endswith((BUILDING_SUFFIX, REPLACED_SUFFIX)):
                 try:
                     title = Course.read(path).name
                 except (ValidationError, OSError):
@@ -150,7 +162,7 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     @app.get("/api/bundle/aerial")
     def bundle_aerial(path: str = Query()) -> AerialMeta:
         folder = bundle(path)
-        stack = read_source(folder)
+        stack = stack_for(folder)
         stack_rel = relative_to(root, stack) if stack else None
         if stack_rel is None:
             raise HTTPException(404, "the bundle's source stack is not recorded or not in the data folder")
@@ -160,9 +172,20 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
         except (ValueError, ValidationError) as exc:
             raise HTTPException(422, str(exc)) from exc
 
+    @app.get("/api/bundle/editor")
+    def editor_get(path: str = Query()) -> EditorResponse:
+        """The saved editor state (defaults when there is none or it is unreadable)."""
+        return read_editor(bundle(path))
+
+    @app.put("/api/bundle/editor", status_code=204)
+    def editor_put(state: EditorState, path: str = Query()) -> None:
+        write_editor(bundle(path), state)
+
     @app.get("/files/{rel:path}")
     def bundle_file(rel: str):
         """A file of a bundle (course.json, PNGs, trees.bin), exactly as the game will download it."""
+        if any(part.startswith(".") for part in rel.split("/")):
+            raise HTTPException(404, "not found")  # .course_maker/ is authoring state, not game files
         path = inside(rel)
         if not path.is_file() or path.suffix.lower() not in BUNDLE_FILE_SUFFIXES:
             raise HTTPException(404, "not found")
@@ -176,14 +199,12 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
         out = inside(req.out)
         if out == root:
             raise HTTPException(400, "choose a folder for the bundle, not the data folder itself")
-        if out.exists() and any(out.iterdir()) and not req.overwrite:
-            raise HTTPException(409, f"{req.out} already exists; set overwrite to replace it")
-        if out.exists() and req.overwrite:
-            if not (out / "course.json").is_file():
-                raise HTTPException(409, f"{req.out} is not a bundle; refusing to replace it")
-            shutil.rmtree(out)
         try:
-            bake(stack, out, req.name, req.attribution)
+            bake(stack, out, req.name, req.attribution, replace=req.replace)
+        except FileExistsError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except BakeError as exc:
+            raise HTTPException(422, f"the new bundle did not validate, so nothing was replaced: {exc}") from exc
         except (ValueError, RasterioError) as exc:
             raise HTTPException(422, str(exc)) from exc
         return BakeResult(bundle=out.relative_to(root).as_posix(), report=validate_bundle(out))

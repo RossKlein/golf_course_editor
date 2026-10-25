@@ -119,14 +119,14 @@ class ServerTests(unittest.TestCase):
         self.assertAlmostEqual(meta["z0"], -1.0)
         self.assertAlmostEqual(meta["res"], 0.6)
 
-    def test_bake_refuses_to_overwrite_unless_asked(self):
+    def test_bake_refuses_to_replace_unless_asked(self):
         self.bake()
         self.assertEqual(self.bake().status_code, 409)
-        self.assertEqual(self.bake(overwrite=True).status_code, 200)
+        self.assertEqual(self.bake(replace=True).status_code, 200)
 
     def test_bake_never_replaces_a_folder_that_is_not_a_bundle(self):
         (self.root / "augusta" / "notes.txt").write_text("keep me")
-        res = self.bake(out="augusta", overwrite=True)
+        res = self.bake(out="augusta", replace=True)
         self.assertEqual(res.status_code, 409)
         self.assertTrue((self.root / "augusta" / "notes.txt").is_file())
 
@@ -148,6 +148,67 @@ class ServerTests(unittest.TestCase):
     def test_page_explains_when_the_web_app_is_not_built(self):
         res = self.client.get("/")
         self.assertIn(res.status_code, (200, 503))
+
+    # --- editor state (.course_maker/editor.json) ---
+
+    def test_editor_state_defaults_then_round_trips(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        first = self.client.get("/api/bundle/editor", params=q).json()
+        self.assertEqual(first["status"], "default")
+        self.assertEqual(first["state"]["exaggeration"], 3.0)
+        state = first["state"] | {
+            "viewport": {"x": 12.5, "z": 40.0, "scale": 0.8},
+            "layers": {"class": {"visible": True, "opacity": 0.25}},
+            "exaggeration": 6.0,
+        }
+        self.assertEqual(self.client.put("/api/bundle/editor", params=q, json=state).status_code, 204)
+        again = self.client.get("/api/bundle/editor", params=q).json()
+        self.assertEqual((again["status"], again["state"]), ("loaded", state))
+        self.assertTrue((self.root / "bundles/augusta/.course_maker/editor.json").is_file())
+
+    def test_editor_put_is_validated_strictly(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        good = self.client.get("/api/bundle/editor", params=q).json()["state"]
+        for bad in (
+            good | {"layers": {"class": {"visible": True, "opacity": 2}}},
+            good | {"exaggeration": 99},
+            good | {"viewport": {"x": 1, "z": 1, "scale": 0}},
+            good | {"colour": "green"},
+            good | {"version": 2},
+        ):
+            self.assertEqual(self.client.put("/api/bundle/editor", params=q, json=bad).status_code, 422, bad)
+
+    def test_editor_endpoints_only_touch_bundles(self):
+        for path in ("augusta", "../x", "missing"):
+            self.assertEqual(self.client.get("/api/bundle/editor", params={"path": path}).status_code, 404, path)
+            self.assertEqual(self.client.put("/api/bundle/editor", params={"path": path}, json={}).status_code, 404, path)
+
+    def test_files_never_serves_the_hidden_project_folder(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        self.client.put("/api/bundle/editor", params=q, json=self.client.get("/api/bundle/editor", params=q).json()["state"])
+        self.assertEqual(self.client.get("/files/bundles/augusta/.course_maker/editor.json").status_code, 404)
+        self.assertEqual(self.client.get("/files/bundles/augusta/.course_maker/project.json").status_code, 404)
+
+    def test_replacing_a_bundle_keeps_its_editor_state(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        state = self.client.get("/api/bundle/editor", params=q).json()["state"] | {"exaggeration": 7.5}
+        self.client.put("/api/bundle/editor", params=q, json=state)
+        res = self.bake(replace=True, name="Augusta Renamed")
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(self.client.get("/api/bundle/editor", params=q).json()["state"]["exaggeration"], 7.5)
+        self.assertEqual(self.client.get("/api/bundle", params=q).json()["name"], "Augusta Renamed")
+        leftovers = [p.name for p in (self.root / "bundles").iterdir()]
+        self.assertEqual(leftovers, ["augusta"])  # no .baking or .replaced folders
+
+    def test_index_ignores_in_progress_bake_folders(self):
+        self.bake()
+        shutil.copytree(self.root / "bundles/augusta", self.root / "bundles/augusta.baking")
+        shutil.copytree(self.root / "bundles/augusta", self.root / "bundles/augusta.replaced")
+        self.assertEqual([b["path"] for b in self.client.get("/api/index").json()["bundles"]], ["bundles/augusta"])
 
 
 if __name__ == "__main__":

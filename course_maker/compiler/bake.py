@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import os
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -18,8 +19,10 @@ from rasterio.enums import Resampling
 from rasterio.warp import reproject
 
 from .. import spec as S
-from ..models import BakeSource, Course, Grid, TreesRef
+from ..models import BakeSettings, Course, Grid, ProjectFile, Report, TreesRef
+from ..project.store import DIR_NAME, write_project
 from .codec import encode_height, write_png
+from .validate import validate_bundle
 
 DEFAULT_ATTRIBUTION = "Elevation: USGS 3DEP. Imagery: NAIP."
 EDGE_MARGIN_M = 1.0  # keep grid points inside the stack so bilinear resampling never reads past its edge
@@ -54,7 +57,27 @@ def macro_grid_from_stack(stack_path) -> tuple[np.ndarray, float, float, str]:
     return elev.astype(np.float64), e0, n0, crs
 
 
-def bake(stack_path, out_dir, name: str, attribution: str = DEFAULT_ATTRIBUTION) -> Course:
+class BakeError(ValueError):
+    """The freshly baked bundle did not validate, so nothing was replaced."""
+
+    def __init__(self, report: Report):
+        super().__init__("; ".join(report.errors))
+        self.report = report
+
+
+BUILDING_SUFFIX = ".baking"  # the new bundle is built in a sibling folder with this suffix
+REPLACED_SUFFIX = ".replaced"  # the old bundle waits here, briefly, while the new one moves in
+
+
+def _stack_ref(stack: Path, bundle: Path) -> str:
+    """The stack's path relative to the bundle folder, with forward slashes."""
+    try:
+        return Path(os.path.relpath(stack.resolve(), bundle.resolve())).as_posix()
+    except ValueError:  # different drive: no relative path exists
+        return stack.resolve().as_posix()
+
+
+def _write_bundle(stack_path: Path, out: Path, name: str, attribution: str) -> Course:
     heights, e0, n0, crs = macro_grid_from_stack(stack_path)
     rows, cols = heights.shape
     h_min = math.floor(float(heights.min()) * 1000) / 1000
@@ -63,8 +86,7 @@ def bake(stack_path, out_dir, name: str, attribution: str = DEFAULT_ATTRIBUTION)
     cw, ch = round(w / S.CLASS_RES), round(h / S.CLASS_RES)
     bw, bh = round(w / S.BOUNDS_RES), round(h / S.BOUNDS_RES)
 
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True)
     f = S.DEFAULT_FILES
     write_png(out / f["height"], encode_height(heights, h_min, h_max))
     klass = np.zeros((ch, cw, 4), np.uint8)  # R = rough everywhere, G = no owner
@@ -80,23 +102,56 @@ def bake(stack_path, out_dir, name: str, attribution: str = DEFAULT_ATTRIBUTION)
         bounds=Grid(file=f["bounds"], cols=bw, rows=bh, res=S.BOUNDS_RES), trees=TreesRef(file=f["trees"], count=0), holes=[],
     )
     course.write(out / "course.json")
-    source = source_path(out)
-    source.write_text(BakeSource(stack=os.path.relpath(Path(stack_path).resolve(), source.parent.resolve()))
-                      .model_dump_json(indent=2) + "\n", encoding="utf-8")
     return course
 
 
-def source_path(bundle_dir) -> Path:
-    """Compiler-only sidecar next to (not inside) the bundle, so it never ships with the game files."""
-    bundle_dir = Path(bundle_dir)
-    return bundle_dir.with_name(bundle_dir.name + ".source.json")
+def _swap_in(building: Path, out: Path) -> None:
+    """Move the new bundle into place. The old one is only deleted after the new one is in; if the move fails the
+    old one is put back."""
+    if out.exists() and not any(out.iterdir()):
+        out.rmdir()
+    if not out.exists():
+        os.replace(building, out)
+        return
+    old = out.with_name(out.name + REPLACED_SUFFIX)
+    shutil.rmtree(old, ignore_errors=True)
+    os.replace(out, old)
+    try:
+        os.replace(building, out)
+    except OSError:
+        os.replace(old, out)
+        raise
+    shutil.rmtree(old, ignore_errors=True)
 
 
-def read_source(bundle_dir) -> Path | None:
-    """The stack a bundle was baked from, if recorded and still present."""
-    path = source_path(bundle_dir)
-    if not path.is_file():
-        return None
-    stack = (path.parent / BakeSource.model_validate_json(path.read_text(encoding="utf-8")).stack).resolve()
-    return stack if stack.is_file() else None
+def bake(stack_path, out_dir, name: str, attribution: str = DEFAULT_ATTRIBUTION, replace: bool = False) -> Course:
+    """Bake a bundle at out_dir from a course_stack.tif.
 
+    With replace=True an existing bundle is rebuilt without ever being modified in place: the new bundle is built
+    in a sibling folder, the old `.course_maker/` (editor state, project settings, annotations) is carried over,
+    the result is validated, and only then does it take the old one's place. Raises FileExistsError if out_dir is
+    in use and replace is not set (or is not a bundle), and BakeError if the new bundle does not validate; in both
+    cases whatever was at out_dir is untouched.
+    """
+    out, stack = Path(out_dir), Path(stack_path)
+    in_use = out.exists() and any(out.iterdir())
+    if in_use and not replace:
+        raise FileExistsError(f"{out} already exists; replace it to rebuild")
+    if in_use and not (out / "course.json").is_file():
+        raise FileExistsError(f"{out} is not a bundle; refusing to replace it")
+
+    building = out.with_name(out.name + BUILDING_SUFFIX)
+    shutil.rmtree(building, ignore_errors=True)
+    try:
+        course = _write_bundle(stack, building, name, attribution)
+        if (out / DIR_NAME).is_dir():
+            shutil.copytree(out / DIR_NAME, building / DIR_NAME)
+        write_project(building, ProjectFile(stack=_stack_ref(stack, out),
+                                            bake=BakeSettings(name=name, attribution=attribution, edgeMargin=EDGE_MARGIN_M)))
+        report = validate_bundle(building)
+        if not report.ok:
+            raise BakeError(report)
+        _swap_in(building, out)
+    finally:
+        shutil.rmtree(building, ignore_errors=True)
+    return course

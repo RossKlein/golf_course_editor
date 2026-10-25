@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -163,13 +163,53 @@ class Course(Model):
         Path(path).write_text(text + "\n", encoding="utf-8")
 
 
+# --- .course_maker/ project files (never part of the game bundle) ---------------
+
+
+class BakeSettings(Model):
+    """What the last bake used, so a re-bake reproduces it."""
+
+    name: Name
+    attribution: Name
+    edgeMargin: Annotated[Number, Field(ge=0)]
+
+
+class ProjectFile(Model):
+    """`.course_maker/project.json`: durable settings that reproduce the bundle. Worth versioning."""
+
+    stack: Name  # the source course_stack.tif, relative to the bundle folder, with forward slashes
+    bake: BakeSettings
+
+
+class Viewport(Model):
+    """The map view: centre in course metres, and pixels per metre. Independent of the window size."""
+
+    x: Number
+    z: Number
+    scale: Annotated[Number, Field(gt=0, le=10_000)]
+
+
+class LayerPref(Model):
+    visible: bool
+    opacity: Annotated[Number, Field(ge=0, le=1)]
+
+
+class EditorState(Model):
+    """`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."""
+
+    version: Literal[1] = 1
+    viewport: Viewport | None = None  # None means "fit the course"
+    layers: Annotated[dict[Annotated[str, Field(max_length=64)], LayerPref], Field(max_length=64)] = {}
+    exaggeration: Annotated[Number, Field(ge=1, le=10)] = 3.0
+    hole: Annotated[Int, Field(ge=1, le=spec.MAX_HOLES)] = 1  # hole shown on the out-of-bounds layer
+
+
+class EditorResponse(Model):
+    state: EditorState
+    status: Literal["default", "loaded", "reset"]  # no file yet / read from disk / unreadable, replaced by defaults
+
+
 # --- API types ---------------------------------------------------------------
-
-
-class BakeSource(Model):
-    """Compiler-only sidecar (`<bundle>.source.json`): which stack a bundle was baked from."""
-
-    stack: str  # relative to the sidecar's folder
 
 
 class TifEntry(Model):
@@ -237,7 +277,7 @@ class BakeRequest(Model):
     out: str  # data-relative bundle folder
     name: Name
     attribution: Name = "Elevation: USGS 3DEP. Imagery: NAIP."
-    overwrite: bool = False
+    replace: bool = False  # build a new bundle beside the old one, carry over .course_maker/, then swap
 
 
 class BakeResult(Model):

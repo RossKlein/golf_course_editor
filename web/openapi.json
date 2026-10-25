@@ -293,6 +293,86 @@
         }
       }
     },
+    "/api/bundle/editor": {
+      "get": {
+        "summary": "Editor Get",
+        "description": "The saved editor state (defaults when there is none or it is unreadable).",
+        "operationId": "editor_get_api_bundle_editor_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Editor Put",
+        "operationId": "editor_put_api_bundle_editor_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorState-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/files/{rel}": {
       "get": {
         "summary": "Bundle File",
@@ -433,9 +513,9 @@
             "title": "Attribution",
             "default": "Elevation: USGS 3DEP. Imagery: NAIP."
           },
-          "overwrite": {
+          "replace": {
             "type": "boolean",
-            "title": "Overwrite",
+            "title": "Replace",
             "default": false
           }
         },
@@ -573,6 +653,136 @@
           "holes"
         ],
         "title": "Course"
+      },
+      "EditorResponse": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/EditorState-Output"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "default",
+              "loaded",
+              "reset"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "status"
+        ],
+        "title": "EditorResponse"
+      },
+      "EditorState-Input": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "viewport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Viewport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "layers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LayerPref"
+            },
+            "propertyNames": {
+              "maxLength": 64
+            },
+            "type": "object",
+            "maxProperties": 64,
+            "title": "Layers",
+            "default": {}
+          },
+          "exaggeration": {
+            "type": "number",
+            "title": "Exaggeration",
+            "default": 3.0,
+            "ge": 1,
+            "le": 10
+          },
+          "hole": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Hole",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EditorState",
+        "description": "`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."
+      },
+      "EditorState-Output": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "viewport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Viewport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "layers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LayerPref"
+            },
+            "propertyNames": {
+              "maxLength": 64
+            },
+            "type": "object",
+            "maxProperties": 64,
+            "title": "Layers",
+            "default": {}
+          },
+          "exaggeration": {
+            "type": "number",
+            "title": "Exaggeration",
+            "default": 3.0,
+            "ge": 1,
+            "le": 10
+          },
+          "hole": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Hole",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "viewport",
+          "layers",
+          "exaggeration",
+          "hole"
+        ],
+        "title": "EditorState",
+        "description": "`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."
       },
       "ElevationLayer": {
         "properties": {
@@ -775,6 +985,27 @@
           "y"
         ],
         "title": "Landmark"
+      },
+      "LayerPref": {
+        "properties": {
+          "visible": {
+            "type": "boolean",
+            "title": "Visible"
+          },
+          "opacity": {
+            "type": "number",
+            "title": "Opacity",
+            "ge": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "visible",
+          "opacity"
+        ],
+        "title": "LayerPref"
       },
       "Patch": {
         "properties": {
@@ -1086,6 +1317,33 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "Viewport": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          },
+          "scale": {
+            "type": "number",
+            "title": "Scale",
+            "gt": 0,
+            "le": 10000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "z",
+          "scale"
+        ],
+        "title": "Viewport",
+        "description": "The map view: centre in course metres, and pixels per metre. Independent of the window size."
       }
     }
   }

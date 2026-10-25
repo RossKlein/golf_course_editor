@@ -143,6 +143,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bundle/editor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Editor Get
+         * @description The saved editor state (defaults when there is none or it is unreadable).
+         */
+        get: operations["editor_get_api_bundle_editor_get"];
+        /** Editor Put */
+        put: operations["editor_put_api_bundle_editor_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{rel}": {
         parameters: {
             query?: never;
@@ -216,10 +237,10 @@ export interface components {
              */
             attribution?: string;
             /**
-             * Overwrite
+             * Replace
              * @default false
              */
-            overwrite?: boolean;
+            replace?: boolean;
         };
         /** BakeResult */
         BakeResult: {
@@ -266,6 +287,75 @@ export interface components {
             landmarks: components["schemas"]["Landmark"][];
             /** Holes */
             holes: components["schemas"]["Hole"][];
+        };
+        /** EditorResponse */
+        EditorResponse: {
+            state: components["schemas"]["EditorState-Output"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "default" | "loaded" | "reset";
+        };
+        /**
+         * EditorState
+         * @description `.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle.
+         */
+        "EditorState-Input": {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version?: 1;
+            viewport?: components["schemas"]["Viewport"] | null;
+            /**
+             * Layers
+             * @default {}
+             */
+            layers?: {
+                [key: string]: components["schemas"]["LayerPref"];
+            };
+            /**
+             * Exaggeration
+             * @default 3
+             */
+            exaggeration?: number;
+            /**
+             * Hole
+             * @default 1
+             */
+            hole?: number;
+        };
+        /**
+         * EditorState
+         * @description `.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle.
+         */
+        "EditorState-Output": {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            viewport: components["schemas"]["Viewport"] | null;
+            /**
+             * Layers
+             * @default {}
+             */
+            layers: {
+                [key: string]: components["schemas"]["LayerPref"];
+            };
+            /**
+             * Exaggeration
+             * @default 3
+             */
+            exaggeration: number;
+            /**
+             * Hole
+             * @default 1
+             */
+            hole: number;
         };
         /**
          * ElevationLayer
@@ -340,6 +430,13 @@ export interface components {
             scale: number;
             /** Y */
             y: number | null;
+        };
+        /** LayerPref */
+        LayerPref: {
+            /** Visible */
+            visible: boolean;
+            /** Opacity */
+            opacity: number;
         };
         /** Patch */
         Patch: {
@@ -453,6 +550,18 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * Viewport
+         * @description The map view: centre in course metres, and pixels per metre. Independent of the window size.
+         */
+        Viewport: {
+            /** X */
+            x: number;
+            /** Z */
+            z: number;
+            /** Scale */
+            scale: number;
         };
     };
     responses: never;
@@ -688,6 +797,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AerialMeta"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editor_get_api_bundle_editor_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editor_put_api_bundle_editor_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditorState-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

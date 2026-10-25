@@ -12,6 +12,12 @@ export type Report = Schemas["Report"];
 export type AerialMeta = Schemas["AerialMeta"];
 export type BakeRequest = Schemas["BakeRequest"];
 export type BakeResult = Schemas["BakeResult"];
+// FastAPI emits separate input/output schemas where fields have defaults. The output form has every field present,
+// and a complete object also satisfies the input form, so it is used both ways.
+export type EditorState = Schemas["EditorState-Output"];
+export type EditorResponse = Schemas["EditorResponse"];
+export type Viewport = Schemas["Viewport"];
+export type LayerPref = Schemas["LayerPref"];
 
 export class ApiError extends Error {
   constructor(
@@ -59,6 +65,17 @@ export const api = {
       if (e instanceof ApiError && e.status === 404) return null;
       throw e;
     }
+  },
+  editor: (bundle: string) => request<EditorResponse>(`/api/bundle/editor?path=${q(bundle)}`),
+  /** Save the editor state. keepalive lets the request finish while the page is closing. */
+  saveEditor: async (bundle: string, state: EditorState, keepalive = false) => {
+    const res = await fetch(`/api/bundle/editor?path=${q(bundle)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+      keepalive,
+    });
+    if (!res.ok) throw new ApiError(`${res.status} ${await res.text()}`, res.status);
   },
   bake: (req: BakeRequest) =>
     request<BakeResult>("/api/bake", {
