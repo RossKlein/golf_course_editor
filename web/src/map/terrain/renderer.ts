@@ -1,8 +1,9 @@
 import type { HeightGrid } from "../../decode/decode";
-import type { Mat4, Vec3 } from "../../view3d/mat4";
+import type { Mat4 } from "../../view3d/mat4";
 import type { Rect } from "../coords";
+import { context, LazyTexture, type Gl, type Program } from "./gl";
 import { packHeights } from "./reference";
-import { FRAGMENT, FRAGMENT_3D, VERTEX, VERTEX_3D } from "./shaders";
+import { Sculptor } from "./sculptor";
 import { SUN, sunDirection } from "./sun";
 
 export type TerrainStyle = {
@@ -40,61 +41,7 @@ export type View3d = {
   slope: boolean;
 };
 
-type Program = { program: WebGLProgram; u: Record<string, WebGLUniformLocation | null> };
-
-type Gl = {
-  canvas: HTMLCanvasElement;
-  gl: WebGL2RenderingContext;
-  flat: Program;
-  mesh: Program;
-  anisotropy: { ext: { TEXTURE_MAX_ANISOTROPY_EXT: number } | null; max: number };
-  /** Changes when the context is replaced, so textures made for an old one are known to be gone. */
-  generation: number;
-};
-
-const FLAT_UNIFORMS = ["uHeight", "uGrid", "uOrigin", "uRes", "uMapOrigin", "uMapPerPixel", "uExaggeration", "uContour", "uSlope", "uSun"];
-const MESH_UNIFORMS = [
-  "uHeight", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uSunDir", "uContour", "uSlope", "uRelief", "uShading",
-  "uAerial", "uAerialRect", "uUseAerial", "uFill", "uLines", "uDrapeRect", "uFillAlpha", "uLineAlpha",
-];
-const SKY: Vec3 = [0.62, 0.76, 0.9];
-
-let shared: Gl | null = null;
-let generation = 0;
-
-function program(gl: WebGL2RenderingContext, vertex: string, fragment: string, uniforms: string[], name: string): Program {
-  const compile = (type: number, source: string) => {
-    const shader = gl.createShader(type)!;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(`${name} shader: ${gl.getShaderInfoLog(shader)}`);
-    return shader;
-  };
-  const p = gl.createProgram()!;
-  gl.attachShader(p, compile(gl.VERTEX_SHADER, vertex));
-  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragment));
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(`${name} shader: ${gl.getProgramInfoLog(p)}`);
-  return { program: p, u: Object.fromEntries(uniforms.map((n) => [n, gl.getUniformLocation(p, n)])) };
-}
-
-/** The one WebGL2 context all terrain views draw with, made on first use and again if the browser takes it away. */
-function context(): Gl {
-  if (shared && !shared.gl.isContextLost()) return shared;
-  const canvas = document.createElement("canvas");
-  const gl = canvas.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: true, depth: true, stencil: false });
-  if (!gl) throw new Error("WebGL2 is not available");
-  const ext = gl.getExtension("EXT_texture_filter_anisotropic");
-  shared = {
-    canvas,
-    gl,
-    flat: program(gl, VERTEX, FRAGMENT, FLAT_UNIFORMS, "terrain"),
-    mesh: program(gl, VERTEX_3D, FRAGMENT_3D, MESH_UNIFORMS, "terrain 3D"),
-    anisotropy: { ext, max: ext ? gl.getParameter(ext.TEXTURE_MAX_ANISOTROPY_EXT) : 1 },
-    generation: ++generation,
-  };
-  return shared;
-}
+const SKY: [number, number, number] = [0.62, 0.76, 0.9];
 
 /** Whether terrain can be drawn on the GPU here. Callers fall back to the CPU hillshade when it cannot. */
 export function terrainSupported(grid?: HeightGrid): boolean {
@@ -107,47 +54,12 @@ export function terrainSupported(grid?: HeightGrid): boolean {
   }
 }
 
-/** A texture that is uploaded when first needed, and again if the context was replaced or the source changed. */
-class LazyTexture {
-  private texture: WebGLTexture | null = null;
-  private generation = -1;
-  private dirty = true;
-
-  constructor(private readonly upload: (g: Gl) => void) {}
-
-  invalidate() {
-    this.dirty = true;
-  }
-
-  bind(g: Gl, unit: number): boolean {
-    const { gl } = g;
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    if (!this.texture || this.generation !== g.generation) {
-      this.texture = gl.createTexture();
-      this.generation = g.generation;
-      this.dirty = true;
-    }
-    gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    if (this.dirty) {
-      this.dirty = false;
-      this.upload(g);
-    }
-    return true;
-  }
-
-  free() {
-    if (this.texture && shared && !shared.gl.isContextLost() && this.generation === shared.generation) shared.gl.deleteTexture(this.texture);
-    this.texture = null;
-    this.generation = -1;
-  }
-}
-
 type Image = HTMLImageElement | HTMLCanvasElement;
 
 /**
  * A height grid on the GPU and what it takes to draw it, flat for the map or as a 3D mesh. Many renderers share one
  * context; each owns its textures, which are uploaded when first used and again after `dispose` or a lost context, so a
- * renderer is never left unusable.
+ * renderer is never left unusable. Heights are the baked grid plus, once sculpting is enabled, the sculptor's offsets.
  */
 export class TerrainRenderer {
   private readonly height = new LazyTexture((g) => {
@@ -159,6 +71,13 @@ export class TerrainRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   });
+  /** Stands in for the offsets when nothing is sculpted. */
+  private readonly noOffsets = new LazyTexture((g) => {
+    const { gl } = g;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 1, 1, 0, gl.RGBA, gl.FLOAT, new Float32Array(4));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  });
   private readonly aerialTexture = new LazyTexture((g) => this.uploadImage(g, this.aerialImage, true));
   private readonly fillTexture = new LazyTexture((g) => this.uploadImage(g, this.fillImage, true));
   private readonly linesTexture = new LazyTexture((g) => this.uploadImage(g, this.linesImage, true));
@@ -167,8 +86,16 @@ export class TerrainRenderer {
   private fillImage: Image | null = null;
   private linesImage: Image | null = null;
   private drapeRect: Rect | null = null;
+  private sculptor: Sculptor | null = null;
 
+  /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. */
   constructor(private readonly data: TerrainGrid) {}
+
+  /** Make the terrain editable. `effective` is the CPU copy of base + sculpting that the sculptor keeps up to date. */
+  enableSculpt(effective: HeightGrid): Sculptor {
+    this.sculptor ??= new Sculptor(this.data, effective, (g, unit) => this.height.bind(g, unit));
+    return this.sculptor;
+  }
 
   /** The imagery draped over the 3D view, covering `rect` (course metres, top-left corner and size). */
   setAerial(image: Image | null, rect: Rect | null) {
@@ -217,11 +144,16 @@ export class TerrainRenderer {
     }
   }
 
+  /** Bind the heights (unit 0) and the sculpting offsets (unit 4) and the numbers that describe them. */
   private bindHeight(g: Gl, p: Program) {
     const { gl } = g;
     const { grid, origin, resX, resZ } = this.data;
     this.height.bind(g, 0);
     gl.uniform1i(p.u.uHeight, 0);
+    if (this.sculptor) this.sculptor.bindOffsets(g, 4);
+    else this.noOffsets.bind(g, 4);
+    gl.uniform1i(p.u.uDelta, 4);
+    gl.uniform1f(p.u.uHasDelta, this.sculptor ? 1 : 0);
     gl.uniform2i(p.u.uGrid, grid.cols, grid.rows);
     gl.uniform2f(p.u.uOrigin, origin.x, origin.z);
     gl.uniform2f(p.u.uRes, resX, resZ);
@@ -233,6 +165,7 @@ export class TerrainRenderer {
       g.canvas.width = w;
       g.canvas.height = h;
     }
+    g.gl.bindFramebuffer(g.gl.FRAMEBUFFER, null);
     g.gl.viewport(0, 0, w, h);
     return { w, h };
   }
@@ -303,6 +236,7 @@ export class TerrainRenderer {
 
   /** Free the textures. The renderer still works afterwards; it uploads again on the next render. */
   dispose() {
-    for (const t of [this.height, this.aerialTexture, this.fillTexture, this.linesTexture]) t.free();
+    for (const t of [this.height, this.noOffsets, this.aerialTexture, this.fillTexture, this.linesTexture]) t.free();
+    this.sculptor?.free();
   }
 }

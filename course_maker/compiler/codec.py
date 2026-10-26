@@ -26,7 +26,7 @@ def decode_height(rgba: np.ndarray, h_min: float, h_max: float) -> np.ndarray:
 
 
 def write_png(path, arr: np.ndarray) -> None:
-    """Write an 8-bit grayscale, RGB or RGBA array as an optimized PNG."""
+    """Write an 8-bit grayscale, RGB or RGBA array as an optimized PNG, to a path or a file object."""
     if arr.dtype != np.uint8:
         raise ValueError("PNG data must be uint8")
     Image.fromarray(arr).save(path, format="PNG", optimize=True)

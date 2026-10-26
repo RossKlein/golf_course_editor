@@ -18,6 +18,7 @@ from .models import BoundsFile, DesignDoc, Layout, RegionsFile
 DESIGN_DIR = "design"
 BACKUP_DIR = "backups"
 KEEP_BACKUPS = 20
+HEIGHT_DIR = "height"  # design/height/macro.delta: terrain sculpting (see build/height.py)
 FILES = {"layout": ("layout.json", Layout), "regions": ("regions.json", RegionsFile), "bounds": ("bounds.json", BoundsFile)}
 
 
@@ -68,7 +69,7 @@ def write_design_file(bundle: Path, name: str, value: Layout | RegionsFile | Bou
 
 def _fingerprint(folder: Path) -> str:
     h = hashlib.sha1()
-    for p in sorted(folder.glob("*.json")):
+    for p in sorted([*folder.glob("*.json"), *folder.glob(f"{HEIGHT_DIR}/*.delta")]):
         h.update(p.name.encode())
         h.update(p.read_bytes())
     return h.hexdigest()
@@ -82,7 +83,7 @@ def list_backups(bundle: Path) -> list[str]:
 def snapshot(bundle: Path, keep: int = KEEP_BACKUPS) -> str | None:
     """Copy design/ into backups/<utc timestamp>/ unless it matches the newest backup. Returns the new name."""
     src = design_dir(bundle)
-    if not src.is_dir() or not any(src.glob("*.json")):
+    if not src.is_dir() or not any([*src.glob("*.json"), *src.glob(f"{HEIGHT_DIR}/*.delta")]):
         return None
     root = project_dir(bundle) / BACKUP_DIR
     existing = list_backups(bundle)
@@ -108,3 +109,9 @@ def restore(bundle: Path, name: str) -> None:
             atomic_write(target, (src / filename).read_text(encoding="utf-8"))
         elif target.exists():
             target.unlink()
+    delta, kept = design_dir(bundle) / HEIGHT_DIR / "macro.delta", src / HEIGHT_DIR / "macro.delta"
+    if kept.is_file():
+        delta.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(kept, delta)
+    elif delta.exists():
+        delta.unlink()

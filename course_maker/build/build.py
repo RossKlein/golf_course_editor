@@ -23,6 +23,7 @@ from .. import spec as S
 from ..compiler.codec import write_png
 from ..compiler.validate import validate_bundle
 from ..design.store import read_bounds, read_layout, read_regions
+from .height import apply_delta, record_built
 from ..models import Course, Hole, Report
 from ..project.store import DIR_NAME
 
@@ -124,6 +125,12 @@ def build_bundle(bundle) -> BuildOutcome:
         ms["stage"] = round((time.perf_counter() - t0) * 1000)
 
         t = time.perf_counter()
+        heights = apply_delta(bundle, course, notes)  # base + sculpting
+        if heights.png is not None:
+            (staging / course.height.file).write_bytes(heights.png)
+        ms["heights"] = round((time.perf_counter() - t) * 1000)
+
+        t = time.perf_counter()
         holes = usable_holes(layout, notes)
         klass = rasterize_classes(regions.regions, course, notes)
         bounds_img = rasterize_bounds(bounds.areas, course, len(holes), notes)
@@ -135,6 +142,7 @@ def build_bundle(bundle) -> BuildOutcome:
         ms["encode"] = round((time.perf_counter() - t) * 1000)
 
         data = course.model_dump(by_alias=True, exclude_none=True)
+        data["hMin"], data["hMax"] = heights.h_min, heights.h_max
         data["holes"] = [h.model_dump() for h in holes]
         if layout.name:
             data["name"] = layout.name
@@ -146,8 +154,10 @@ def build_bundle(bundle) -> BuildOutcome:
         report = validate_bundle(staging)
         ms["validate"] = round((time.perf_counter() - t) * 1000)
 
-        for name in (*GENERATED, "course.json"):  # course.json last: readers see new rasters before they see new numbers
+        replaced = (*GENERATED, *([course.height.file] if heights.png is not None else []), "course.json")
+        for name in replaced:  # course.json last: readers see new rasters before they see new numbers
             os.replace(staging / name, bundle / name)
+        record_built(bundle, heights.sha)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     ms["total"] = round((time.perf_counter() - t0) * 1000)

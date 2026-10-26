@@ -232,6 +232,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bundle/design/height": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Height Get
+         * @description The sculpting delta file, or an empty body when nothing was sculpted.
+         */
+        get: operations["height_get_api_bundle_design_height_get"];
+        /** Height Put */
+        put: operations["height_put_api_bundle_design_height_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/height/base": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Height Base */
+        get: operations["height_base_api_bundle_design_height_base_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/height/base.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Height Base Png */
+        get: operations["height_base_png_api_bundle_design_height_base_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bundle/design/backups": {
         parameters: {
             query?: never;
@@ -664,6 +719,21 @@ export interface components {
              */
             boundsAllBounds?: boolean;
             /**
+             * Brushradius
+             * @default 10
+             */
+            brushRadius?: number;
+            /**
+             * Brushstrength
+             * @default 0.3
+             */
+            brushStrength?: number;
+            /**
+             * Brushhardness
+             * @default 0.5
+             */
+            brushHardness?: number;
+            /**
              * Smoothing
              * @default 0.1
              */
@@ -766,6 +836,21 @@ export interface components {
              */
             boundsAllBounds: boolean;
             /**
+             * Brushradius
+             * @default 10
+             */
+            brushRadius: number;
+            /**
+             * Brushstrength
+             * @default 0.3
+             */
+            brushStrength: number;
+            /**
+             * Brushhardness
+             * @default 0.5
+             */
+            brushHardness: number;
+            /**
              * Smoothing
              * @default 0.1
              */
@@ -811,6 +896,16 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HeightBase
+         * @description The pristine baked heights (`GET /api/bundle/design/height/base.png`) are encoded against this range.
+         */
+        HeightBase: {
+            /** Hmin */
+            hMin: number;
+            /** Hmax */
+            hMax: number;
         };
         /** Hole */
         Hole: {
@@ -1516,6 +1611,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    height_get_api_bundle_design_height_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    height_put_api_bundle_design_height_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    height_base_api_bundle_design_height_base_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeightBase"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    height_base_png_api_bundle_design_height_base_png_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

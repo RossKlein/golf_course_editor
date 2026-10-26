@@ -10,6 +10,7 @@ export type TifView = Schemas["TifView"];
 export type Course = Schemas["Course"];
 export type Report = Schemas["Report"];
 export type AerialMeta = Schemas["AerialMeta"];
+export type HeightBase = Schemas["HeightBase"];
 export type BakeRequest = Schemas["BakeRequest"];
 export type BakeResult = Schemas["BakeResult"];
 // FastAPI emits separate input/output schemas where fields have defaults. The output form has every field present,
@@ -69,6 +70,7 @@ async function put(url: string, body: unknown, keepalive = false) {
 export const fileUrl = (bundle: string, file: string) =>
   `/files/${[...bundle.split("/"), ...file.split("/")].map(q).join("/")}`;
 
+export const heightBaseUrl = (bundle: string) => `/api/bundle/design/height/base.png?path=${q(bundle)}&t=${Date.now()}`;
 export const tifRgbUrl = (path: string) => `/api/tif/rgb.jpg?path=${q(path)}`;
 export const tifElevationUrl = (path: string) => `/api/tif/elevation.png?path=${q(path)}`;
 
@@ -95,6 +97,18 @@ export const api = {
       body: JSON.stringify(state),
       keepalive,
     });
+    if (!res.ok) throw new ApiError(`${res.status} ${await res.text()}`, res.status);
+  },
+  /** The pristine baked heights, which sculpting is an offset from. */
+  heightBase: (bundle: string) => request<HeightBase>(`/api/bundle/design/height/base?path=${q(bundle)}`),
+  /** The sculpting offsets, or an empty array when nothing was sculpted. */
+  heightDelta: async (bundle: string) => {
+    const res = await fetch(`/api/bundle/design/height?path=${q(bundle)}`, { cache: "no-store" });
+    if (!res.ok) throw new ApiError(`${res.status} ${await res.text()}`, res.status);
+    return new Uint8Array(await res.arrayBuffer());
+  },
+  saveHeightDelta: async (bundle: string, bytes: Uint8Array, keepalive = false) => {
+    const res = await fetch(`/api/bundle/design/height?path=${q(bundle)}`, { method: "PUT", headers: { "Content-Type": "application/octet-stream" }, body: bytes as BodyInit, keepalive: keepalive && bytes.length < 60000 });
     if (!res.ok) throw new ApiError(`${res.status} ${await res.text()}`, res.status);
   },
   design: (bundle: string) => request<DesignDoc>(`/api/bundle/design?path=${q(bundle)}`),

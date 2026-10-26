@@ -4,6 +4,8 @@ import { CLASS_COLORS, css } from "../bundle/bundleScene";
 import { BOUNDS_TOOLS, FEATURE_MODES } from "../editors/bounds/useBoundsEditor";
 import { CLASS_KEYS, TOOLS } from "../editors/course/useCourseEditor";
 import { editorMeta } from "../editors/registry";
+import { BRUSHES, MAX_RADIUS, MIN_RADIUS } from "../heights/brush";
+import type { Formatter } from "../units/units";
 import { Hint } from "../ui/Hint";
 
 type Props = {
@@ -17,6 +19,9 @@ type Props = {
   onAddHole: () => void;
   /** The 3D view is showing, so the editor's tools are idle. */
   view3d: boolean;
+  fmt: Formatter;
+  /** The Heightmap editor can sculpt here (the GPU renders to float textures). */
+  canSculpt: boolean;
 };
 
 type Tool = { id: string; label: string; key: string; hint: string };
@@ -72,7 +77,7 @@ function Simplify({ editor, patch }: { editor: EditorState; patch: Props["patch"
 }
 
 /** The open editor's options: tools, what it draws with, the active hole, snapping and what to show. */
-export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole, view3d }: Props) {
+export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole, view3d, fmt, canSculpt }: Props) {
   const meta = editorMeta(editor.editor);
   if (view3d) {
     return (
@@ -92,6 +97,34 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHo
     return (
       <div className="sub-bar">
         <span className="sub-hint">Open a bundle to edit it. A GeoTIFF has no design to edit; bake it into a bundle first.</span>
+      </div>
+    );
+  }
+  if (editor.editor === "heightmap") {
+    if (!canSculpt) {
+      return (
+        <div className="sub-bar">
+          <span className="sub-hint">Sculpting needs a GPU that can render to float textures (WebGL2 with EXT_color_buffer_float), and this one cannot.</span>
+        </div>
+      );
+    }
+    const brush = BRUSHES.find((b) => b.id === editor.tool);
+    return (
+      <div className="sub-bar">
+        <ToolButtons tools={BRUSHES} editor={editor} patch={patch} />
+        <label className="slider" title="Brush size. [ and ] change it">
+          Size {fmt.distance(editor.brushRadius, 0)}
+          <input type="range" min={MIN_RADIUS} max={MAX_RADIUS} step={1} value={editor.brushRadius} onChange={(e) => patch({ brushRadius: Number(e.target.value) })} />
+        </label>
+        <label className="slider" title="How fast the brush works. Shift+[ and Shift+] change it">
+          Strength {Math.round(editor.brushStrength * 100)}%
+          <input type="range" min={0.02} max={1} step={0.01} value={editor.brushStrength} onChange={(e) => patch({ brushStrength: Number(e.target.value) })} />
+        </label>
+        <label className="slider" title="0 is a soft dome; 1 is full strength right out to the edge">
+          Hardness {Math.round(editor.brushHardness * 100)}%
+          <input type="range" min={0} max={1} step={0.05} value={editor.brushHardness} onChange={(e) => patch({ brushHardness: Number(e.target.value) })} />
+        </label>
+        {notice ? <span className="sub-notice" role="alert">{notice}</span> : <span className="sub-hint tool-hint" title={brush?.hint}>{brush?.hint}. <kbd>Shift</kbd>+<kbd>C</kbd> contours, <kbd>Shift</kbd>+<kbd>S</kbd> slope.</span>}
       </div>
     );
   }

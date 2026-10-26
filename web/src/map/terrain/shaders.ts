@@ -13,20 +13,28 @@ precision highp sampler2D;
 
 /** The height grid and its bilinear lookup. */
 const HEIGHT = `
-uniform sampler2D uHeight;   // RG32F: r = height in metres, g = 1 where there is data
+uniform sampler2D uHeight;   // RG32F: r = baked height in metres, g = 1 where there is data
+uniform sampler2D uDelta;    // RGBA32F: r = sculpted offset from the baked height, in metres
+uniform float uHasDelta;     // 1 when uDelta holds sculpting
 uniform ivec2 uGrid;         // samples across, down
 uniform vec2 uOrigin;        // course metres of sample (0, 0)
 uniform vec2 uRes;           // metres between samples, x and z
+
+// height (x) and whether there is data (y) of one grid sample: the baked height plus whatever was sculpted
+vec2 sampleAt(ivec2 c) {
+  vec2 s = texelFetch(uHeight, c, 0).rg;
+  return vec2(s.x + (uHasDelta > 0.5 ? texelFetch(uDelta, c, 0).r : 0.0), s.y);
+}
 
 // height (x) and whether there is data (y) at a point in course metres, bilinear between the four nearest samples
 vec2 heightAt(vec2 p) {
   vec2 f = clamp((p - uOrigin) / uRes, vec2(0.0), vec2(uGrid - 1));
   ivec2 c = min(ivec2(floor(f)), uGrid - 2);
   vec2 t = f - vec2(c);
-  vec2 a = texelFetch(uHeight, c, 0).rg;
-  vec2 b = texelFetch(uHeight, c + ivec2(1, 0), 0).rg;
-  vec2 d = texelFetch(uHeight, c + ivec2(0, 1), 0).rg;
-  vec2 e = texelFetch(uHeight, c + ivec2(1, 1), 0).rg;
+  vec2 a = sampleAt(c);
+  vec2 b = sampleAt(c + ivec2(1, 0));
+  vec2 d = sampleAt(c + ivec2(0, 1));
+  vec2 e = sampleAt(c + ivec2(1, 1));
   float ok = min(min(a.y, b.y), min(d.y, e.y));
   float h = mix(mix(a.x, b.x, t.x), mix(d.x, e.x, t.x), t.y);
   return vec2(h, ok);

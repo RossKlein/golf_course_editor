@@ -10,12 +10,13 @@ from pathlib import Path
 
 import rasterio
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from rasterio.errors import RasterioError
 
 from ..compiler.bake import BUILDING_SUFFIX, REPLACED_SUFFIX, BakeError, bake
+from ..build.height import base_dir, delta_path, refresh_base, write_delta_bytes
 from ..build.manager import BuildManager
 from ..compiler.validate import validate_bundle
 from ..design.models import BackupList, BoundsFile, BuildStatus, DesignDoc, Layout, RegionsFile
@@ -28,6 +29,7 @@ from ..models import (
     Course,
     EditorResponse,
     EditorState,
+    HeightBase,
     Index,
     Report,
     TifEntry,
@@ -37,6 +39,7 @@ from ..project.store import read_editor, stack_for, write_editor
 from . import rasters
 from .aerial import aerial_meta, relative_to
 
+MAX_DELTA_BYTES = 128 * 1024 * 1024
 WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 TIF_SUFFIXES = (".tif", ".tiff")
 BUNDLE_FILE_SUFFIXES = (".json", ".png", ".bin")
@@ -211,6 +214,39 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
         folder = bundle(path)
         write_design_file(folder, "bounds", bounds)
         builds.schedule(folder)
+
+    # terrain sculpting: base + delta (see build/height.py)
+
+    @app.get("/api/bundle/design/height")
+    def height_get(path: str = Query()) -> Response:
+        """The sculpting delta file, or an empty body when nothing was sculpted."""
+        file = delta_path(bundle(path))
+        return Response(file.read_bytes() if file.is_file() else b"", media_type="application/octet-stream")
+
+    @app.put("/api/bundle/design/height", status_code=204)
+    async def height_put(request: Request, path: str = Query()) -> None:
+        folder = bundle(path)
+        course = Course.read(folder / "course.json")
+        data = await request.body()
+        if len(data) > MAX_DELTA_BYTES:
+            raise HTTPException(413, "the height delta file is too large")
+        try:
+            write_delta_bytes(folder, data, course.height.rows, course.height.cols)
+        except DesignError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        builds.schedule(folder)
+
+    @app.get("/api/bundle/design/height/base")
+    def height_base(path: str = Query()) -> HeightBase:
+        folder = bundle(path)
+        info = refresh_base(folder, Course.read(folder / "course.json"))
+        return HeightBase(hMin=info.h_min, hMax=info.h_max)
+
+    @app.get("/api/bundle/design/height/base.png")
+    def height_base_png(path: str = Query()):
+        folder = bundle(path)
+        refresh_base(folder, Course.read(folder / "course.json"))
+        return FileResponse(base_dir(folder) / "height.png", media_type="image/png", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/bundle/design/backups")
     def design_backups(path: str = Query()) -> BackupList:

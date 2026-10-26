@@ -213,9 +213,19 @@ class EditorState(Model):
     boundsFeatures: Literal["off", "hole", "course"] = "hole"  # Out-of-bounds editor: which course features to show under the bounds
     boundsAllHoles: bool = False  # Out-of-bounds editor: also show the other holes' routes
     boundsAllBounds: bool = False  # Out-of-bounds editor: also show the other holes' bounds
+    brushRadius: Annotated[Number, Field(ge=1, le=120)] = 10.0  # Heightmap editor: brush radius in metres
+    brushStrength: Annotated[Number, Field(ge=0.02, le=1)] = 0.3
+    brushHardness: Annotated[Number, Field(ge=0, le=1)] = 0.5
     smoothing: Annotated[Number, Field(ge=0, le=10)] = 0.1  # freehand simplify tolerance in screen pixels; 0 keeps every point
     leftCollapsed: bool = False
     rightTab: Literal["view", "data"] = "view"
+
+
+class HeightBase(Model):
+    """The pristine baked heights (`GET /api/bundle/design/height/base.png`) are encoded against this range."""
+
+    hMin: Number
+    hMax: Number
 
 
 class EditorResponse(Model):

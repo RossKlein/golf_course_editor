@@ -7,7 +7,8 @@ import WebGLVectorLayer from "ol/layer/WebGLVector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
-import { api, fileUrl, tifRgbUrl, type Course, type Report } from "../api/api";
+import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../api/api";
+import { HeightSession } from "../heights/session";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { CLASS_COLORS, css, holeColor } from "./colours";
@@ -30,8 +31,10 @@ type Pixels = { class: ImageData; bounds: ImageData };
 /** A bundle on the map, read from its files the way the game will read them. */
 export async function loadBundleScene(path: string): Promise<{ scene: Scene; data: BundleData }> {
   let course = await api.course(path);
-  const [heightPx, classPx, boundsPx, treeBytes, report, aerial] = await Promise.all([
-    loadPixels(fileUrl(path, course.height.file)),
+  // sculpting is an offset from the baked heights, so the base is what the GPU holds and the offsets go on top
+  const [heightPx, heightBase, classPx, boundsPx, treeBytes, report, aerial] = await Promise.all([
+    loadPixels(heightBaseUrl(path)),
+    api.heightBase(path),
     loadPixels(fileUrl(path, course.class.file)),
     loadPixels(fileUrl(path, course.bounds.file)),
     loadBytes(fileUrl(path, course.trees.file)),
@@ -42,7 +45,8 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
   const data: BundleData = { path, course, report };
   const { cols, rows } = course.height;
   const extent = { x: 0, z: 0, w: cols - 1, h: rows - 1 };
-  const grid = decodeHeights(heightPx, course.hMin, course.hMax);
+  const baseGrid = decodeHeights(heightPx, heightBase.hMin, heightBase.hMax);
+  const grid = { ...baseGrid, values: baseGrid.values.slice() }; // base + sculpting, for readouts
 
   const layers: SceneLayer[] = [];
   const raster = (id: string, label: string, opts: Parameters<typeof rasterLayer>[0], init: { visible: boolean; opacity: number }, extra?: Partial<SceneLayer>) => {
@@ -67,10 +71,17 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
   let terrainSource: TerrainSource | undefined;
   if (terrainSupported(grid)) {
     // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
-    const renderer = new TerrainRenderer({ grid, origin: { x: 0, z: 0 }, resX: res, resZ: res });
+    const renderer = new TerrainRenderer({ grid: baseGrid, origin: { x: 0, z: 0 }, resX: res, resZ: res });
     renderer.setAerial(aerialSource?.image ?? null, aerialSource?.rect ?? null);
-    terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / res, z / res), aerial: aerialSource };
+    let redraw = () => {};
+    terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / res, z / res), aerial: aerialSource, redraw: () => redraw() };
+    const sculptor = renderer.enableSculpt(grid);
+    if (sculptor.supported()) {
+      terrainSource.sculpt = new HeightSession(path, sculptor, grid, () => redraw());
+      await terrainSource.sculpt.load();
+    }
     const terrain = terrainLayer({ renderer, style: () => view, multiply: !!aerial });
+    redraw = terrain.redraw;
     terrain.layer.setOpacity(aerial ? 0.55 : 1);
     layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity: aerial ? 0.55 : 1, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
       onParams: (p) => {

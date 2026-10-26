@@ -13,8 +13,10 @@ import { useDesignSession } from "../design/useDesignSession";
 import { defaultEditorState, mergeSaved } from "../editor/editorState";
 import { useEditorPersistence } from "../editor/useEditorPersistence";
 import { useDesignLayers } from "../design/useDesignLayers";
-import { useBoundsEditor } from "../editors/bounds/useBoundsEditor";
-import { useCourseEditor } from "../editors/course/useCourseEditor";
+import { BOUNDS_TOOLS, useBoundsEditor } from "../editors/bounds/useBoundsEditor";
+import { TOOLS, useCourseEditor } from "../editors/course/useCourseEditor";
+import { useHeightEditor } from "../editors/heightmap/useHeightEditor";
+import { BRUSHES } from "../heights/brush";
 import { useNotice } from "../editors/shared/holeNav";
 import FileList from "../files/FileList";
 import OlMap from "../map/OlMap";
@@ -147,10 +149,17 @@ export default function App() {
   const layers = useDesignLayers(map, loaded?.kind === "bundle", canEdit, editor);
   const course = useCourseEditor({ map, layers, active: canEdit && editor.editor === "course", editor, patch, say });
   const bounds = useBoundsEditor({ map, layers, active: canEdit && editor.editor === "bounds", editor, patch, say });
+  const height = useHeightEditor({ map, terrain: scene?.terrain, active: canEdit && editor.editor === "heightmap", editor, patch, say });
   const nav = editor.editor === "bounds" ? bounds : course; // the open editor's way of moving between holes
   const holeCount = useDesign((s) => s.doc.layout.holes.length);
   const canUndo = useDesign((s) => s.past.length > 0);
   const canRedo = useDesign((s) => s.future.length > 0);
+
+  // the tool belongs to the editor too: each has its own set, so switching editors starts on that editor's first
+  useEffect(() => {
+    const ids: string[] = editor.editor === "heightmap" ? BRUSHES.map((b) => b.id) : editor.editor === "bounds" ? BOUNDS_TOOLS.map((t) => t.id) : editor.editor === "course" ? TOOLS.map((t) => t.id) : [];
+    if (ids.length && !ids.includes(editor.tool)) patch({ tool: ids[0] });
+  }, [editor.editor, editor.tool, patch]);
 
   // a selection belongs to the editor it was made in
   useEffect(() => designStore.getState().select([]), [editor.editor]);
@@ -183,6 +192,7 @@ export default function App() {
     }),
     ...course.commands,
     ...bounds.commands,
+    ...height.commands,
   ];
   const scopes: Scope[] = ["global"];
   if (canEdit && !view3d && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
@@ -233,7 +243,7 @@ export default function App() {
           canView3d={canView3d}
           onView3d={toggle3d}
         />
-        <SubBar editor={editor} patch={patch} notice={notice} canEdit={canEdit} holeCount={holeCount} onHole={nav.goHole} onAddHole={nav.newHole} view3d={view3d} />
+        <SubBar editor={editor} patch={patch} notice={notice} canEdit={canEdit} holeCount={holeCount} onHole={nav.goHole} onAddHole={nav.newHole} view3d={view3d} fmt={fmt} canSculpt={height.canSculpt} />
         <Group orientation="horizontal" className="body">
           <Panel
             panelRef={left}
@@ -268,7 +278,7 @@ export default function App() {
                 onViewChange={onViewChange}
                 onHover={setHover}
                 onMap={setMap}
-                leftDragPans={course.leftDragPans && bounds.leftDragPans}
+                leftDragPans={course.leftDragPans && bounds.leftDragPans && height.leftDragPans}
               />
               {scene?.terrain && (
                 <Terrain3D

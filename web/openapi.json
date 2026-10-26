@@ -538,6 +538,150 @@
         }
       }
     },
+    "/api/bundle/design/height": {
+      "get": {
+        "summary": "Height Get",
+        "description": "The sculpting delta file, or an empty body when nothing was sculpted.",
+        "operationId": "height_get_api_bundle_design_height_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Height Put",
+        "operationId": "height_put_api_bundle_design_height_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/height/base": {
+      "get": {
+        "summary": "Height Base",
+        "operationId": "height_base_api_bundle_design_height_base_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeightBase"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/height/base.png": {
+      "get": {
+        "summary": "Height Base Png",
+        "operationId": "height_base_png_api_bundle_design_height_base_png_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bundle/design/backups": {
       "get": {
         "summary": "Design Backups",
@@ -1502,6 +1646,27 @@
             "title": "Boundsallbounds",
             "default": false
           },
+          "brushRadius": {
+            "type": "number",
+            "title": "Brushradius",
+            "default": 10.0,
+            "ge": 1,
+            "le": 120
+          },
+          "brushStrength": {
+            "type": "number",
+            "title": "Brushstrength",
+            "default": 0.3,
+            "ge": 0.02,
+            "le": 1
+          },
+          "brushHardness": {
+            "type": "number",
+            "title": "Brushhardness",
+            "default": 0.5,
+            "ge": 0,
+            "le": 1
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1641,6 +1806,27 @@
             "title": "Boundsallbounds",
             "default": false
           },
+          "brushRadius": {
+            "type": "number",
+            "title": "Brushradius",
+            "default": 10.0,
+            "ge": 1,
+            "le": 120
+          },
+          "brushStrength": {
+            "type": "number",
+            "title": "Brushstrength",
+            "default": 0.3,
+            "ge": 0.02,
+            "le": 1
+          },
+          "brushHardness": {
+            "type": "number",
+            "title": "Brushhardness",
+            "default": 0.5,
+            "ge": 0,
+            "le": 1
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1682,6 +1868,9 @@
           "boundsFeatures",
           "boundsAllHoles",
           "boundsAllBounds",
+          "brushRadius",
+          "brushStrength",
+          "brushHardness",
           "smoothing",
           "leftCollapsed",
           "rightTab"
@@ -1764,6 +1953,26 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HeightBase": {
+        "properties": {
+          "hMin": {
+            "type": "number",
+            "title": "Hmin"
+          },
+          "hMax": {
+            "type": "number",
+            "title": "Hmax"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hMin",
+          "hMax"
+        ],
+        "title": "HeightBase",
+        "description": "The pristine baked heights (`GET /api/bundle/design/height/base.png`) are encoded against this range."
       },
       "Hole": {
         "properties": {

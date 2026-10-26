@@ -40,12 +40,13 @@ export function useDesignLayers(map: Map | null, isBundle: boolean, editable: bo
     if (!layers) return;
     const course = editable && open === "course";
     const bounds = editable && open === "bounds";
-    const reference = bounds && boundsFeatures !== "off";
+    const sculpt = editable && open === "heightmap"; // the outlines are there to see what the brush is doing
+    const reference = (bounds && boundsFeatures !== "off") || sculpt;
     layers.regions.layer.setVisible(course || reference);
-    layers.regions.layer.setOpacity(overlayOpacity * (bounds ? 0.55 : 1)); // as reference under the bounds, surfaces are dimmer still
-    layers.regions.showOnly(course ? (hideOthers ? hole : null) : boundsFeatures === "hole" ? hole : null);
+    layers.regions.layer.setOpacity(overlayOpacity * (bounds ? 0.55 : sculpt ? 0.4 : 1)); // as reference, surfaces are dimmer
+    layers.regions.showOnly(course ? (hideOthers ? hole : null) : bounds && boundsFeatures === "hole" ? hole : null);
     layers.routes.layer.setVisible(course || reference);
-    layers.routes.setView({ hole, hideOthers: course ? hideOthers : !boundsAllHoles });
+    layers.routes.setView({ hole, hideOthers: course ? hideOthers : bounds ? !boundsAllHoles : false });
     layers.bounds.layer.setVisible(bounds);
     layers.bounds.layer.setOpacity(overlayOpacity);
     layers.bounds.context.setVisible(bounds);

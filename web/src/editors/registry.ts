@@ -7,7 +7,7 @@ export const EDITORS: EditorMeta[] = [
   { id: "bounds", label: "Out of bounds", goto: "g o", enabled: true, hint: "Draw where each hole may be played from" },
   { id: "patches", label: "Hi-res patches", goto: "g p", enabled: false, hint: "0.25 m height patches" },
   { id: "greens", label: "Greens", goto: "g r", enabled: false, hint: "Contour greens" },
-  { id: "heightmap", label: "Heightmap", goto: "g h", enabled: false, hint: "Sculpt the 1 m terrain" },
+  { id: "heightmap", label: "Heightmap", goto: "g h", enabled: true, hint: "Sculpt the 1 m terrain with brushes" },
   { id: "trees", label: "Trees", goto: "g t", enabled: false, hint: "Forest zones and trees" },
   { id: "landmarks", label: "Landmarks", goto: "g l", enabled: false, hint: "Place special objects" },
 ];

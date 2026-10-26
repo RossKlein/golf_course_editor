@@ -1,5 +1,6 @@
 import type BaseLayer from "ol/layer/Base";
 import type { Formatter } from "../units/units";
+import type { HeightSession } from "../heights/session";
 import type { TerrainRenderer } from "./terrain/renderer";
 import type { Rect } from "./coords";
 
@@ -29,6 +30,10 @@ export type TerrainSource = {
   ground: (x: number, z: number) => number | null;
   /** The imagery to drape over the ground, with the area it covers (course metres). */
   aerial: { image: HTMLImageElement; rect: Rect } | null;
+  /** Redraw the map's terrain layer after the heights changed. */
+  redraw: () => void;
+  /** Sculpting, for bundles whose GPU can do it. */
+  sculpt?: HeightSession;
 };
 
 export type ReadoutLine = { text: string; color?: string };

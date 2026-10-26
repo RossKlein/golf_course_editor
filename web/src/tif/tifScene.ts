@@ -41,7 +41,7 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
       const renderer = new TerrainRenderer({ grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ });
       const aerial = imagery ? { image: imagery, rect } : null;
       renderer.setAerial(aerial?.image ?? null, aerial?.rect ?? null);
-      terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / view.resX - 0.5, z / view.resZ - 0.5), aerial };
+      terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / view.resX - 0.5, z / view.resZ - 0.5), aerial, redraw: () => {} };
       const terrain = terrainLayer({ renderer, style: () => style, multiply: !!view.rgb });
       terrain.layer.setOpacity(opacity);
       layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,

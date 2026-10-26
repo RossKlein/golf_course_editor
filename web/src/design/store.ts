@@ -12,7 +12,8 @@ enablePatches();
  */
 export type Doc = { order: string[]; regions: Record<string, Region>; bounds: Record<string, BoundsArea>; layout: Layout };
 
-type Entry = { label: string; patches: Patch[]; inverse: Patch[] };
+/** One undo step: document patches, or (for edits that live outside the document, like sculpting) a pair of functions. */
+type Entry = { label: string; patches: Patch[]; inverse: Patch[]; external?: { undo: () => void; redo: () => void } };
 
 type State = {
   doc: Doc;
@@ -22,6 +23,8 @@ type State = {
   /** Selected region or bounds area ids. UI state, not part of the document, so it is not undoable. */
   selected: string[];
   commit: (label: string, recipe: (draft: Doc) => void) => void;
+  /** Add an undo step for an edit made outside the document. Its functions must undo and redo exactly that edit. */
+  pushExternal: (label: string, external: { undo: () => void; redo: () => void }) => void;
   /** Everything committed until end() is one undo step. */
   begin: (label: string) => void;
   end: () => void;
@@ -70,6 +73,10 @@ export const designStore = createStore<State>((set, get) => ({
     prune();
   },
 
+  pushExternal(label, external) {
+    set((s) => ({ past: [...s.past, { label, patches: [], inverse: [], external }], future: [] }));
+  },
+
   begin(label) {
     if (!get().group) set({ group: { label, patches: [], inverse: [] } });
   },
@@ -84,7 +91,8 @@ export const designStore = createStore<State>((set, get) => ({
     const { past, doc } = get();
     const entry = past[past.length - 1];
     if (!entry) return;
-    set((s) => ({ doc: applyPatches(doc, entry.inverse), past: s.past.slice(0, -1), future: [...s.future, entry] }));
+    entry.external?.undo();
+    set((s) => ({ doc: entry.external ? doc : applyPatches(doc, entry.inverse), past: s.past.slice(0, -1), future: [...s.future, entry] }));
     prune();
   },
 
@@ -92,7 +100,8 @@ export const designStore = createStore<State>((set, get) => ({
     const { future, doc } = get();
     const entry = future[future.length - 1];
     if (!entry) return;
-    set((s) => ({ doc: applyPatches(doc, entry.patches), future: s.future.slice(0, -1), past: [...s.past, entry] }));
+    entry.external?.redo();
+    set((s) => ({ doc: entry.external ? doc : applyPatches(doc, entry.patches), future: s.future.slice(0, -1), past: [...s.past, entry] }));
     prune();
   },
 
