@@ -8,6 +8,8 @@ export const defaultEditorState = (): EditorState => ({
   viewport: null,
   layers: {},
   exaggeration: 3,
+  contourInterval: 0,
+  slopeMap: false,
   hole: 1,
   editor: "view",
   tool: "select",

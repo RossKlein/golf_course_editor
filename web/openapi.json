@@ -1427,6 +1427,18 @@
             "ge": 1,
             "le": 10
           },
+          "contourInterval": {
+            "type": "number",
+            "title": "Contourinterval",
+            "default": 0.0,
+            "ge": 0,
+            "le": 100
+          },
+          "slopeMap": {
+            "type": "boolean",
+            "title": "Slopemap",
+            "default": false
+          },
           "hole": {
             "type": "integer",
             "maximum": 24.0,
@@ -1554,6 +1566,18 @@
             "ge": 1,
             "le": 10
           },
+          "contourInterval": {
+            "type": "number",
+            "title": "Contourinterval",
+            "default": 0.0,
+            "ge": 0,
+            "le": 100
+          },
+          "slopeMap": {
+            "type": "boolean",
+            "title": "Slopemap",
+            "default": false
+          },
           "hole": {
             "type": "integer",
             "maximum": 24.0,
@@ -1646,6 +1670,8 @@
           "viewport",
           "layers",
           "exaggeration",
+          "contourInterval",
+          "slopeMap",
           "hole",
           "editor",
           "tool",

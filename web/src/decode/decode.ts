@@ -70,10 +70,15 @@ export function sampleGrid(grid: HeightGrid, fx: number, fz: number): number | n
 
 /** Grey hillshade (sun from the north-west, 45 degrees up). Missing data is transparent. */
 export function buildHillshade(grid: HeightGrid, resX: number, resZ: number, exaggeration: number) {
+  return pixelCanvas(grid.cols, grid.rows, (d) => hillshadePixels(grid, resX, resZ, exaggeration, d));
+}
+
+/** The pixels of the hillshade, written into `d` (RGBA, one per sample). The viewer's fallback when WebGL2 is missing. */
+export function hillshadePixels(grid: HeightGrid, resX: number, resZ: number, exaggeration: number, d: Uint8ClampedArray) {
   const { values, valid, cols, rows } = grid;
   const az = (315 * Math.PI) / 180;
   const alt = (45 * Math.PI) / 180;
-  return pixelCanvas(cols, rows, (d) => {
+  {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c;
@@ -93,7 +98,7 @@ export function buildHillshade(grid: HeightGrid, resX: number, resZ: number, exa
         d[i * 4 + 3] = 255;
       }
     }
-  });
+  }
 }
 
 /** Remember the last result of a one-argument function (layer images rebuilt only when their input changes). */

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import type { EditorState } from "../api/api";
 import type { LayerState, SceneLayer } from "../map/scene";
+import { contourOptions, nearestContour } from "../map/terrain/contours";
+import { makeFormatter, type Units } from "../units/units";
 
 type Props = {
   layers: SceneLayer[];
@@ -33,7 +36,28 @@ export default function LayerControls({ layers, state, onChange }: Props) {
   );
 }
 
-/** Relief exaggeration; rebuilding the hillshade is costly, so commits are debounced. */
+/** Contour spacing and the slope colouring, drawn by the terrain shader. */
+export function TerrainControls({ editor, units, patch }: { editor: EditorState; units: Units; patch: (p: Partial<EditorState>) => void }) {
+  const fmt = makeFormatter(units);
+  const current = nearestContour(editor.contourInterval, units);
+  return (
+    <>
+      <label title="Contour lines on the terrain, every this much height. Every fifth line is stronger. Shift+C cycles.">
+        Contours
+        <select value={current} onChange={(e) => patch({ contourInterval: Number(e.target.value) })}>
+          {contourOptions(units).map((o) => (
+            <option key={o} value={o}>{o === 0 ? "Off" : fmt.height(o, units === "metric" ? 2 : 1)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="check" title="Colour the terrain by slope: blue is flat, green about 2%, yellow 4%, orange 8%, red 15% and over. Shift+S toggles.">
+        <input type="checkbox" checked={editor.slopeMap} onChange={(e) => patch({ slopeMap: e.target.checked })} /> Slope colours
+      </label>
+    </>
+  );
+}
+
+/** Relief exaggeration. Drawing is on the GPU, so the slider is cheap; commits are debounced because each is saved. */
 export function ExaggerationSlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const [local, setLocal] = useState(value);
   useEffect(() => {

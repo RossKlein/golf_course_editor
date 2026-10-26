@@ -138,7 +138,10 @@ export default function OlMap({ scene, layerState, params, units, initialViewpor
     else fitRect(map, scene.extent);
     lastApplied.current = viewportOf(map);
     return () => {
-      scene.layers.forEach((l) => layers.remove(l.olLayer));
+      scene.layers.forEach((l) => {
+        layers.remove(l.olLayer);
+        l.dispose?.();
+      });
     };
   }, [map, scene]);
 

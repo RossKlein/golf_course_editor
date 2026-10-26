@@ -2,9 +2,9 @@ import { Tabs } from "radix-ui";
 import type { BuildStatus, EditorState, TifView } from "../api/api";
 import type { BundleData } from "../bundle/bundleScene";
 import type { LayerState, ReadoutLine, Scene } from "../map/scene";
-import LayerControls, { ExaggerationSlider } from "../panel/LayerControls";
+import LayerControls, { ExaggerationSlider, TerrainControls } from "../panel/LayerControls";
 import TifPanel from "../tif/TifPanel";
-import type { Formatter } from "../units/units";
+import type { Formatter, Units } from "../units/units";
 import DataTab from "./DataTab";
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
   onLayer: (id: string, patch: Partial<LayerState[string]>) => void;
   readout: ReadoutLine[] | null;
   fmt: Formatter;
+  units: Units;
   onBaked: () => void;
   onHole: (n: number) => void;
   onAddHole: () => void;
@@ -25,7 +26,7 @@ type Props = {
 };
 
 /** The viewer and info side: a View tab (layers, readout) and a Data tab (selection, builds, problems, bake). */
-export default function RightPanel({ scene, tif, bundle, build, editor, patch, layerState, onLayer, readout, fmt, onBaked, onHole, onAddHole, onAssign }: Props) {
+export default function RightPanel({ scene, tif, bundle, build, editor, patch, layerState, onLayer, readout, fmt, units, onBaked, onHole, onAddHole, onAssign }: Props) {
   return (
     <aside className="panel">
       <h1>{scene.title}</h1>
@@ -37,7 +38,12 @@ export default function RightPanel({ scene, tif, bundle, build, editor, patch, l
         </Tabs.List>
         <Tabs.Content value="view">
           <LayerControls layers={scene.layers} state={layerState} onChange={onLayer} />
-          {scene.layers.some((l) => l.id === "hillshade") && <ExaggerationSlider value={editor.exaggeration} onCommit={(exaggeration) => patch({ exaggeration })} />}
+          {scene.layers.some((l) => l.id === "hillshade") && (
+            <>
+              <ExaggerationSlider value={editor.exaggeration} onCommit={(exaggeration) => patch({ exaggeration })} />
+              <TerrainControls editor={editor} units={units} patch={patch} />
+            </>
+          )}
           {bundle && (
             <label title="How strongly the surfaces, bounds and other editor shapes are drawn over the map. Routes are not affected.">
               Overlay opacity {Math.round(editor.overlayOpacity * 100)}%

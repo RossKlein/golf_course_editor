@@ -201,6 +201,8 @@ class EditorState(Model):
     viewport: Viewport | None = None  # None means "fit the course"
     layers: Annotated[dict[Annotated[str, Field(max_length=64)], LayerPref], Field(max_length=64)] = {}
     exaggeration: Annotated[Number, Field(ge=1, le=10)] = 3.0
+    contourInterval: Annotated[Number, Field(ge=0, le=100)] = 0.0  # metres between contour lines on the terrain; 0 for none
+    slopeMap: bool = False  # colour the terrain by slope
     hole: Annotated[Int, Field(ge=1, le=spec.MAX_HOLES)] = 1  # the active hole: shown on the out-of-bounds layer, given to new regions
     editor: Annotated[str, Field(max_length=32)] = "view"  # which editor is open
     tool: Annotated[str, Field(max_length=32)] = "select"

@@ -5,7 +5,7 @@ import type { Rect } from "./coords";
 export type { Rect };
 
 /** View settings some layers depend on. */
-export type Params = { exaggeration: number; hole: number };
+export type Params = { exaggeration: number; hole: number; /** metres between contour lines, 0 for none */ contour: number; slope: boolean };
 
 export type SceneLayer = {
   id: string;
@@ -15,8 +15,10 @@ export type SceneLayer = {
   /** Raster layers get an opacity slider; vector overlays only a visibility toggle. */
   adjustable: boolean;
   olLayer: BaseLayer;
-  /** Called when exaggeration or the selected hole change, so the layer can rebuild its image. */
+  /** Called when the view settings (relief, contours, slope) or the selected hole change, so the layer can redraw. */
   onParams?: (params: Params) => void;
+  /** Free GPU memory when the scene is taken off the map. The layer still works if it is shown again. */
+  dispose?: () => void;
 };
 
 export type ReadoutLine = { text: string; color?: string };

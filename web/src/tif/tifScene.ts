@@ -1,6 +1,8 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
 import { rasterLayer } from "../map/layers";
+import { terrainSupported } from "../map/terrain/renderer";
+import { terrainLayer } from "../map/terrain/terrainLayer";
 import type { ReadoutLine, Scene, SceneLayer } from "../map/scene";
 import type { Formatter } from "../units/units";
 
@@ -30,15 +32,28 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     ? decodeHeights(await loadPixels(tifElevationUrl(path)), view.elevation.hMin, view.elevation.hMax)
     : null;
   if (grid) {
-    const shade = memoLast((exaggeration: number) => buildHillshade(grid, view.resX, view.resZ, exaggeration));
-    let exaggeration = 3;
-    const hs = add("hillshade", "Hillshade", { image: () => shade(exaggeration), rect, smooth: true, multiply: !!view.rgb }, view.rgb ? 0.55 : 1);
-    hs.entry.onParams = (p) => {
-      if (p.exaggeration !== exaggeration) {
-        exaggeration = p.exaggeration;
-        hs.redraw();
-      }
-    };
+    let style = { exaggeration: 3, contour: 0, slope: false };
+    const opacity = view.rgb ? 0.55 : 1;
+    if (terrainSupported(grid)) {
+      // elevation samples are pixel centres
+      const terrain = terrainLayer({ data: { grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ }, style: () => style, multiply: !!view.rgb });
+      terrain.layer.setOpacity(opacity);
+      layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
+        onParams: (p) => {
+          if (p.exaggeration === style.exaggeration && p.contour === style.contour && p.slope === style.slope) return;
+          style = { exaggeration: p.exaggeration, contour: p.contour, slope: p.slope };
+          terrain.redraw();
+        } });
+    } else {
+      const shade = memoLast((exaggeration: number) => buildHillshade(grid, view.resX, view.resZ, exaggeration));
+      const hs = add("hillshade", "Hillshade", { image: () => shade(style.exaggeration), rect, smooth: true, multiply: !!view.rgb }, opacity);
+      hs.entry.onParams = (p) => {
+        if (p.exaggeration !== style.exaggeration) {
+          style = { ...style, exaggeration: p.exaggeration };
+          hs.redraw();
+        }
+      };
+    }
   }
 
   const readout = (x: number, z: number, fmt: Formatter): ReadoutLine[] => {

@@ -41,14 +41,39 @@ export function rasterLayer(opts: { image: () => CanvasImageSource | null; rect:
     },
   });
   const layer = new ImageLayer({ source });
-  if (opts.multiply) {
-    const ctxOf = (e: unknown) => (e as RenderEvent).context as CanvasRenderingContext2D;
-    layer.on("prerender", (e) => {
-      const ctx = ctxOf(e);
-      ctx.save();
-      ctx.globalCompositeOperation = "multiply";
-    });
-    layer.on("postrender", (e) => ctxOf(e).restore());
-  }
+  if (opts.multiply) multiplyBlend(layer);
+  return { layer, redraw: () => source.changed() };
+}
+
+/** Make a layer shade whatever is drawn beneath it, instead of covering it. */
+export function multiplyBlend(layer: ImageLayer<ImageCanvas>) {
+  const ctxOf = (e: unknown) => (e as RenderEvent).context as CanvasRenderingContext2D;
+  layer.on("prerender", (e) => {
+    const ctx = ctxOf(e);
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+  });
+  layer.on("postrender", (e) => ctxOf(e).restore());
+}
+
+/**
+ * A layer drawn by a function of the view: it is given the map extent and the size in pixels and returns a canvas of
+ * that size, so what it shows is always sharp at any zoom. `redraw` asks for a fresh render.
+ */
+export function viewLayer(opts: { draw: (extent: number[], size: number[]) => CanvasImageSource | null; multiply?: boolean }) {
+  const source = new ImageCanvas({
+    projection,
+    ratio: 1,
+    canvasFunction: (extent, _resolution, _pixelRatio, size) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = size[0];
+      canvas.height = size[1];
+      const image = opts.draw(extent, size);
+      if (image) canvas.getContext("2d")!.drawImage(image, 0, 0);
+      return canvas;
+    },
+  });
+  const layer = new ImageLayer({ source });
+  if (opts.multiply) multiplyBlend(layer);
   return { layer, redraw: () => source.changed() };
 }

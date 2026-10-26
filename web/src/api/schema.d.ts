@@ -603,6 +603,16 @@ export interface components {
              */
             exaggeration?: number;
             /**
+             * Contourinterval
+             * @default 0
+             */
+            contourInterval?: number;
+            /**
+             * Slopemap
+             * @default false
+             */
+            slopeMap?: boolean;
+            /**
              * Hole
              * @default 1
              */
@@ -694,6 +704,16 @@ export interface components {
              * @default 3
              */
             exaggeration: number;
+            /**
+             * Contourinterval
+             * @default 0
+             */
+            contourInterval: number;
+            /**
+             * Slopemap
+             * @default false
+             */
+            slopeMap: boolean;
             /**
              * Hole
              * @default 1

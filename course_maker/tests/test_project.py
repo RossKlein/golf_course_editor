@@ -35,7 +35,8 @@ class EditorStoreTests(unittest.TestCase):
 
     def test_round_trip_and_inner_gitignore(self):
         state = EditorState(viewport=Viewport(x=1, z=2, scale=3), exaggeration=5,
-                            layers={"class": LayerPref(visible=True, opacity=0.5)}, hole=4)
+                            layers={"class": LayerPref(visible=True, opacity=0.5)}, hole=4,
+                            contourInterval=0.5, slopeMap=True)
         store.write_editor(self.bundle, state)
         self.assertEqual(store.read_editor(self.bundle).state, state)
         self.assertEqual(store.read_editor(self.bundle).status, "loaded")

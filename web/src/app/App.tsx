@@ -25,6 +25,7 @@ import EditorBar from "../shell/EditorBar";
 import RightPanel from "../shell/RightPanel";
 import SubBar from "../shell/SubBar";
 import { loadTifScene } from "../tif/tifScene";
+import { nextContour } from "../map/terrain/contours";
 import { setUnits, useFormatter, useUnits } from "../units/useUnits";
 
 type Loaded =
@@ -144,6 +145,8 @@ export default function App() {
       pan: (fx, fy) => map && panBy(map, fx, fy),
       toggleLeft: () => patch({ leftCollapsed: !editor.leftCollapsed }),
       toggleUnits: () => setUnits(units === "us" ? "metric" : "us"),
+      cycleContours: () => patch({ contourInterval: nextContour(editor.contourInterval, units) }),
+      toggleSlope: () => patch({ slopeMap: !editor.slopeMap }),
       help: () => setHelpOpen(true),
       goto: (id) => patch({ editor: id }),
     }),
@@ -225,7 +228,7 @@ export default function App() {
               <OlMap
                 scene={scene}
                 layerState={editor.layers}
-                params={{ exaggeration: editor.exaggeration, hole: editor.hole }}
+                params={{ exaggeration: editor.exaggeration, hole: editor.hole, contour: editor.contourInterval, slope: editor.slopeMap }}
                 units={units}
                 initialViewport={loaded?.editor.viewport ?? null}
                 onViewChange={onViewChange}
@@ -252,6 +255,7 @@ export default function App() {
                 onLayer={setLayer}
                 readout={readout}
                 fmt={fmt}
+                units={units}
                 onBaked={() => void refresh()}
                 onHole={nav.goHole}
                 onAddHole={nav.newHole}

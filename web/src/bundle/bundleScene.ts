@@ -11,6 +11,8 @@ import { api, fileUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { rasterLayer } from "../map/layers";
+import { terrainSupported } from "../map/terrain/renderer";
+import { terrainLayer } from "../map/terrain/terrainLayer";
 import type { ReadoutLine, Scene, SceneLayer } from "../map/scene";
 import type { Formatter } from "../units/units";
 
@@ -71,19 +73,31 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     }, { visible: true, opacity: 1 });
   }
 
-  const shade = memoLast((exaggeration: number) => buildHillshade(grid, course.height.res, course.height.res, exaggeration));
-  let exaggeration = 3;
-  const hillshade = raster("hillshade", "Hillshade", {
-    image: () => shade(exaggeration), smooth: true, multiply: !!aerial,
-    // samples sit on grid points, so each pixel is centred on its sample
-    rect: { x: -0.5, z: -0.5, w: cols, h: rows },
-  }, { visible: true, opacity: aerial ? 0.55 : 1 });
-  hillshade.entry.onParams = (p) => {
-    if (p.exaggeration !== exaggeration) {
-      exaggeration = p.exaggeration;
-      hillshade.redraw();
-    }
-  };
+  const res = course.height.res;
+  let view = { exaggeration: 3, contour: 0, slope: false };
+  if (terrainSupported(grid)) {
+    // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
+    const terrain = terrainLayer({ data: { grid, origin: { x: 0, z: 0 }, resX: res, resZ: res }, style: () => view, multiply: !!aerial });
+    terrain.layer.setOpacity(aerial ? 0.55 : 1);
+    layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity: aerial ? 0.55 : 1, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
+      onParams: (p) => {
+        if (p.exaggeration === view.exaggeration && p.contour === view.contour && p.slope === view.slope) return;
+        view = { exaggeration: p.exaggeration, contour: p.contour, slope: p.slope };
+        terrain.redraw();
+      } });
+  } else {
+    const shade = memoLast((exaggeration: number) => buildHillshade(grid, res, res, exaggeration));
+    const hillshade = raster("hillshade", "Hillshade", {
+      image: () => shade(view.exaggeration), smooth: true, multiply: !!aerial,
+      rect: { x: -0.5, z: -0.5, w: cols, h: rows },
+    }, { visible: true, opacity: aerial ? 0.55 : 1 });
+    hillshade.entry.onParams = (p) => {
+      if (p.exaggeration !== view.exaggeration) {
+        view = { ...view, exaggeration: p.exaggeration };
+        hillshade.redraw();
+      }
+    };
+  }
 
   const classRect = () => ({ x: 0, z: 0, w: px.class.width * course.class.res, h: px.class.height * course.class.res });
   const classCanvas = () => pixelCanvas(px.class.width, px.class.height, (d) => {
