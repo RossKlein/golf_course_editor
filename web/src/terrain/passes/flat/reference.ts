@@ -17,13 +17,3 @@ export function contourIndex(height: number, interval: number): { nearest: numbe
   const nearest = Math.floor(v + 0.5);
   return { nearest, distance: Math.abs(v - nearest), major: ((nearest % 5) + 5) % 5 === 0 };
 }
-
-/** Interleave heights and validity the way the shader's texture expects: (height, 1 or 0) per sample. */
-export function packHeights(values: Float32Array, valid: Uint8Array): Float32Array {
-  const out = new Float32Array(values.length * 2);
-  for (let i = 0; i < values.length; i++) {
-    out[i * 2] = valid[i] ? values[i] : 0;
-    out[i * 2 + 1] = valid[i] ? 1 : 0;
-  }
-  return out;
-}

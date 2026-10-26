@@ -31,3 +31,15 @@ export function device(): Device {
 
 /** The device if there is one, without making it. */
 export const currentDevice = (): Device | null => (shared && !shared.gl.isContextLost() ? shared : null);
+
+/** Make the canvas `size` pixels, draw to it (not a texture) and set the viewport to all of it. Returns the whole pixel size. */
+export function resizeCanvas(d: Device, size: number[]): { w: number; h: number } {
+  const w = Math.max(1, Math.round(size[0])), h = Math.max(1, Math.round(size[1]));
+  if (d.canvas.width !== w || d.canvas.height !== h) {
+    d.canvas.width = w;
+    d.canvas.height = h;
+  }
+  d.gl.bindFramebuffer(d.gl.FRAMEBUFFER, null);
+  d.gl.viewport(0, 0, w, h);
+  return { w, h };
+}

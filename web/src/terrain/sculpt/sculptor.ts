@@ -5,7 +5,7 @@ import { compileProgram, type Program } from "../../gfx/shader/program";
 import type { Device } from "../../gfx/device/device";
 import { LazyTexture } from "../../gfx/resource/texture";
 import { context, currentContext, type Gl } from "../context";
-import type { TerrainGrid } from "../terrain";
+import type { TerrainGrid } from "../heightfield/heightfield";
 import { SHADERS } from "../shaders/shaders";
 
 /** The largest square a single stamp can cover, in samples. */
@@ -39,7 +39,7 @@ export class Sculptor {
   constructor(
     private readonly data: TerrainGrid,
     private readonly effective: HeightGrid,
-    private readonly bindBase: (g: Gl, unit: number) => void,
+    private readonly bindBase: (g: Device, unit: number) => void,
   ) {
     this.offsets = new Float32Array(data.grid.cols * data.grid.rows);
   }
@@ -58,7 +58,7 @@ export class Sculptor {
   }
 
   /** The offsets' texture, bound for the terrain shaders. */
-  bindOffsets(g: Gl, unit: number) {
+  bindOffsets(g: Device, unit: number) {
     this.texture.bind(g, unit);
   }
 
