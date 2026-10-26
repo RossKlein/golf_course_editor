@@ -4,7 +4,7 @@ import type { BundleData } from "../scene/bundleScene";
 import { OWNED } from "../views/map2d/design/olRegions";
 import { ringArea } from "../core/geometry/geometry";
 import { designStore, removeBoundsAreas, reorderRegions, removeRegions, updateBoundsArea, updateRegion, useDesign } from "../model/design/store";
-import ReportView from "../report/ReportView";
+import ReportView from "./ReportView";
 import HolesPanel from "./HolesPanel";
 import type { Formatter } from "../core/units/units";
 

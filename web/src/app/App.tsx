@@ -19,7 +19,7 @@ import { useHeightEditor } from "../editors/heightmap/useHeightEditor";
 import { BRUSHES } from "../terrain/sculpt/brush";
 import { useNotice } from "../editors/_shared/holeNav";
 import { EDITORS } from "../editors/registry";
-import FileList from "../files/FileList";
+import FileList from "../shell/FileList";
 import OlMap from "../views/map2d/OlMap";
 import { fromMap, toMap } from "../core/geometry/coords";
 import type { Scene } from "../scene/scene";

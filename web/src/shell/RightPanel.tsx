@@ -3,7 +3,7 @@ import type { BuildStatus, EditorState, TifView } from "../core/api/api";
 import type { BundleData } from "../scene/bundleScene";
 import type { LayerState, ReadoutLine, Scene } from "../scene/scene";
 import LayerControls, { ExaggerationSlider, TerrainControls } from "./LayerControls";
-import TifPanel from "../tif/TifPanel";
+import TifPanel from "./TifPanel";
 import type { Formatter, Units } from "../core/units/units";
 import DataTab from "./DataTab";
 

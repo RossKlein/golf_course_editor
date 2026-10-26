@@ -63,7 +63,7 @@ After changing a pydantic model, regenerate the TypeScript types:
 
 ```powershell
 .\.venv\Scripts\python.exe -m course_maker openapi   # writes web/openapi.json
-cd web; npm run types                               # writes web/src/api/schema.d.ts
+cd web; npm run types                               # writes web/src/core/api/schema.d.ts
 ```
 
 ## Command line

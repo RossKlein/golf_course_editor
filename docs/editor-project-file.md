@@ -117,7 +117,7 @@ autosave, then a browser check on the real Augusta bundle (layers, opacity, exag
 after a reload; a corrupt file reset and kept as `.bad`; a replace-bake preserving the state).
 
 Tests: `course_maker/tests/test_project.py` (store, tolerant read, atomic write, replace safety including failure
-injection), `test_server.py` (endpoints, dot-path refusal, index), `web/src/editor/editorState.test.ts`
+injection), `test_server.py` (endpoints, dot-path refusal, index), `web/src/scene/editorState/editorState.test.ts`
 (`mergeSaved`, serialisation, viewport round trip).
 
 ## Still open

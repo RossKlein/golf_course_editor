@@ -4,11 +4,9 @@ import allowlist from "./architecture.allowlist.json";
 // Enforces the layers in docs/frontend-architecture.md: a file may import only from layers below its own, and the layers
 // the game will reuse (core, gfx, terrain) may not use UI packages.
 //
-// The folders are being moved into their final layout one step at a time, so LEGACY rules place today's folders and
-// files in the layer they are headed for. Each reorganisation step deletes the rules it makes unnecessary. The allowlist
-// holds the violations that exist today; it can only shrink. To regenerate it after a step moves files:
+// The allowlist holds known violations; it is empty, and an entry should only be added for a deliberate, temporary
+// exception. To see the current violations while moving files:
 //   VITE_ARCH_PRINT=1 npx vitest run src/architecture.test.ts
-// and copy the printed list into architecture.allowlist.json (the count of violations must not grow).
 
 const RANK: Record<string, number> = {
   core: 1,
@@ -24,9 +22,8 @@ const RANK: Record<string, number> = {
   app: 10,
 };
 
-/** First match wins. The first block is the final layout; the second is where today's files are headed. */
+/** The layers, by folder. */
 const RULES: [RegExp, string][] = [
-  // ---- final layout
   [/^core\//, "core"],
   [/^gfx\//, "gfx"],
   [/^terrain\//, "terrain"],
@@ -39,10 +36,6 @@ const RULES: [RegExp, string][] = [
   [/^shell\//, "shell"],
   [/^app\//, "app"],
   [/^main\.tsx$/, "app"],
-  // ---- legacy: files that are not in their final place yet
-  [/^view3d\/Terrain3D\.tsx$/, "views"],
-  [/^view3d\//, "terrain"],
-  [/^(files|report|tif)\//, "shell"],
 ];
 
 /** Packages the layers the game will reuse must not depend on. */
@@ -108,6 +101,12 @@ describe("architecture", () => {
   it("has no import pointing up the layers, beyond the allowlist", () => {
     const allowed = new Set<string>(allowlist);
     expect(found.filter((v) => !allowed.has(v))).toEqual([]);
+  });
+
+  it("has a README for every layer", () => {
+    const readmes = import.meta.glob<string>("./*/README.md", { query: "?raw", import: "default", eager: true });
+    const have = Object.keys(readmes).map((k) => k.split("/")[1]).sort();
+    expect(have).toEqual(Object.keys(RANK).sort());
   });
 
   it("has an allowlist with nothing stale in it, so it only shrinks", () => {

@@ -1,8 +1,24 @@
 # Frontend architecture and reorganisation plan
 
-Status: proposal, nothing moved yet. This covers `web/` and the one place it reaches into the bundle format (the look,
-section 3.4). The Python side is already layered (`compiler`, `build`, `design`, `project`, `server`) and needs only the
-small tidy in step 1 and the `Look` model in step 3.
+Status: steps 0 to 11 are done (the engine split, the look in the bundle, the layers and their READMEs); step 12, shadows, is
+not started. This covers `web/` and the one place it reaches into the bundle format (the look, section 3.4). The Python
+side is already layered (`compiler`, `build`, `design`, `project`, `server`).
+
+Where the built code differs from the plan below:
+
+- **The look** lives only in `course.json` (no copy in the project folder) and reaches the GPU as plain uniforms, not a
+  uniform block (3.4).
+- **Passes** are a class or a function each reading a shared `World`; there is no `Pass` interface, `Scope` or `gfx/stats`
+  or `gfx/cull` yet. Culling is a pure function in the pass's own folder, and the cost counters are on the passes. These
+  can be added when a second use needs them.
+- **`scene/` may use OpenLayers**, because a scene's layers are OpenLayers layers; and **`model/` may hold React hooks over its
+  own stores** (`useDesign`). Neither imports a component.
+- **Not every GPU object is created in `gfx/`**: the context, textures, programs and images are; buffers, vertex arrays and the
+  sculpt framebuffers are still made by the pass that uses them.
+- **The editor theme** is `terrain/theme.ts` (the type and the default), not yet a separate `model/theme` module; `model/theme`
+  holds the class and hole colours.
+- **The shader check** is `checkShaders()` in the console, not an automated headless test.
+- **The data folders** (`augusta/`, `bundles/`, `courses_test10/`) were not moved under `data/`.
 
 Three things are decided here, and then the steps to get there:
 
