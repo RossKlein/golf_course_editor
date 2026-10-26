@@ -29,12 +29,15 @@ function TextField({ value, placeholder, onCommit, label }: { value: string; pla
   );
 }
 
+const boundsText = (n: number) => (n ? `${n} area${n > 1 ? "s" : ""}` : "all");
+
 type Props = { data: BundleData; hole: number; fmt: Formatter; onHole: (n: number) => void; onAddHole: () => void; onAssign: () => void };
 
 /** Course details and the list of holes: name, par and route length for each, which one is active, and assigning surfaces. */
 export default function HolesPanel({ data, hole, fmt, onHole, onAddHole, onAssign }: Props) {
   const layout = useDesign((s) => s.doc.layout);
   const unassigned = useDesign((s) => unassignedCount(s.doc));
+  const bounds = useDesign((s) => s.doc.bounds);
   const totalPar = layout.holes.reduce((a, h) => a + h.par, 0);
   const totalLength = layout.holes.reduce((a, h) => a + routeLength(h.route as [number, number][]), 0);
   return (
@@ -57,7 +60,7 @@ export default function HolesPanel({ data, hole, fmt, onHole, onAddHole, onAssig
       {layout.holes.length ? (
         <table className="holes-table">
           <thead>
-            <tr><th>#</th><th>Name</th><th>Par</th><th>Route</th><th /></tr>
+            <tr><th>#</th><th>Name</th><th>Par</th><th>Route</th><th>Bounds</th><th /></tr>
           </thead>
           <tbody>
             {layout.holes.map((h) => {
@@ -70,13 +73,14 @@ export default function HolesPanel({ data, hole, fmt, onHole, onAddHole, onAssig
                     <input type="number" aria-label={`Hole ${h.number} par`} min={1} max={9} value={h.par} onChange={(e) => { const par = Math.round(Number(e.target.value)); if (par >= 1 && par <= 9) updateHole(h.number, { par }); }} />
                   </td>
                   <td className={h.route.length < 2 ? "warn-text" : undefined}>{h.route.length < 2 ? "none" : fmt.distance(len, 0)}</td>
+                  <td className="muted-cell">{boundsText(Object.values(bounds).filter((a) => a.hole === h.number).length)}</td>
                   <td><button type="button" className="icon" aria-label={`Remove hole ${h.number}`} title="Remove this hole (later holes move down a number)" onClick={() => removeHole(h.number)}><Trash2 size={13} /></button></td>
                 </tr>
               );
             })}
           </tbody>
           <tfoot>
-            <tr><td /><td>Total</td><td>{totalPar}</td><td>{fmt.distance(totalLength, 0)}</td><td /></tr>
+            <tr><td /><td>Total</td><td>{totalPar}</td><td>{fmt.distance(totalLength, 0)}</td><td /><td /></tr>
           </tfoot>
         </table>
       ) : (

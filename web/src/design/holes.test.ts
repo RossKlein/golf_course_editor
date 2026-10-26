@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Region } from "../api/api";
 import type { Pt } from "../map/coords";
 import { holeExtent, holeView, routeLength, suggestHoles, unassignedCount, visibleRegionIds } from "./holes";
-import { addHole, addRegion, assignHoles, designStore, emptyDoc, removeHole, setRoute, updateHole } from "./store";
+import { addBoundsArea, addHole, addRegion, assignHoles, designStore, emptyDoc, removeBoundsAreas, removeHole, setRoute, updateBoundsArea, updateHole } from "./store";
 
 const box = (x: number, z: number, w = 10, h = 10): Pt[] => [[x, z], [x + w, z], [x + w, z + h], [x, z + h], [x, z]];
 const region = (cls: number, outer: Pt[], hole: number | null = null): Omit<Region, "id" | "note"> => ({ class: cls, hole, outer, inner: [] });
@@ -56,6 +56,58 @@ describe("holes in the store", () => {
     addHole();
     updateHole(1, { par: 5, name: "Tea Olive" });
     expect(doc().layout.holes[0]).toMatchObject({ par: 5, name: "Tea Olive" });
+  });
+});
+
+describe("bounds in the store", () => {
+  it("adds, changes and removes areas, and one edit is one undo step", () => {
+    const a = addBoundsArea("Draw bounds", { hole: 1, outer: box(0, 0), inner: [] });
+    updateBoundsArea("Move to hole 2", a, { hole: 2 });
+    expect(doc().bounds[a].hole).toBe(2);
+    removeBoundsAreas("Delete", [a]);
+    expect(doc().bounds[a]).toBeUndefined();
+    designStore.getState().undo();
+    expect(doc().bounds[a].hole).toBe(2);
+  });
+
+  it("selecting an area survives until it is gone", () => {
+    const a = addBoundsArea("Draw", { hole: 1, outer: box(0, 0), inner: [] });
+    designStore.getState().select([a]);
+    expect(designStore.getState().selected).toEqual([a]);
+    removeBoundsAreas("Delete", [a]);
+    expect(designStore.getState().selected).toEqual([]);
+  });
+
+  it("removing a hole removes its bounds and renumbers the later ones", () => {
+    setRoute(3, [[0, 0], [1, 1]]);
+    const one = addBoundsArea("a", { hole: 1, outer: box(0, 0), inner: [] });
+    const two = addBoundsArea("b", { hole: 2, outer: box(20, 0), inner: [] });
+    const three = addBoundsArea("c", { hole: 3, outer: box(40, 0), inner: [] });
+    removeHole(2);
+    expect(doc().bounds[two]).toBeUndefined();
+    expect([doc().bounds[one].hole, doc().bounds[three].hole]).toEqual([1, 2]);
+    designStore.getState().undo();
+    expect(doc().bounds[two].hole).toBe(2);
+    expect(doc().bounds[three].hole).toBe(3);
+  });
+
+  it("going to a hole can frame its bounds as well as its route and surfaces", () => {
+    setRoute(1, [[0, 0], [100, 0]]);
+    addBoundsArea("a", { hole: 1, outer: box(-50, -60, 400, 100), inner: [] });
+    addBoundsArea("other", { hole: 2, outer: box(5000, 5000), inner: [] });
+    const plain = holeView(doc(), 1)!;
+    const wide = holeView(doc(), 1, true)!;
+    expect(wide.w).toBeGreaterThan(plain.w);
+    expect(wide.x).toBeLessThan(-50);
+    expect(wide.x + wide.w).toBeGreaterThan(350);
+    expect(wide.w).toBeLessThan(1000); // hole 2's area is not part of it
+  });
+
+  it("a hole with only bounds can still be framed with them", () => {
+    addHole();
+    addBoundsArea("a", { hole: 1, outer: box(10, 10, 100, 100), inner: [] });
+    expect(holeView(doc(), 1)).toBeNull();
+    expect(holeView(doc(), 1, true)).not.toBeNull();
   });
 });
 

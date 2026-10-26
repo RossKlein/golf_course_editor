@@ -12,7 +12,10 @@ import { designStore, useDesign } from "../design/store";
 import { useDesignSession } from "../design/useDesignSession";
 import { defaultEditorState, mergeSaved } from "../editor/editorState";
 import { useEditorPersistence } from "../editor/useEditorPersistence";
+import { useDesignLayers } from "../design/useDesignLayers";
+import { useBoundsEditor } from "../editors/bounds/useBoundsEditor";
 import { useCourseEditor } from "../editors/course/useCourseEditor";
+import { useNotice } from "../editors/shared/holeNav";
 import FileList from "../files/FileList";
 import OlMap from "../map/OlMap";
 import type { Scene } from "../map/scene";
@@ -109,10 +112,17 @@ export default function App() {
   );
 
   const canEdit = !!bundle && session.ready;
-  const course = useCourseEditor({ map, scene, active: canEdit && editor.editor === "course", editor, patch });
+  const { notice, say } = useNotice();
+  const layers = useDesignLayers(map, loaded?.kind === "bundle", canEdit, editor);
+  const course = useCourseEditor({ map, layers, active: canEdit && editor.editor === "course", editor, patch, say });
+  const bounds = useBoundsEditor({ map, layers, active: canEdit && editor.editor === "bounds", editor, patch, say });
+  const nav = editor.editor === "bounds" ? bounds : course; // the open editor's way of moving between holes
   const holeCount = useDesign((s) => s.doc.layout.holes.length);
   const canUndo = useDesign((s) => s.past.length > 0);
   const canRedo = useDesign((s) => s.future.length > 0);
+
+  // a selection belongs to the editor it was made in
+  useEffect(() => designStore.getState().select([]), [editor.editor]);
 
   // the file panel collapses to nothing; the saved state and the panel stay in step
   useEffect(() => {
@@ -138,6 +148,7 @@ export default function App() {
       goto: (id) => patch({ editor: id }),
     }),
     ...course.commands,
+    ...bounds.commands,
   ];
   const scopes: Scope[] = ["global"];
   if (canEdit && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
@@ -185,7 +196,7 @@ export default function App() {
           build={session.build}
           loadError={session.loadError}
         />
-        <SubBar editor={editor} patch={patch} notice={course.notice} canEdit={canEdit} holeCount={holeCount} onHole={course.goHole} onAddHole={course.newHole} />
+        <SubBar editor={editor} patch={patch} notice={notice} canEdit={canEdit} holeCount={holeCount} onHole={nav.goHole} onAddHole={nav.newHole} />
         <Group orientation="horizontal" className="body">
           <Panel
             panelRef={left}
@@ -220,7 +231,7 @@ export default function App() {
                 onViewChange={onViewChange}
                 onHover={setHover}
                 onMap={setMap}
-                leftDragPans={course.leftDragPans}
+                leftDragPans={course.leftDragPans && bounds.leftDragPans}
               />
               {!scene && !status && <div className="empty">Choose a bundle or GeoTIFF, or drop a .tif here.</div>}
               {status && <div className={status.error ? "status error" : "status"}>{status.text}</div>}
@@ -242,8 +253,8 @@ export default function App() {
                 readout={readout}
                 fmt={fmt}
                 onBaked={() => void refresh()}
-                onHole={course.goHole}
-                onAddHole={course.newHole}
+                onHole={nav.goHole}
+                onAddHole={nav.newHole}
                 onAssign={course.assignUnassigned}
               />
             ) : (

@@ -15,7 +15,7 @@ from course_maker.build.manager import BuildManager
 from course_maker.compiler.bake import bake
 from course_maker.compiler.codec import read_png
 from course_maker.design import store
-from course_maker.design.models import DesignHole, Layout, Region, RegionsFile
+from course_maker.design.models import BoundsArea, BoundsFile, DesignHole, Layout, Region, RegionsFile
 from course_maker.models import Course
 from course_maker.server.app import create_app
 from course_maker.tests.test_bundle import make_stack
@@ -50,10 +50,23 @@ class ModelTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Layout(holes=[DesignHole(number=2)])
 
+    def test_bounds_areas_need_closed_rings_unique_ids_and_a_hole(self):
+        with self.assertRaises(ValidationError):
+            area("a", 1, [[0, 0], [10, 0], [10, 10], [0, 10]])
+        with self.assertRaises(ValidationError):
+            area("a", 0, rect(0, 0, 5, 5))
+        a = area("a", 1, rect(0, 0, 5, 5))
+        with self.assertRaises(ValidationError):
+            BoundsFile(areas=[a, a])
+
     def test_unknown_keys_and_bad_classes_are_rejected(self):
         for bad in ({"id": "a", "class": 9, "outer": rect(0, 0, 5, 5)}, {"id": "a", "class": 1, "outer": rect(0, 0, 5, 5), "x": 1}):
             with self.assertRaises(ValidationError):
                 Region.model_validate(bad)
+
+
+def area(aid, hole, outer, inner=None):
+    return BoundsArea.model_validate({"id": aid, "hole": hole, "outer": outer, "inner": inner or []})
 
 
 class BundleCase(unittest.TestCase):
@@ -72,6 +85,16 @@ class BundleCase(unittest.TestCase):
     def layout(self, **kw):
         store.write_design_file(self.bundle, "layout", Layout(**kw))
 
+    def bounds(self, *areas):
+        store.write_design_file(self.bundle, "bounds", BoundsFile(areas=list(areas)))
+
+    def two_holes(self):
+        self.layout(holes=[DesignHole(number=1, route=[(2, 2), (3, 3)]), DesignHole(number=2, route=[(2, 2), (3, 3)])])
+
+    def bounds_mask(self):
+        arr, _ = read_png(self.bundle / "bounds.png")
+        return arr[..., 0].astype(int) | (arr[..., 1].astype(int) << 8) | (arr[..., 2].astype(int) << 16)
+
     def klass(self):
         arr, _ = read_png(self.bundle / "class.png")
         return arr
@@ -80,7 +103,15 @@ class BundleCase(unittest.TestCase):
 class StoreTests(BundleCase):
     def test_missing_files_give_empty_defaults(self):
         doc = store.read_design(self.bundle)
-        self.assertEqual((doc.regions.regions, doc.layout.holes), ([], []))
+        self.assertEqual((doc.regions.regions, doc.layout.holes, doc.bounds.areas), ([], [], []))
+
+    def test_bounds_round_trip_and_survive_a_restore(self):
+        self.bounds(area("a", 2, rect(1, 1, 9, 9)))
+        self.assertEqual(store.read_design(self.bundle).bounds.areas[0].hole, 2)
+        name = store.snapshot(self.bundle)
+        self.bounds()
+        store.restore(self.bundle, name)
+        self.assertEqual([a.id for a in store.read_bounds(self.bundle).areas], ["a"])
 
     def test_round_trip(self):
         self.regions(region("a", 1, rect(1, 1, 9, 9)))
@@ -175,6 +206,45 @@ class BuildTests(BundleCase):
         build_bundle(self.bundle)
         bounds, _ = read_png(self.bundle / "bounds.png")
         self.assertTrue((bounds[..., 0] == 3).all() and not bounds[..., 1:].any())
+
+    def test_a_hole_is_in_bounds_inside_its_areas_only(self):
+        self.two_holes()
+        self.bounds(area("a", 1, rect(10, 10, 30, 20)))  # hole 2 has none, so it is in bounds everywhere
+        build_bundle(self.bundle)
+        m = self.bounds_mask()
+        self.assertEqual(int((m & 1).sum()), 20 * 10)
+        self.assertEqual((m[15, 20] & 1, m[15, 5] & 1, m[5, 20] & 1), (1, 0, 0))  # row = z, column = x
+        self.assertTrue(((m >> 1) & 1).all())
+
+    def test_areas_of_one_hole_are_a_union_and_may_overlap_other_holes(self):
+        self.two_holes()
+        self.bounds(area("a", 1, rect(0, 0, 20, 20)), area("b", 1, rect(10, 10, 40, 40)), area("c", 2, rect(15, 15, 25, 25)))
+        build_bundle(self.bundle)
+        m = self.bounds_mask()
+        self.assertEqual((m[5, 5] & 3, m[30, 30] & 3, m[18, 18] & 3, m[60, 60] & 3), (1, 1, 3, 0))
+        self.assertEqual(int((m & 1).sum()), 400 + 900 - 100)
+        self.assertEqual(int(((m >> 1) & 1).sum()), 100)
+
+    def test_a_ring_inside_an_area_is_not_in_bounds(self):
+        self.two_holes()
+        self.bounds(area("a", 1, rect(0, 0, 40, 40), inner=[rect(10, 10, 20, 20)]))
+        build_bundle(self.bundle)
+        m = self.bounds_mask()
+        self.assertEqual((m[15, 15] & 1, m[5, 5] & 1), (0, 1))
+
+    def test_areas_for_holes_that_are_not_built_are_ignored_with_a_note(self):
+        self.layout(holes=[DesignHole(number=1, route=[(2, 2), (3, 3)])])
+        self.bounds(area("far", 3, rect(0, 0, 10, 10)))
+        out = build_bundle(self.bundle)
+        self.assertTrue(any("bounds area far" in n for n in out.notes))
+        self.assertTrue((self.bounds_mask() == 1).all())
+
+    def test_owned_surfaces_outside_their_holes_bounds_are_reported(self):
+        self.layout(holes=[DesignHole(number=1, route=[(2, 2), (3, 3)])])
+        self.regions(region("t", 4, rect(60, 60, 64, 64), hole=1), region("g", 2, rect(10, 10, 20, 20), hole=1))
+        self.bounds(area("a", 1, rect(0, 0, 30, 30)))
+        out = build_bundle(self.bundle)
+        self.assertTrue(any("hole 1" in e and "out of bounds" in e for e in out.report.errors))
 
     def test_a_bowtie_is_repaired_not_fatal(self):
         out = build_bundle_with(self, region("bow", 1, [[0, 0], [10, 10], [10, 0], [0, 10], [0, 0]]))
@@ -274,6 +344,16 @@ class EndpointTests(BundleCase):
     def klass_at(self):
         arr, _ = read_png(self.bundle / "class.png")
         return arr
+
+    def test_bounds_are_saved_returned_and_built(self):
+        self.client.put("/api/bundle/design/layout", params=self.q, json={"holes": [{"number": 1, "route": [[2, 2], [3, 3]]}]})
+        body = {"areas": [{"id": "a", "hole": 1, "outer": rect(10, 10, 30, 20), "inner": []}]}
+        self.assertEqual(self.client.put("/api/bundle/design/bounds", params=self.q, json=body).status_code, 204)
+        self.wait()
+        self.assertEqual(self.client.get("/api/bundle/design", params=self.q).json()["bounds"]["areas"][0]["id"], "a")
+        self.assertEqual(int((self.bounds_mask() & 1).sum()), 200)
+        bad = {"areas": [{"id": "a", "hole": 1, "outer": [[0, 0], [1, 0], [1, 1], [0, 1]], "inner": []}]}
+        self.assertEqual(self.client.put("/api/bundle/design/bounds", params=self.q, json=bad).status_code, 422)
 
     def test_invalid_designs_are_rejected_with_422(self):
         for body in ({"regions": [{"id": "a", "class": 1, "outer": [[0, 0], [1, 0], [1, 1], [0, 1]], "inner": []}]},

@@ -41,8 +41,13 @@ export function holeExtent(doc: Doc, hole: number, margin = 0): Rect | null {
 }
 
 /** The area to show when going to a hole: its extent with some room around it, never smaller than a short hole's worth. */
-export function holeView(doc: Doc, hole: number): Rect | null {
-  const e = holeExtent(doc, hole);
+export function holeView(doc: Doc, hole: number, withBounds = false): Rect | null {
+  let e = holeExtent(doc, hole);
+  if (withBounds) {
+    let box: Box | null = e && [e.x, e.z, e.x + e.w, e.z + e.h];
+    for (const a of Object.values(doc.bounds)) if (a.hole === hole) box = grow(box, a.outer as Pt[]);
+    e = box && rectOf(box, 0);
+  }
   if (!e) return null;
   const pad = Math.max(15, 0.12 * Math.max(e.w, e.h));
   const w = Math.max(e.w + 2 * pad, 80), h = Math.max(e.h + 2 * pad, 80);

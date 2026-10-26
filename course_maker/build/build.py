@@ -1,4 +1,4 @@
-"""Build a bundle from its design: regions -> class.png, layout -> course.json holes, default bounds.
+"""Build a bundle from its design: regions -> class.png, bounds areas -> bounds.png, layout -> course.json holes.
 
 Everything is built in a staging copy first and validated; only then are the generated files moved into the live
 bundle (course.json last). A crash or a design that cannot be built leaves the previous bundle untouched.
@@ -22,7 +22,7 @@ from shapely.geometry import MultiPolygon, Polygon
 from .. import spec as S
 from ..compiler.codec import write_png
 from ..compiler.validate import validate_bundle
-from ..design.store import read_layout, read_regions
+from ..design.store import read_bounds, read_layout, read_regions
 from ..models import Course, Hole, Report
 from ..project.store import DIR_NAME
 
@@ -38,14 +38,14 @@ class BuildOutcome:
     ms: dict[str, int] = field(default_factory=dict)
 
 
-def _polygons(region, notes: list[str]):
-    """The region as valid shapely geometry, or None when nothing drawable is left."""
+def _polygons(region, notes: list[str], what: str = "region"):
+    """The region (or bounds area) as valid shapely geometry, or None when nothing drawable is left."""
     geom = Polygon(region.outer, region.inner)
     if not geom.is_valid:
         fixed = shapely.make_valid(geom)
         parts = [g for g in getattr(fixed, "geoms", [fixed]) if isinstance(g, (Polygon, MultiPolygon)) and not g.is_empty]
         geom = MultiPolygon([p for g in parts for p in (g.geoms if isinstance(g, MultiPolygon) else [g])]) if parts else None
-        notes.append(f"region {region.id} was self-intersecting and was repaired" if geom else f"region {region.id} is degenerate and was skipped")
+        notes.append(f"{what} {region.id} was self-intersecting and was repaired" if geom else f"{what} {region.id} is degenerate and was skipped")
     return None if geom is None or geom.is_empty else geom
 
 
@@ -70,11 +70,25 @@ def rasterize_classes(regions, course: Course, notes: list[str]) -> np.ndarray:
     return out
 
 
-def default_bounds(course: Course, holes: int) -> np.ndarray:
-    """Until bounds are designed, every cell is in bounds for every hole."""
+def rasterize_bounds(areas, course: Course, holes: int, notes: list[str]) -> np.ndarray:
+    """RGB bounds map: bit h-1 of the 24-bit value in R,G,B is set where hole h is in bounds. A hole's bit is set inside
+    the union of its areas, or everywhere when it has none yet (an unfinished hole is not flagged as out of bounds)."""
     bg = course.bounds
-    mask = (1 << holes) - 1
-    out = np.zeros((bg.rows, bg.cols, 3), np.uint8)
+    shape, transform = (bg.rows, bg.cols), Affine(bg.res, 0, 0, 0, bg.res, 0)
+    mask = np.zeros(shape, np.uint32)
+    by_hole: dict[int, list] = {}
+    for a in areas:
+        if a.hole > holes:
+            notes.append(f"bounds area {a.id} is for hole {a.hole}, which is not in course.json, so it was ignored")
+            continue
+        geom = _polygons(a, notes, "bounds area")
+        if geom is not None:
+            by_hole.setdefault(a.hole, []).append((geom, 1))
+    for h in range(1, holes + 1):
+        shapes = by_hole.get(h)
+        inside = rasterio.features.rasterize(shapes, out_shape=shape, transform=transform, dtype="uint8").astype(bool) if shapes else True
+        mask |= (np.broadcast_to(inside, shape).astype(np.uint32)) << (h - 1)
+    out = np.zeros(shape + (3,), np.uint8)
     out[..., 0], out[..., 1], out[..., 2] = mask & 255, (mask >> 8) & 255, (mask >> 16) & 255
     return out
 
@@ -95,7 +109,7 @@ def build_bundle(bundle) -> BuildOutcome:
     bundle = Path(bundle)
     t0 = time.perf_counter()
     course = Course.read(bundle / "course.json")
-    layout, regions = read_layout(bundle), read_regions(bundle)  # DesignError if a design file is invalid
+    layout, regions, bounds = read_layout(bundle), read_regions(bundle), read_bounds(bundle)  # DesignError if a design file is invalid
     notes: list[str] = []
     ms: dict[str, int] = {}
 
@@ -112,11 +126,12 @@ def build_bundle(bundle) -> BuildOutcome:
         t = time.perf_counter()
         holes = usable_holes(layout, notes)
         klass = rasterize_classes(regions.regions, course, notes)
+        bounds_img = rasterize_bounds(bounds.areas, course, len(holes), notes)
         ms["rasterize"] = round((time.perf_counter() - t) * 1000)
 
         t = time.perf_counter()
         write_png(staging / "class.png", klass)
-        write_png(staging / "bounds.png", default_bounds(course, len(holes)))
+        write_png(staging / "bounds.png", bounds_img)
         ms["encode"] = round((time.perf_counter() - t) * 1000)
 
         data = course.model_dump(by_alias=True, exclude_none=True)

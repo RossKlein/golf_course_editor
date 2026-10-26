@@ -19,6 +19,7 @@ export type EditorResponse = Schemas["EditorResponse"];
 export type Viewport = Schemas["Viewport"];
 export type LayerPref = Schemas["LayerPref"];
 export type Region = Schemas["Region-Output"];
+export type BoundsArea = Schemas["BoundsArea-Output"];
 export type Layout = Schemas["Layout-Output"];
 export type DesignHole = Schemas["DesignHole-Output"];
 export type DesignDoc = Schemas["DesignDoc"];
@@ -99,6 +100,7 @@ export const api = {
   design: (bundle: string) => request<DesignDoc>(`/api/bundle/design?path=${q(bundle)}`),
   saveRegions: (bundle: string, regions: Region[], keepalive = false) => put(`/api/bundle/design/regions?path=${q(bundle)}`, { regions }, keepalive),
   saveLayout: (bundle: string, layout: Layout, keepalive = false) => put(`/api/bundle/design/layout?path=${q(bundle)}`, layout, keepalive),
+  saveBounds: (bundle: string, areas: BoundsArea[], keepalive = false) => put(`/api/bundle/design/bounds?path=${q(bundle)}`, { areas }, keepalive),
   buildStatus: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`),
   buildNow: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`, { method: "POST" }),
   bake: (req: BakeRequest) =>

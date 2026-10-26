@@ -136,3 +136,5 @@ kbd { display: inline-block; padding: 0 5px; margin: 0 2px; font: 11px/18px ui-m
 .warn-text { color: var(--warn); }
 .holes .row button { display: inline-flex; align-items: center; gap: 4px; }
 .sub-bar .tool-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-label { padding: 0 6px 0 4px; color: var(--muted); font-size: 12px; align-self: center; }
+.muted-cell { color: var(--muted); }

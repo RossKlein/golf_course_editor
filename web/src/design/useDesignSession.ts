@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BuildStatus } from "../api/api";
 import type { Scene } from "../map/scene";
-import { designStore, docFromApi, emptyDoc, regionList } from "./store";
+import { boundsList, designStore, docFromApi, emptyDoc, regionList } from "./store";
 
 export type DesignSave = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
 
@@ -20,7 +20,7 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
   const [build, setBuild] = useState<BuildStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const saved = useRef({ regions: "", layout: "" });
+  const saved = useRef({ regions: "", layout: "", bounds: "" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
   const sceneRef = useRef(scene);
@@ -33,10 +33,12 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
     const doc = designStore.getState().doc;
     const regions = JSON.stringify(regionList(doc));
     const layout = JSON.stringify(doc.layout);
+    const bounds = JSON.stringify(boundsList(doc));
     const mine = generation.current;
     const jobs: Promise<void>[] = [];
     if (regions !== saved.current.regions) jobs.push(api.saveRegions(bundle, regionList(doc), keepalive).then(() => void (saved.current.regions = regions)));
     if (layout !== saved.current.layout) jobs.push(api.saveLayout(bundle, doc.layout, keepalive).then(() => void (saved.current.layout = layout)));
+    if (bounds !== saved.current.bounds) jobs.push(api.saveBounds(bundle, boundsList(doc), keepalive).then(() => void (saved.current.bounds = bounds)));
     if (!jobs.length) return;
     setSave({ kind: "saving" });
     try {
@@ -63,7 +65,7 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
       (d) => {
         if (cancelled) return;
         designStore.getState().reset(docFromApi(d));
-        saved.current = { regions: JSON.stringify(d.regions.regions), layout: JSON.stringify(d.layout) };
+        saved.current = { regions: JSON.stringify(d.regions.regions), layout: JSON.stringify(d.layout), bounds: JSON.stringify(d.bounds.areas) };
         setReady(true);
       },
       (e: Error) => !cancelled && setLoadError(e.message),

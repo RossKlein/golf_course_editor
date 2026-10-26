@@ -215,6 +215,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bundle/design/bounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Design Put Bounds */
+        put: operations["design_put_bounds_api_bundle_design_bounds_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bundle/design/backups": {
         parameters: {
             query?: never;
@@ -343,6 +360,70 @@ export interface components {
             report: components["schemas"]["Report"];
         };
         /**
+         * BoundsArea
+         * @description Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole
+         *     with none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds).
+         */
+        "BoundsArea-Input": {
+            /** Id */
+            id: string;
+            /** Hole */
+            hole: number;
+            /** Outer */
+            outer: [
+                number,
+                number
+            ][];
+            /**
+             * Inner
+             * @default []
+             */
+            inner?: [
+                number,
+                number
+            ][][];
+        };
+        /**
+         * BoundsArea
+         * @description Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole
+         *     with none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds).
+         */
+        "BoundsArea-Output": {
+            /** Id */
+            id: string;
+            /** Hole */
+            hole: number;
+            /** Outer */
+            outer: [
+                number,
+                number
+            ][];
+            /**
+             * Inner
+             * @default []
+             */
+            inner: [
+                number,
+                number
+            ][][];
+        };
+        /** BoundsFile */
+        "BoundsFile-Input": {
+            /**
+             * Areas
+             * @default []
+             */
+            areas?: components["schemas"]["BoundsArea-Input"][];
+        };
+        /** BoundsFile */
+        "BoundsFile-Output": {
+            /**
+             * Areas
+             * @default []
+             */
+            areas: components["schemas"]["BoundsArea-Output"][];
+        };
+        /**
          * BuildStatus
          * @description Where the build for a bundle stands. `id` increases with every finished build; the viewer reloads on change.
          */
@@ -435,6 +516,12 @@ export interface components {
         DesignDoc: {
             layout: components["schemas"]["Layout-Output"];
             regions: components["schemas"]["RegionsFile-Output"];
+            /**
+             * @default {
+             *       "areas": []
+             *     }
+             */
+            bounds: components["schemas"]["BoundsFile-Output"];
         };
         /**
          * DesignHole
@@ -546,6 +633,22 @@ export interface components {
              */
             hideOthers?: boolean;
             /**
+             * Boundsfeatures
+             * @default hole
+             * @enum {string}
+             */
+            boundsFeatures?: "off" | "hole" | "course";
+            /**
+             * Boundsallholes
+             * @default false
+             */
+            boundsAllHoles?: boolean;
+            /**
+             * Boundsallbounds
+             * @default false
+             */
+            boundsAllBounds?: boolean;
+            /**
              * Smoothing
              * @default 0.1
              */
@@ -616,6 +719,22 @@ export interface components {
              * @default false
              */
             hideOthers: boolean;
+            /**
+             * Boundsfeatures
+             * @default hole
+             * @enum {string}
+             */
+            boundsFeatures: "off" | "hole" | "course";
+            /**
+             * Boundsallholes
+             * @default false
+             */
+            boundsAllHoles: boolean;
+            /**
+             * Boundsallbounds
+             * @default false
+             */
+            boundsAllBounds: boolean;
             /**
              * Smoothing
              * @default 0.1
@@ -1325,6 +1444,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RegionsFile-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_put_bounds_api_bundle_design_bounds_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoundsFile-Input"];
             };
         };
         responses: {

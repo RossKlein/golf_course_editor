@@ -3,7 +3,7 @@ import { CLASS_NAMES } from "../bundle/bundleScene";
 import type { BundleData } from "../bundle/bundleScene";
 import { OWNED } from "../design/olRegions";
 import { ringArea } from "../design/geometry";
-import { designStore, reorderRegions, removeRegions, updateRegion, useDesign } from "../design/store";
+import { designStore, removeBoundsAreas, reorderRegions, removeRegions, updateBoundsArea, updateRegion, useDesign } from "../design/store";
 import ReportView from "../report/ReportView";
 import HolesPanel from "./HolesPanel";
 import type { Formatter } from "../units/units";
@@ -59,6 +59,54 @@ function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number
   );
 }
 
+/** The selected bounds areas, or, with none selected, what the active hole's bounds amount to. */
+function BoundsInspector({ fmt, hole, holeCount }: { fmt: Formatter; hole: number; holeCount: number }) {
+  const selected = useDesign((s) => s.selected);
+  const bounds = useDesign((s) => s.doc.bounds);
+  const areas = selected.map((id) => bounds[id]).filter(Boolean);
+  if (!areas.length) {
+    const mine = Object.values(bounds).filter((a) => a.hole === hole);
+    return (
+      <section className="inspector">
+        <h2>Bounds of hole {hole}</h2>
+        <p className="muted">
+          {mine.length
+            ? `${mine.length} area${mine.length > 1 ? "s" : ""}, about ${fmt.area(mine.reduce((a, m) => a + ringArea(m.outer as never) - m.inner.reduce((b, h) => b + ringArea(h as never), 0), 0))}. The hole is in bounds inside them and out of bounds everywhere else.`
+            : "None drawn yet, so the whole course is in bounds for this hole. Draw an area to say where it may be played from."}
+        </p>
+      </section>
+    );
+  }
+  const one = areas.length === 1 ? areas[0] : null;
+  const apply = (label: string, patch: Record<string, unknown>) => {
+    const s = designStore.getState();
+    s.begin(label);
+    for (const a of areas) updateBoundsArea(label, a.id, patch);
+    s.end();
+  };
+  return (
+    <section className="inspector">
+      <h2>{one ? "Bounds area" : `${areas.length} bounds areas`}</h2>
+      <label>
+        Hole
+        <select value={areas.every((a) => a.hole === areas[0].hole) ? areas[0].hole : ""} onChange={(e) => apply("Change hole", { hole: Number(e.target.value) })}>
+          {!areas.every((a) => a.hole === areas[0].hole) && <option value="">(mixed)</option>}
+          {Array.from({ length: Math.max(holeCount, ...areas.map((a) => a.hole)) }, (_, i) => i + 1).map((n) => <option key={n} value={n}>Hole {n}</option>)}
+        </select>
+      </label>
+      {one && (
+        <table className="info"><tbody>
+          <tr><td>Area</td><td>{fmt.area(ringArea(one.outer as never) - one.inner.reduce((a, h) => a + ringArea(h as never), 0))}</td></tr>
+          <tr><td>Points</td><td>{one.outer.length - 1}{one.inner.length ? ` + ${one.inner.length} hole${one.inner.length > 1 ? "s" : ""}` : ""}</td></tr>
+        </tbody></table>
+      )}
+      <div className="row">
+        <button type="button" onClick={() => { designStore.getState().select([]); removeBoundsAreas("Delete bounds area", areas.map((a) => a.id)); }}>Delete</button>
+      </div>
+    </section>
+  );
+}
+
 function BuildInfo({ build }: { build: BuildStatus | null }) {
   if (!build || !build.id) return <p className="muted">No build yet. Edits are built automatically a moment after you stop.</p>;
   return (
@@ -76,13 +124,13 @@ function BuildInfo({ build }: { build: BuildStatus | null }) {
 }
 
 /** The Data tab for a bundle: the selected region, the last build, validation problems and course info. */
-type Props = { data: BundleData; build: BuildStatus | null; fmt: Formatter; hole: number; onHole: (n: number) => void; onAddHole: () => void; onAssign: () => void };
+type Props = { data: BundleData; build: BuildStatus | null; fmt: Formatter; editor: string; hole: number; onHole: (n: number) => void; onAddHole: () => void; onAssign: () => void };
 
-export default function DataTab({ data, build, fmt, hole, onHole, onAddHole, onAssign }: Props) {
+export default function DataTab({ data, build, fmt, editor, hole, onHole, onAddHole, onAssign }: Props) {
   const holeCount = useDesign((s) => s.doc.layout.holes.length);
   return (
     <>
-      <RegionInspector fmt={fmt} holeCount={holeCount} />
+      {editor === "bounds" ? <BoundsInspector fmt={fmt} hole={hole} holeCount={holeCount} /> : <RegionInspector fmt={fmt} holeCount={holeCount} />}
       <BuildInfo build={build} />
       <h2>Problems</h2>
       <ReportView report={build?.report ?? data.report} />

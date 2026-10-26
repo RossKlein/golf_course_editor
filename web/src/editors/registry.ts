@@ -4,7 +4,7 @@ export type EditorMeta = { id: string; label: string; goto: string; enabled: boo
 export const EDITORS: EditorMeta[] = [
   { id: "view", label: "View", goto: "g v", enabled: true, hint: "Look around: layers, readouts and problems" },
   { id: "course", label: "Course", goto: "g c", enabled: true, hint: "Draw surfaces, assign holes, edit course data" },
-  { id: "bounds", label: "Out of bounds", goto: "g o", enabled: false, hint: "Per-hole in-bounds areas" },
+  { id: "bounds", label: "Out of bounds", goto: "g o", enabled: true, hint: "Draw where each hole may be played from" },
   { id: "patches", label: "Hi-res patches", goto: "g p", enabled: false, hint: "0.25 m height patches" },
   { id: "greens", label: "Greens", goto: "g r", enabled: false, hint: "Contour greens" },
   { id: "heightmap", label: "Heightmap", goto: "g h", enabled: false, hint: "Sculpt the 1 m terrain" },

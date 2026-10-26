@@ -52,7 +52,7 @@ export default function RightPanel({ scene, tif, bundle, build, editor, patch, l
         </Tabs.Content>
         <Tabs.Content value="data">
           {bundle ? (
-            <DataTab data={bundle} build={build} fmt={fmt} hole={editor.hole} onHole={onHole} onAddHole={onAddHole} onAssign={onAssign} />
+            <DataTab data={bundle} build={build} fmt={fmt} editor={editor.editor} hole={editor.hole} onHole={onHole} onAddHole={onAddHole} onAssign={onAssign} />
           ) : tif ? (
             <TifPanel key={tif.path} view={tif} onBaked={onBaked} />
           ) : null}

@@ -18,7 +18,7 @@ from rasterio.errors import RasterioError
 from ..compiler.bake import BUILDING_SUFFIX, REPLACED_SUFFIX, BakeError, bake
 from ..build.manager import BuildManager
 from ..compiler.validate import validate_bundle
-from ..design.models import BackupList, BuildStatus, DesignDoc, Layout, RegionsFile
+from ..design.models import BackupList, BoundsFile, BuildStatus, DesignDoc, Layout, RegionsFile
 from ..design.store import DesignError, list_backups, read_design, write_design_file
 from ..models import (
     AerialMeta,
@@ -204,6 +204,12 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     def design_put_regions(regions: RegionsFile, path: str = Query()) -> None:
         folder = bundle(path)
         write_design_file(folder, "regions", regions)
+        builds.schedule(folder)
+
+    @app.put("/api/bundle/design/bounds", status_code=204)
+    def design_put_bounds(bounds: BoundsFile, path: str = Query()) -> None:
+        folder = bundle(path)
+        write_design_file(folder, "bounds", bounds)
         builds.schedule(folder)
 
     @app.get("/api/bundle/design/backups")

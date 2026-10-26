@@ -1,13 +1,16 @@
 import { applyPatches, enablePatches, produceWithPatches, type Patch } from "immer";
 import { useSyncExternalStore } from "react";
 import { createStore } from "zustand/vanilla";
-import type { DesignDoc, DesignHole, Layout, Region } from "../api/api";
+import type { BoundsArea, DesignDoc, DesignHole, Layout, Region } from "../api/api";
 import { MAX_HOLES } from "./holes";
 
 enablePatches();
 
-/** The document the editor edits: regions in painter's order, plus course metadata and holes. */
-export type Doc = { order: string[]; regions: Record<string, Region>; layout: Layout };
+/**
+ * The document the editor edits: regions in painter's order, each hole's in-bounds areas (order does not matter: a hole's
+ * ground is their union), plus course metadata and holes.
+ */
+export type Doc = { order: string[]; regions: Record<string, Region>; bounds: Record<string, BoundsArea>; layout: Layout };
 
 type Entry = { label: string; patches: Patch[]; inverse: Patch[] };
 
@@ -16,7 +19,7 @@ type State = {
   past: Entry[];
   future: Entry[];
   group: Entry | null;
-  /** Selected region ids. UI state, not part of the document, so it is not undoable. */
+  /** Selected region or bounds area ids. UI state, not part of the document, so it is not undoable. */
   selected: string[];
   commit: (label: string, recipe: (draft: Doc) => void) => void;
   /** Everything committed until end() is one undo step. */
@@ -29,7 +32,7 @@ type State = {
 };
 
 export const emptyLayout = (): Layout => ({ name: null, attribution: null, holes: [] });
-export const emptyDoc = (): Doc => ({ order: [], regions: {}, layout: emptyLayout() });
+export const emptyDoc = (): Doc => ({ order: [], regions: {}, bounds: {}, layout: emptyLayout() });
 
 export function docFromApi(d: DesignDoc): Doc {
   const doc = emptyDoc();
@@ -37,11 +40,13 @@ export function docFromApi(d: DesignDoc): Doc {
     doc.order.push(r.id);
     doc.regions[r.id] = r;
   }
+  for (const a of d.bounds.areas) doc.bounds[a.id] = a;
   doc.layout = d.layout;
   return doc;
 }
 
 export const regionList = (doc: Doc): Region[] => doc.order.map((id) => doc.regions[id]);
+export const boundsList = (doc: Doc): BoundsArea[] => Object.values(doc.bounds);
 
 /** Document with undo/redo built on Immer patches: each edit stores its patches and the inverse patches. */
 export const designStore = createStore<State>((set, get) => ({
@@ -98,7 +103,7 @@ export const designStore = createStore<State>((set, get) => ({
 /** Drop selected ids that no longer exist (after a delete or an undo). */
 function prune() {
   const { selected, doc } = designStore.getState();
-  const kept = selected.filter((id) => doc.regions[id]);
+  const kept = selected.filter((id) => doc.regions[id] || doc.bounds[id]);
   if (kept.length !== selected.length) designStore.setState({ selected: kept });
 }
 
@@ -108,13 +113,13 @@ export function useDesign<T>(select: (s: State) => T): T {
 
 // ---- actions ------------------------------------------------------------------------------------------------------
 
-export const newRegionId = () => {
-  const taken = designStore.getState().doc.regions;
+const newId = (prefix: string, taken: Record<string, unknown>) => {
   let id: string;
-  do id = `r-${Math.random().toString(36).slice(2, 8)}`;
+  do id = `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   while (taken[id]);
   return id;
 };
+export const newRegionId = () => newId("r", designStore.getState().doc.regions);
 
 export function addRegion(label: string, region: Omit<Region, "id" | "note"> & { note?: string | null }): string {
   const id = newRegionId();
@@ -163,7 +168,7 @@ export function addHole(): number | null {
   return n;
 }
 
-/** Remove a hole. Later holes move down a number, and surfaces that belonged to it become unassigned. */
+/** Remove a hole. Later holes move down a number, surfaces that belonged to it become unassigned and its bounds are removed. */
 export const removeHole = (n: number) =>
   designStore.getState().commit(`Remove hole ${n}`, (d) => {
     if (!d.layout.holes.some((h) => h.number === n)) return;
@@ -172,6 +177,10 @@ export const removeHole = (n: number) =>
     for (const r of Object.values(d.regions)) {
       if (r.hole === n) r.hole = null;
       else if (r.hole != null && r.hole > n) r.hole -= 1;
+    }
+    for (const a of Object.values(d.bounds)) {
+      if (a.hole === n) delete d.bounds[a.id]; // its bounds go with it; they mean nothing for another hole
+      else if (a.hole > n) a.hole -= 1;
     }
   });
 
@@ -188,6 +197,20 @@ export const setRoute = (n: number, route: [number, number][]) =>
     const h = d.layout.holes.find((x) => x.number === n);
     if (h) h.route = route;
   });
+
+// ---- bounds ------------------------------------------------------------------------------------------------------
+
+export function addBoundsArea(label: string, area: Omit<BoundsArea, "id">): string {
+  const id = newId("b", designStore.getState().doc.bounds);
+  designStore.getState().commit(label, (d) => void (d.bounds[id] = { ...area, id }));
+  return id;
+}
+
+export const updateBoundsArea = (label: string, id: string, patch: Partial<BoundsArea>) =>
+  designStore.getState().commit(label, (d) => void (d.bounds[id] && Object.assign(d.bounds[id], patch)));
+
+export const removeBoundsAreas = (label: string, ids: string[]) =>
+  designStore.getState().commit(label, (d) => void ids.forEach((id) => delete d.bounds[id]));
 
 export const updateLayout = (label: string, patch: Partial<Pick<Layout, "name" | "attribution">>) =>
   designStore.getState().commit(label, (d) => void Object.assign(d.layout, patch));

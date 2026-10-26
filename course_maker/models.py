@@ -207,6 +207,9 @@ class EditorState(Model):
     activeClass: Annotated[Int, Field(ge=0, le=max(spec.CLASSES.values()))] = spec.FAIRWAY  # the surface new regions get
     snap: bool = True
     hideOthers: bool = False  # Course editor: show only the active hole's outlines and route
+    boundsFeatures: Literal["off", "hole", "course"] = "hole"  # Out-of-bounds editor: which course features to show under the bounds
+    boundsAllHoles: bool = False  # Out-of-bounds editor: also show the other holes' routes
+    boundsAllBounds: bool = False  # Out-of-bounds editor: also show the other holes' bounds
     smoothing: Annotated[Number, Field(ge=0, le=10)] = 0.1  # freehand simplify tolerance in screen pixels; 0 keeps every point
     leftCollapsed: bool = False
     rightTab: Literal["view", "data"] = "view"

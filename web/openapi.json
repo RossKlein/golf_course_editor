@@ -496,6 +496,48 @@
         }
       }
     },
+    "/api/bundle/design/bounds": {
+      "put": {
+        "summary": "Design Put Bounds",
+        "operationId": "design_put_bounds_api_bundle_design_bounds_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoundsFile-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bundle/design/backups": {
       "get": {
         "summary": "Design Backups",
@@ -802,6 +844,178 @@
         ],
         "title": "BakeResult"
       },
+      "BoundsArea-Input": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Id"
+          },
+          "hole": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Hole"
+          },
+          "outer": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 4,
+            "title": "Outer"
+          },
+          "inner": {
+            "items": {
+              "items": {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array",
+              "maxItems": 20000,
+              "minItems": 4
+            },
+            "type": "array",
+            "title": "Inner",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "hole",
+          "outer"
+        ],
+        "title": "BoundsArea",
+        "description": "Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole\nwith none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds)."
+      },
+      "BoundsArea-Output": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Id"
+          },
+          "hole": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Hole"
+          },
+          "outer": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 4,
+            "title": "Outer"
+          },
+          "inner": {
+            "items": {
+              "items": {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array",
+              "maxItems": 20000,
+              "minItems": 4
+            },
+            "type": "array",
+            "title": "Inner",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "hole",
+          "outer",
+          "inner"
+        ],
+        "title": "BoundsArea",
+        "description": "Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole\nwith none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds)."
+      },
+      "BoundsFile-Input": {
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/BoundsArea-Input"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Areas",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BoundsFile"
+      },
+      "BoundsFile-Output": {
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/BoundsArea-Output"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Areas",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "areas"
+        ],
+        "title": "BoundsFile"
+      },
       "BuildStatus": {
         "properties": {
           "id": {
@@ -1022,13 +1236,20 @@
           },
           "regions": {
             "$ref": "#/components/schemas/RegionsFile-Output"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/BoundsFile-Output",
+            "default": {
+              "areas": []
+            }
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "layout",
-          "regions"
+          "regions",
+          "bounds"
         ],
         "title": "DesignDoc",
         "description": "Everything the editor edits."
@@ -1242,6 +1463,26 @@
             "title": "Hideothers",
             "default": false
           },
+          "boundsFeatures": {
+            "type": "string",
+            "enum": [
+              "off",
+              "hole",
+              "course"
+            ],
+            "title": "Boundsfeatures",
+            "default": "hole"
+          },
+          "boundsAllHoles": {
+            "type": "boolean",
+            "title": "Boundsallholes",
+            "default": false
+          },
+          "boundsAllBounds": {
+            "type": "boolean",
+            "title": "Boundsallbounds",
+            "default": false
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1342,6 +1583,26 @@
             "title": "Hideothers",
             "default": false
           },
+          "boundsFeatures": {
+            "type": "string",
+            "enum": [
+              "off",
+              "hole",
+              "course"
+            ],
+            "title": "Boundsfeatures",
+            "default": "hole"
+          },
+          "boundsAllHoles": {
+            "type": "boolean",
+            "title": "Boundsallholes",
+            "default": false
+          },
+          "boundsAllBounds": {
+            "type": "boolean",
+            "title": "Boundsallbounds",
+            "default": false
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1377,6 +1638,9 @@
           "activeClass",
           "snap",
           "hideOthers",
+          "boundsFeatures",
+          "boundsAllHoles",
+          "boundsAllBounds",
           "smoothing",
           "leftCollapsed",
           "rightTab"

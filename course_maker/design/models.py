@@ -53,6 +53,34 @@ class RegionsFile(Model):
         return self
 
 
+class BoundsArea(Model):
+    """Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole
+    with none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds)."""
+
+    id: Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")]
+    hole: Annotated[Int, Field(ge=1, le=spec.MAX_HOLES)]
+    outer: Ring
+    inner: list[Ring] = []
+
+    @model_validator(mode="after")
+    def _closed_rings(self) -> "BoundsArea":
+        _closed(self.outer, f"bounds area {self.id} outer")
+        for i, ring in enumerate(self.inner):
+            _closed(ring, f"bounds area {self.id} inner[{i}]")
+        return self
+
+
+class BoundsFile(Model):
+    areas: Annotated[list[BoundsArea], Field(max_length=MAX_REGIONS)] = []
+
+    @model_validator(mode="after")
+    def _unique(self) -> "BoundsFile":
+        ids = [a.id for a in self.areas]
+        if len(set(ids)) != len(ids):
+            raise ValueError("bounds area ids must be unique")
+        return self
+
+
 class DesignHole(Model):
     """A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes."""
 
@@ -81,6 +109,7 @@ class DesignDoc(Model):
 
     layout: Layout
     regions: RegionsFile
+    bounds: BoundsFile = BoundsFile()
 
 
 class BackupList(Model):
