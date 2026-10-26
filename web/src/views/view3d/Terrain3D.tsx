@@ -31,7 +31,7 @@ type Props = {
 export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [opts, setOpts] = useState<Options>(() => defaultOptions(terrain.renderer.hasSurfaces));
-  const [counts, setCounts] = useState<SceneryCounts>({ tufts: 0, tuftsAll: 0, trees: 0 });
+  const [counts, setCounts] = useState<SceneryCounts>({ tufts: 0, tuftsAll: 0, trees: 0, shadowSlices: 0, shadowTrees: 0 });
   const latest = useRef({ terrain, active, opts, contour, slope, relief, hasDesign });
   latest.current = { terrain, active, opts, contour, slope, relief, hasDesign };
   const extentRef = useRef(extent);
@@ -55,12 +55,12 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     paintDrape.current(drapeWindow(cam));
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, meshes: meshLevels(cam), scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, tuftRange: opts.grassRange, tuftDensity: opts.grassDensity, trees: opts.trees, eye, target: [cam.x, cam.z],
+        viewProj, meshes: meshLevels(cam), scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, tuftRange: opts.grassRange, tuftDensity: opts.grassDensity, trees: opts.trees, shadows: opts.shadows, eye, target: [cam.x, cam.z],
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       canvas.getContext("2d")!.drawImage(out, 0, 0);
       const s = terrain.renderer.sceneryStats;
-      setCounts((c) => (c.tufts === s.tufts && c.tuftsAll === s.tuftsAll && c.trees === s.trees ? c : { tufts: s.tufts, tuftsAll: s.tuftsAll, trees: s.trees }));
+      setCounts((c) => (c.tufts === s.tufts && c.tuftsAll === s.tuftsAll && c.trees === s.trees && c.shadowSlices === s.shadowSlices && c.shadowTrees === s.shadowTrees ? c : { tufts: s.tufts, tuftsAll: s.tuftsAll, trees: s.trees, shadowSlices: s.shadowSlices, shadowTrees: s.shadowTrees }));
     } catch (e) {
       console.error(e);
     }

@@ -45,6 +45,7 @@ export function drawGround(g: Gl, world: World, v: GroundView) {
   world.overlays.bind(g, mesh, { aerial: v.aerial, fill: v.fill, lines: v.lines });
   world.surfaces.bindClasses(g, mesh);
   world.surfaces.bindGround(g, mesh);
+  world.shadow.bind(g, mesh);
 
   gl.uniformMatrix4fv(mesh.u.uViewProj, false, v.viewProj);
   gl.uniform3f(mesh.u.uSunDir, ...sunDirection(world.sun));

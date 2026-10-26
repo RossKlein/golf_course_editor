@@ -92,6 +92,7 @@ export class TuftsPass {
     gl.uniform1f(t.u.uRadius, v.range);
     gl.uniform1f(t.u.uScale, v.scale);
     setLookUniforms(gl, t, world.look);
+    world.shadow.bind(g, t);
     gl.bindVertexArray(quad);
     const tiles = tuftTiles(v.target, v.range, v.density, cull.frustum, cull.y0, cull.y1 + 1);
     this.stats = {

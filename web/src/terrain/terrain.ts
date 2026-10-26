@@ -9,6 +9,7 @@ import { HeightField, type TerrainGrid } from "./heightfield/heightfield";
 import { Overlays } from "./passes/drape/overlays";
 import { drawFlat, type TerrainStyle } from "./passes/flat/flat";
 import { drawGround, type GroundView } from "./passes/ground/ground";
+import { ShadowPass, type ShadowQuality } from "./passes/shadow/shadow";
 import { TreesPass } from "./passes/trees/trees";
 import { TuftsPass } from "./passes/tufts/tufts";
 import type { Sculptor } from "./sculpt/sculptor";
@@ -24,8 +25,10 @@ export type View3d = GroundView & {
   tufts: boolean;
   tuftDensity: number;
   trees: boolean;
-  /** The camera, for the things that face it. */
+  /** The camera, for the things that face it and for fitting the shadow maps to what it sees. */
   eye: [number, number, number];
+  /** How good the sun's shadows are: off, low, or high. */
+  shadows: ShadowQuality;
 };
 
 /** Whether terrain can be drawn on the GPU here. Callers fall back to the CPU hillshade when it cannot. */
@@ -49,10 +52,11 @@ export class TerrainRenderer {
   private readonly world: World;
   private readonly tufts = new TuftsPass();
   private readonly trees = new TreesPass();
+  private readonly shadows = new ShadowPass();
 
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
-    this.world = { height: new HeightField(data), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme };
+    this.world = { height: new HeightField(data), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
   }
 
   /** Use a new look (the course was rebuilt, or its look edited): the sun, sky, surfaces, tufts and trees all follow it. */
@@ -113,7 +117,8 @@ export class TerrainRenderer {
   /** What the last 3D draw sent to the GPU out of what there is: tuft slots and trees. */
   get sceneryStats() {
     const t = this.tufts.stats, r = this.trees.stats;
-    return { tufts: t.tufts, tuftsAll: t.tuftsAll, tuftTiles: t.tiles, tuftTilesAll: t.tilesAll, trees: r.trees, treesAll: r.treesAll, treeChunks: r.chunks, treeChunksAll: r.chunksAll };
+    const s = this.shadows.stats;
+    return { tufts: t.tufts, tuftsAll: t.tuftsAll, tuftTiles: t.tiles, tuftTilesAll: t.tilesAll, trees: r.trees, treesAll: r.treesAll, treeChunks: r.chunks, treeChunksAll: r.chunksAll, shadowSlices: s.slices, shadowTrees: s.trees };
   }
 
   /**
@@ -128,6 +133,11 @@ export class TerrainRenderer {
   render3d(size: number[], v: View3d): HTMLCanvasElement {
     const g = context();
     const { gl, canvas } = g;
+    const [low, high] = this.world.height.groundRange();
+    const cull: Cull = { frustum: frustumOf(v.viewProj), y0: low * v.scale - 1, y1: high * v.scale + 1 };
+    // the sun's shadow maps first, into their own framebuffer; the passes below read them
+    this.world.shadow = this.shadows.render(g, this.world, v.trees ? this.trees : null, { viewProj: v.viewProj, eye: v.eye, scale: v.scale, quality: v.shadows }, cull);
+
     resizeCanvas(g, size);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
@@ -135,8 +145,6 @@ export class TerrainRenderer {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     drawGround(g, this.world, v);
 
-    const [low, high] = this.world.height.groundRange();
-    const cull: Cull = { frustum: frustumOf(v.viewProj), y0: low * v.scale - 1, y1: high * v.scale + 1 };
     if (v.trees) this.trees.draw(g, this.world, { viewProj: v.viewProj, scale: v.scale }, cull);
     else this.trees.stats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.trees.count };
     if (v.tufts && this.world.surfaces.has) this.tufts.draw(g, this.world, { viewProj: v.viewProj, eye: v.eye, target: v.target, scale: v.scale, range: v.tuftRange, density: v.tuftDensity }, cull);
@@ -152,5 +160,6 @@ export class TerrainRenderer {
     this.world.overlays.dispose();
     this.tufts.free(g);
     this.trees.free(g);
+    this.shadows.free(g);
   }
 }

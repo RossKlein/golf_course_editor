@@ -1,10 +1,12 @@
 #include "head.glsl"
+#include "shadow.glsl"
 
 uniform vec3 uTuftRoot;
 uniform vec3 uTuftTip;
 
 in vec2 vUv;
 in float vSeed;
+in float vShadow;
 out vec4 outColor;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -21,5 +23,5 @@ void main() {
     if (vUv.y < top && abs(x) < 0.085 * (1.0 - vUv.y / top)) shade = vUv.y / top;
   }
   if (shade < 0.0) discard;
-  outColor = vec4(mix(uTuftRoot, uTuftTip, shade) * (0.85 + 0.3 * vSeed), 1.0);
+  outColor = vec4(applyShadow(mix(uTuftRoot, uTuftTip, shade) * (0.85 + 0.3 * vSeed), vShadow), 1.0);
 }

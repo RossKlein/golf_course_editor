@@ -1,7 +1,7 @@
 # Frontend architecture and reorganisation plan
 
 Status: steps 0 to 11 are done (the engine split, the look in the bundle, the layers and their READMEs); step 12, shadows, is
-not started. This covers `web/` and the one place it reaches into the bundle format (the look, section 3.4). The Python
+built (the maths is unit-tested) but not yet confirmed on screen. This covers `web/` and the one place it reaches into the bundle format (the look, section 3.4). The Python
 side is already layered (`compiler`, `build`, `design`, `project`, `server`).
 
 Where the built code differs from the plan below:

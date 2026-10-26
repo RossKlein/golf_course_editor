@@ -2,7 +2,9 @@
 #include "height.glsl"
 #include "overlays.glsl"
 #include "look.glsl"
+#include "shadow.glsl"
 
+uniform float uScale;       // vertical exaggeration of the geometry
 uniform vec3 uSunDir;       // towards the sun: x east, y up, z south
 uniform float uSpacing;
 uniform float uContour;
@@ -89,6 +91,21 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
 }
 
+// How much the ground shades itself at a point, 0 to 1: steps along the ray to the sun and compares its height with the
+// ground under it. selfShadow.ts is the same maths for tests; both use SELF_SHADOW_STEPS and SELF_SHADOW_REACH.
+float terrainShadow(vec2 p, float groundHeight) {
+  if (uSunDir.y <= 0.001) return 1.0;
+  float y0 = groundHeight * uScale + 0.15;
+  float lit = 1.0;
+  for (int i = 1; i <= SELF_SHADOW_STEPS; i++) {
+    float f = float(i) / float(SELF_SHADOW_STEPS);
+    float t = float(SELF_SHADOW_REACH) * f * f;
+    float clearance = y0 + uSunDir.y * t - heightAt(p + uSunDir.xz * t).x * uScale;
+    lit = min(lit, clamp(clearance / (0.06 * t + 0.25), 0.0, 1.0));
+  }
+  return 1.0 - lit;
+}
+
 void main() {
   vec2 p = vXZ;
   if (!onGrid(p)) discard;
@@ -131,6 +148,11 @@ void main() {
   }
 
   vec3 col = albedo * light;
+  // the sun's shadows: trees from the shadow map, and (at high quality) the ground's own from the height field
+  vec3 world = vec3(p.x, ground * uScale, p.y);
+  float shadow = shadowMapAt(world, normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale)), true);
+  if (uShadowMode.x > 0.5) shadow = 1.0 - (1.0 - shadow) * (1.0 - terrainShadow(p, ground));
+  col = applyShadow(col, shadow);
   if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(light, 0.0, 1.0)), 0.7);
   if (uContour > 0.0) col *= 1.0 - contourDarkening(ground, uContour);
 

@@ -20,13 +20,19 @@ import head from "./head.glsl?raw";
 import look from "./look.glsl?raw";
 import height from "./height.glsl?raw";
 import overlays from "./overlays.glsl?raw";
+import shadow from "./shadow.glsl?raw";
+import tree from "./tree.glsl?raw";
+import depthFrag from "../passes/shadow/depth.frag.glsl?raw";
+import depthVert from "../passes/shadow/depth.vert.glsl?raw";
 import treesFrag from "../passes/trees/trees.frag.glsl?raw";
 import treesVert from "../passes/trees/trees.vert.glsl?raw";
 import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
 import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
-import { SURFACES, TUFT_TILE } from "../limits";
+import { MAX_SHADOW_SLICES, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SURFACES, TUFT_TILE } from "../limits";
 
-const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look };
+const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look, "shadow.glsl": shadow, "tree.glsl": tree };
+
+const SHADOWS = { MAX_SHADOW_SLICES };
 
 const program = (vertex: string, fragment: string, defines: Record<string, number | string> = {}) => ({
   vertex: preprocess(vertex, chunks, defines),
@@ -36,8 +42,9 @@ const program = (vertex: string, fragment: string, defines: Record<string, numbe
 /** Every program's finished source, ready to compile. */
 export const SHADERS = {
   flat: program(fullscreenVert, flatFrag),
-  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES }),
-  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES }),
-  trees: program(treesVert, treesFrag),
+  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, ...SHADOWS }),
+  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES, ...SHADOWS }),
+  trees: program(treesVert, treesFrag, SHADOWS),
+  shadowDepth: program(depthVert, depthFrag),
   brush: program(fullscreenVert, brushFrag),
 };

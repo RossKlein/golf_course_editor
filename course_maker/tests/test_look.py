@@ -17,6 +17,17 @@ class LookTests(unittest.TestCase):
         self.assertEqual(look.surfaces[spec.CLASSES["bunker"]].shade, 0.12)
         self.assertEqual([s.tuft > 0 for s in look.surfaces], [True, False, False, False, False, False, False, False, True])
 
+    def test_default_shadows_are_a_cool_darkening_that_fades_out(self):
+        s = default_look().shadows
+        self.assertGreater(s.strength, 0)
+        self.assertLess(s.tint[0], s.tint[2])  # shade is bluer than light
+        self.assertGreater(s.distance, 0)
+
+    def test_a_look_without_shadows_gets_the_default_ones(self):
+        data = default_look().model_dump()
+        del data["shadows"]
+        self.assertEqual(Look.model_validate(data).shadows, default_look().shadows)
+
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
         again = Look.model_validate_json(look.model_dump_json())

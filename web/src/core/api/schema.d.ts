@@ -1105,6 +1105,7 @@ export interface components {
             grass: components["schemas"]["Grass"];
             tufts: components["schemas"]["Tufts"];
             trees: components["schemas"]["Trees"];
+            shadows: components["schemas"]["Shadows"];
         };
         /** Patch */
         Patch: {
@@ -1222,6 +1223,24 @@ export interface components {
             readonly ok: boolean;
             /** Total Bytes */
             readonly total_bytes: number;
+        };
+        /**
+         * Shadows
+         * @description How the sun's shadows look. How crisp they are (map size, slices) is a quality setting of the viewer, not the course's.
+         */
+        Shadows: {
+            /** Strength */
+            strength: number;
+            /** Tint */
+            tint: [
+                number,
+                number,
+                number
+            ];
+            /** Softness */
+            softness: number;
+            /** Distance */
+            distance: number;
         };
         /**
          * Sun

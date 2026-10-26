@@ -177,6 +177,15 @@ class Trees(Model):
     base: Unit  # brightness at the foot of a tree, rising to full at the top
 
 
+class Shadows(Model):
+    """How the sun's shadows look. How crisp they are (map size, slices) is a quality setting of the viewer, not the course's."""
+
+    strength: Unit  # how much a shadow darkens lit ground: 0 for none, 1 for the full tint
+    tint: Color  # what shadowed ground is multiplied by, cooler than lit ground
+    softness: Annotated[Number, Field(ge=0, le=5)]  # metres across the soft edge of a shadow
+    distance: Annotated[Number, Field(gt=0, le=2000)]  # metres from the camera where shadows have faded out
+
+
 class Look(Model):
     sky: Color
     sun: Sun
@@ -185,6 +194,7 @@ class Look(Model):
     grass: Grass
     tufts: Tufts
     trees: Trees
+    shadows: Shadows = Field(default_factory=lambda: _default_look().shadows)  # a look written before shadows existed gets the default
 
 
 def _default_look() -> "Look":

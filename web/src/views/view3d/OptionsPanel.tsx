@@ -1,8 +1,9 @@
 import type { TerrainSource } from "../../scene/scene";
+import { SHADOW_QUALITIES } from "../../terrain/passes/shadow/shadow";
 import type { Options } from "./options";
 
 /** What the renderer sent last frame, for the cost line under the grass sliders. */
-export type SceneryCounts = { tufts: number; tuftsAll: number; trees: number };
+export type SceneryCounts = { tufts: number; tuftsAll: number; trees: number; shadowSlices: number; shadowTrees: number };
 
 type Props = {
   terrain: TerrainSource;
@@ -59,6 +60,17 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           </label>
           <label className="check"><input type="checkbox" checked={opts.outlines} onChange={(e) => set({ outlines: e.target.checked })} /> Outlines and routes</label>
         </>
+      )}
+      <label title="The sun's shadows. Low: trees shade the ground in one map. High: three maps with soft edges, and hills shade the ground too. Higher costs more.">
+        Shadows
+        <select value={opts.shadows} onChange={(e) => set({ shadows: e.target.value as Options["shadows"] })}>
+          {SHADOW_QUALITIES.map((q) => <option key={q} value={q}>{q === "off" ? "Off" : q === "low" ? "Low" : "High"}</option>)}
+        </select>
+      </label>
+      {opts.shadows !== "off" && (
+        <div className="hint" title="What the shadow maps cost this frame: how many maps were drawn, and how many trees were sent into them.">
+          {counts.shadowSlices} {counts.shadowSlices === 1 ? "map" : "maps"}, {counts.shadowTrees.toLocaleString()} trees drawn
+        </div>
       )}
       <label title="How strongly the relief is shaded. Hollows go darker and crests lighter, which is what shows gentle contours.">
         Shading {Math.round(opts.shading * 100)}%

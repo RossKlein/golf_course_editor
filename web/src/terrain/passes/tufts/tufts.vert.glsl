@@ -1,6 +1,7 @@
 #include "head.glsl"
 #include "height.glsl"
 #include "look.glsl"
+#include "shadow.glsl"
 
 const int TILE = TUFT_TILE;
 uniform sampler2D uClassMap;
@@ -18,6 +19,7 @@ uniform float uScale;     // vertical exaggeration
 
 out vec2 vUv;
 out float vSeed;
+out float vShadow;
 
 const vec2 CORNER[6] = vec2[6](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
 
@@ -27,6 +29,7 @@ void hide() {
   gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture (allow-literal: a position, not a colour)
   vUv = vec2(0.0);
   vSeed = 0.0;
+  vShadow = 0.0;
 }
 
 void main() {
@@ -55,4 +58,5 @@ void main() {
   gl_Position = uViewProj * vec4(world, 1.0);
   vUv = corner;
   vSeed = seed;
+  vShadow = shadowMapAt(base, vec3(0, 1, 0), false); // the ground's shadow at the root
 }

@@ -1,4 +1,5 @@
 import type { Look } from "../../../core/api/api";
+import type { Mat4 } from "../../../gfx/math/mat4";
 import { boxVisible } from "../../../gfx/math/frustum";
 import { compileProgram, tryProgram, type Program } from "../../../gfx/shader/program";
 import type { Gl } from "../../context";
@@ -10,7 +11,7 @@ import { sunDirection } from "../../sun";
 import type { Cull, World } from "../../world";
 
 // Low-poly trees, instanced from the look's models. The CPU holds only their positions, sorted into chunks of ground so a
-// chunk that is out of view is never drawn.
+// chunk that is out of view is never drawn. The same trees are drawn again, depth only, into the sun's shadow maps.
 
 type Model = { vao: WebGLVertexArrayObject; vertices: number; instances: WebGLBuffer; count: number; radius: number };
 
@@ -24,7 +25,7 @@ export type TreesView = {
 export type TreeStats = { chunks: number; chunksAll: number; trees: number; treesAll: number };
 
 export class TreesPass {
-  private made: { generation: number; look: Look; program: Program | null; models: Model[] } | null = null;
+  private made: { generation: number; look: Look; program: Program | null; depth: Program | null; models: Model[] } | null = null;
   private groups: Float32Array[] = [];
   private chunks: TreeChunk[][] = [];
   private dirty = true;
@@ -76,49 +77,80 @@ export class TreesPass {
       look,
       models,
       program: tryProgram(() => compileProgram(gl, SHADERS.trees.vertex, SHADERS.trees.fragment, "trees")),
+      depth: tryProgram(() => compileProgram(gl, SHADERS.shadowDepth.vertex, SHADERS.shadowDepth.fragment, "tree shadows")),
     };
     this.dirty = true;
   }
 
-  /** Draw onto what the ground pass just drew. The models are rebuilt when the look changes. */
-  draw(g: Gl, world: World, v: TreesView, cull: Cull) {
+  /** Build what is missing (the models are rebuilt when the look changes) and upload the trees if they changed. */
+  private ready(g: Gl, look: Look) {
     const { gl } = g;
-    if (!this.made || this.made.generation !== g.generation || this.made.look !== world.look) this.make(g, world.look);
-    const { program: t, models } = this.made!;
+    if (!this.made || this.made.generation !== g.generation || this.made.look !== look) this.make(g, look);
+    const made = this.made!;
     if (this.dirty) {
       this.dirty = false;
-      models.forEach((model, k) => {
+      made.models.forEach((model, k) => {
         gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
         const trees = this.groups[k] ?? new Float32Array(0);
         gl.bufferData(gl.ARRAY_BUFFER, trees, gl.DYNAMIC_DRAW);
         model.count = trees.length / 4;
       });
     }
+    return made;
+  }
+
+  /** Draw each chunk of each model that `cull` says is in view, and count what was sent. */
+  private drawChunks(g: Gl, models: Model[], cull: Cull, stats: TreeStats) {
+    const { gl } = g;
+    models.forEach((model, k) => {
+      if (!model.count) return;
+      gl.bindVertexArray(model.vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
+      for (const c of this.chunks[k] ?? []) {
+        stats.chunksAll++;
+        // a tree reaches `radius` times its height from its trunk, up to 15% more when it is spread
+        const r = model.radius * c.tallest * 1.15;
+        if (!boxVisible(cull.frustum, c.x0 - r, cull.y0, c.z0 - r, c.x1 + r, cull.y1 + c.tallest, c.z1 + r)) continue;
+        stats.chunks++;
+        stats.trees += c.count;
+        gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, c.first * 16); // the run of this chunk's trees
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, model.vertices, c.count);
+      }
+    });
+    gl.bindVertexArray(null);
+  }
+
+  /** Draw onto what the ground pass just drew. */
+  draw(g: Gl, world: World, v: TreesView, cull: Cull) {
+    const { gl } = g;
+    const { program: t, models } = this.ready(g, world.look);
     this.stats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.count };
     if (!t) return;
-
     gl.useProgram(t.program);
     world.height.bind(g, t);
     gl.uniformMatrix4fv(t.u.uViewProj, false, v.viewProj);
     gl.uniform3f(t.u.uSunDir, ...sunDirection(world.sun));
     gl.uniform1f(t.u.uScale, v.scale);
     setLookUniforms(gl, t, world.look);
-    models.forEach((model, k) => {
-      if (!model.count) return;
-      gl.bindVertexArray(model.vao);
-      gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
-      for (const c of this.chunks[k] ?? []) {
-        this.stats.chunksAll++;
-        // a tree reaches `radius` times its height from its trunk, up to 15% more when it is spread
-        const r = model.radius * c.tallest * 1.15;
-        if (!boxVisible(cull.frustum, c.x0 - r, cull.y0, c.z0 - r, c.x1 + r, cull.y1 + c.tallest, c.z1 + r)) continue;
-        this.stats.chunks++;
-        this.stats.trees += c.count;
-        gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, c.first * 16); // the run of this chunk's trees
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, model.vertices, c.count);
-      }
-    });
-    gl.bindVertexArray(null);
+    world.shadow.bind(g, t);
+    this.drawChunks(g, models, cull, this.stats);
+  }
+
+  /**
+   * Draw the trees depth only, from the sun, into whichever shadow map is bound. `cull` is the map's own view volume. Returns
+   * what was sent.
+   */
+  drawDepth(g: Gl, world: World, lightViewProj: Mat4, scale: number, cull: Cull): TreeStats {
+    const { gl } = g;
+    const stats: TreeStats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.count };
+    const { depth, models } = this.ready(g, world.look);
+    if (!depth || !this.count) return stats;
+    gl.useProgram(depth.program);
+    world.height.bind(g, depth);
+    gl.uniformMatrix4fv(depth.u.uLightViewProj, false, lightViewProj);
+    gl.uniform1f(depth.u.uScale, scale);
+    this.drawChunks(g, models, cull, stats);
+    return stats;
   }
 
   free(g: Gl | null) {
