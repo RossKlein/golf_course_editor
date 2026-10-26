@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closeRing, dedupe, outlineFromPoints, ringArea, selfIntersects, snapToRings } from "./geometry";
+import { closeRing, dedupe, nearestVertex, outlineFromPoints, ringArea, selfIntersects, snapToRings, withoutLineVertex, withoutRingVertex } from "./geometry";
 import type { Pt } from "../map/coords";
 
 const square: Pt[] = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]];
@@ -84,5 +84,27 @@ describe("snapToRings", () => {
 
   it("works with several rings and a hole", () => {
     expect(snapToRings([20.2, 20.2], [square, [[20, 20], [30, 20], [30, 30], [20, 20]]], 1)).toEqual([20, 20]);
+  });
+});
+
+describe("removing vertices", () => {
+  it("finds the nearest vertex of a closed ring, counting the shared first and last point once", () => {
+    expect(nearestVertex(square, [9.5, 0.4], 2)).toMatchObject({ index: 1 });
+    expect(nearestVertex(square, [0.2, 0.2], 2)).toMatchObject({ index: 0 });
+    expect(nearestVertex(square, [5, 5], 2)).toBeNull();
+  });
+
+  it("drops a corner and keeps the ring closed, including the first one", () => {
+    expect(withoutRingVertex(square, 2)).toEqual([[0, 0], [10, 0], [0, 10], [0, 0]]);
+    expect(withoutRingVertex(square, 0)).toEqual([[10, 0], [10, 10], [0, 10], [10, 0]]);
+  });
+
+  it("refuses to leave fewer than three corners", () => {
+    expect(withoutRingVertex([[0, 0], [5, 0], [0, 5], [0, 0]], 1)).toBeNull();
+  });
+
+  it("drops a point from a line but keeps two", () => {
+    expect(withoutLineVertex([[0, 0], [1, 1], [2, 2]], 1)).toEqual([[0, 0], [2, 2]]);
+    expect(withoutLineVertex([[0, 0], [1, 1]], 0)).toBeNull();
   });
 });

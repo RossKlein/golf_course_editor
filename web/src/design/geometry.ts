@@ -67,3 +67,29 @@ export function snapToRings(p: Pt, rings: readonly (readonly Pt[])[], tolerance:
   }
   return best ?? p;
 }
+
+/** The vertex of a ring or line nearest `p`, within `tolerance`. A closed ring's repeated last point is not a vertex of its own. */
+export function nearestVertex(points: readonly Pt[], p: Pt, tolerance: number): { index: number; distance: number } | null {
+  const closed = points.length > 1 && points[0][0] === points[points.length - 1][0] && points[0][1] === points[points.length - 1][1];
+  const n = closed ? points.length - 1 : points.length;
+  let best: { index: number; distance: number } | null = null;
+  for (let i = 0; i < n; i++) {
+    const distance = Math.hypot(points[i][0] - p[0], points[i][1] - p[1]);
+    if (distance <= tolerance && (!best || distance < best.distance)) best = { index: i, distance };
+  }
+  return best;
+}
+
+/** A closed ring without one vertex, or null if that would leave fewer than three. */
+export function withoutRingVertex(ring: readonly Pt[], index: number): Pt[] | null {
+  const pts = ring.slice(0, -1);
+  if (pts.length <= 3 || index < 0 || index >= pts.length) return null;
+  pts.splice(index, 1);
+  return closeRing(pts);
+}
+
+/** An open line without one vertex, or null if that would leave fewer than two. */
+export function withoutLineVertex(line: readonly Pt[], index: number): Pt[] | null {
+  if (line.length <= 2 || index < 0 || index >= line.length) return null;
+  return line.filter((_, i) => i !== index);
+}

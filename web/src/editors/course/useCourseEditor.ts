@@ -11,7 +11,7 @@ import { shiftKeyOnly } from "ol/events/condition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorState } from "../../api/api";
 import type { Command } from "../../commands/keymap";
-import { closeRing, dedupe, outlineFromPoints, selfIntersects, snapToRings } from "../../design/geometry";
+import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, snapToRings, withoutLineVertex, withoutRingVertex } from "../../design/geometry";
 import { holeView, suggestHoles, unassignedCount } from "../../design/holes";
 import { createRegionLayer, mapRings, OWNED, ringsOf } from "../../design/olRegions";
 import { createRouteLayer } from "../../design/olRoutes";
@@ -35,7 +35,7 @@ export const CLASS_KEYS: { cls: number; key: string; label: string }[] = [
 ];
 
 export const TOOLS = [
-  { id: "select", label: "Select", key: "v", hint: "Click a region to select it. Drag a corner to move it, drag along an edge to add a point, Alt+click a corner to remove it. Right-click a region to delete it" },
+  { id: "select", label: "Select", key: "v", hint: "Click a region to select it. Drag a corner to move it, drag along an edge to add a point. Right-click a corner to remove it, or inside a region to delete it" },
   { id: "draw", label: "Polygon", key: "d", hint: "Click to add points; click the first point or press Enter to finish" },
   { id: "freehand", label: "Freehand", key: "Shift+D", hint: "Drag to draw, lift and keep going as often as you like. Enter finishes the outline, Backspace removes the last stroke, Esc cancels. Middle-drag pans." },
   { id: "route", label: "Route", key: "Shift+R", hint: "Click along the active hole from tee to green, replacing its route. Enter or double-click finishes, Backspace removes the last point, Esc cancels" },
@@ -194,7 +194,49 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
         const d = down;
         down = null;
         if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
-        const hit = map.forEachFeatureAtPixel(map.getEventPixel(e), (f) => f, { layerFilter: (l) => l === r.layer, hitTolerance: 4 });
+        const px = map.getEventPixel(e);
+        // a corner of a region or route near the pointer goes first; only a click away from every corner deletes a region
+        const c = map.getCoordinateFromPixel(px) as [number, number];
+        const tol = 10 * (map.getView().getResolution() ?? 1);
+        const p = fromMap(c);
+        const near = [c[0] - tol, c[1] - tol, c[0] + tol, c[1] + tol];
+        const doc = designStore.getState().doc;
+        type Corner = { distance: number; remove: () => void; blocked: string };
+        const corners: Corner[] = [];
+        const topFirst = (a: Feature, b: Feature) => (b.get("z") ?? 0) - (a.get("z") ?? 0);
+        for (const f of r.source.getFeaturesInExtent(near).sort(topFirst)) {
+          const reg = doc.regions[f.getId() as string];
+          if (!reg) continue;
+          [reg.outer as Pt[], ...(reg.inner as Pt[][])].forEach((ring, k) => {
+            const v = nearestVertex(ring, p, tol);
+            if (!v) return;
+            const cut = withoutRingVertex(ring, v.index);
+            corners.push({
+              distance: v.distance,
+              blocked: "A shape needs at least three corners.",
+              remove: () => {
+                if (cut) updateRegion("Remove point", reg.id, k === 0 ? { outer: cut } : { inner: (reg.inner as Pt[][]).map((h, i) => (i === k - 1 ? cut : h)) });
+              },
+            });
+          });
+        }
+        for (const f of routesRef.current?.source.getFeaturesInExtent(near) ?? []) {
+          const number = f.get("number") as number;
+          const route = doc.layout.holes.find((h) => h.number === number)?.route as Pt[] | undefined;
+          const v = route && nearestVertex(route, p, tol);
+          if (!route || !v) continue;
+          const cut = withoutLineVertex(route, v.index);
+          corners.push({ distance: v.distance, blocked: "A route needs at least two points.", remove: () => cut && setRoute(number, cut) });
+        }
+        if (corners.length) {
+          // the nearest corner; on a tie the first, which is the topmost region
+          const best = corners.reduce((a, b) => (b.distance < a.distance ? b : a));
+          const before = designStore.getState().doc;
+          best.remove();
+          say(designStore.getState().doc === before ? best.blocked : "Point removed. Ctrl+Z brings it back.");
+          return;
+        }
+        const hit = map.forEachFeatureAtPixel(px, (f) => f, { layerFilter: (l) => l === r.layer, hitTolerance: 4 });
         const id = hit?.getId() as string | undefined;
         if (!id) return;
         const s = designStore.getState();
