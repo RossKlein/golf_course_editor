@@ -14,7 +14,7 @@ import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, sn
 import { mapRings, ringsOf } from "../../views/map2d/design/olRegions";
 import { designStore } from "../../model/design/store";
 import { fromMap, toMap, type Pt } from "../../core/geometry/coords";
-import { FreehandInteraction } from "../course/freehand";
+import { FreehandInteraction } from "./freehand";
 
 /** A corner the user can right-click to remove, with how far from the pointer it is. */
 export type Corner = { distance: number; remove: () => void; blocked: string };

@@ -17,7 +17,8 @@ import { BOUNDS_TOOLS, useBoundsEditor } from "../editors/bounds/useBoundsEditor
 import { TOOLS, useCourseEditor } from "../editors/course/useCourseEditor";
 import { useHeightEditor } from "../editors/heightmap/useHeightEditor";
 import { BRUSHES } from "../terrain/sculpt/brush";
-import { useNotice } from "../editors/shared/holeNav";
+import { useNotice } from "../editors/_shared/holeNav";
+import { EDITORS } from "../editors/registry";
 import FileList from "../files/FileList";
 import OlMap from "../views/map2d/OlMap";
 import { fromMap, toMap } from "../core/geometry/coords";
@@ -190,7 +191,7 @@ export default function App() {
       toggleSlope: () => patch({ slopeMap: !editor.slopeMap }),
       help: () => setHelpOpen(true),
       goto: (id) => patch({ editor: id }),
-    }),
+    }, EDITORS),
     ...course.commands,
     ...bounds.commands,
     ...height.commands,

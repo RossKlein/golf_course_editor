@@ -1,5 +1,7 @@
-import { EDITORS } from "../editors/registry";
 import type { Command } from "./keymap";
+
+/** An editor the user can jump to. The commands know only this much of an editor; the list of them comes from whoever builds the commands. */
+export type EditorTarget = { id: string; label: string; goto: string; enabled: boolean };
 
 export type GlobalActions = {
   canEdit: boolean;
@@ -19,7 +21,7 @@ export type GlobalActions = {
 };
 
 /** Commands that work in every editor. */
-export function globalCommands(a: GlobalActions): Command[] {
+export function globalCommands(a: GlobalActions, editors: readonly EditorTarget[]): Command[] {
   const g = "global" as const;
   const edit = () => a.canEdit;
   return [
@@ -39,6 +41,6 @@ export function globalCommands(a: GlobalActions): Command[] {
     { id: "view.contours", label: "Cycle the contour spacing", scope: g, keys: ["Shift+C"], group: "View", run: a.cycleContours },
     { id: "view.slope", label: "Colour the terrain by slope", scope: g, keys: ["Shift+S"], group: "View", run: a.toggleSlope },
     { id: "help", label: "Keyboard shortcuts", scope: g, keys: ["Shift+Slash", "Slash", "F1"], group: "Help", run: a.help },
-    ...EDITORS.filter((e) => e.enabled).map((e): Command => ({ id: `goto.${e.id}`, label: `Open the ${e.label} editor`, scope: g, keys: [e.goto], group: "Go to", run: () => a.goto(e.id) })),
+    ...editors.filter((e) => e.enabled).map((e): Command => ({ id: `goto.${e.id}`, label: `Open the ${e.label} editor`, scope: g, keys: [e.goto], group: "Go to", run: () => a.goto(e.id) })),
   ];
 }

@@ -6,8 +6,8 @@ import { ringsOf } from "../../views/map2d/design/olRegions";
 import type { DesignLayers } from "../../views/map2d/design/useDesignLayers";
 import { addBoundsArea, designStore, removeBoundsAreas, updateBoundsArea, useDesign } from "../../model/design/store";
 import type { Pt } from "../../core/geometry/coords";
-import { holeCommands, makeHoleNav } from "../shared/holeNav";
-import { installPolygonTools, polygonCommands, type PolygonControls, type PolygonTarget } from "../shared/polygonTools";
+import { holeCommands, makeHoleNav } from "../_shared/holeNav";
+import { installPolygonTools, polygonCommands, type PolygonControls, type PolygonTarget } from "../_shared/polygonTools";
 
 export const BOUNDS_TOOLS = [
   { id: "select", label: "Select", key: "v", hint: "Click an area to select it. Drag a corner to move it, drag along an edge to add a point. Right-click a corner to remove it, or inside an area to delete it" },

@@ -12,8 +12,8 @@ import { OWNED } from "../../views/map2d/design/olRegions";
 import type { DesignLayers } from "../../views/map2d/design/useDesignLayers";
 import { addRegion, assignHoles, designStore, removeRegions, reorderRegions, setRoute, updateRegion, useDesign } from "../../model/design/store";
 import { fromMap, toMap, type Pt } from "../../core/geometry/coords";
-import { holeCommands, makeHoleNav } from "../shared/holeNav";
-import { installPolygonTools, polygonCommands, type Corner, type PolygonControls, type PolygonTarget } from "../shared/polygonTools";
+import { holeCommands, makeHoleNav } from "../_shared/holeNav";
+import { installPolygonTools, polygonCommands, type Corner, type PolygonControls, type PolygonTarget } from "../_shared/polygonTools";
 
 /** Surface classes in the palette, with the key that picks each. Keys are fixed to class names, not positions. */
 export const CLASS_KEYS: { cls: number; key: string; label: string }[] = [
