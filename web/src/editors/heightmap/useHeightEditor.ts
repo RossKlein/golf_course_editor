@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import type { EditorState } from "../../core/api/api";
 import type { Command } from "../../commands/keymap";
 import { BRUSHES, MAX_RADIUS, MIN_RADIUS, perStamp, resized, stampPoints, type Brush, type BrushKind } from "../../terrain/sculpt/brush";
-import type { TerrainSource } from "../../map/scene";
+import type { TerrainSource } from "../../scene/scene";
 import { fromMap, toMap, type Pt } from "../../core/geometry/coords";
 
 type Props = {

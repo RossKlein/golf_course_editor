@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Wand2 } from "lucide-react";
-import type { BundleData } from "../bundle/bundleScene";
+import type { BundleData } from "../scene/bundleScene";
 import { routeLength, unassignedCount } from "../model/design/holes";
 import { removeHole, updateHole, updateLayout, useDesign } from "../model/design/store";
 import type { Formatter } from "../core/units/units";

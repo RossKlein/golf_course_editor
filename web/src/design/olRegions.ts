@@ -7,7 +7,7 @@ import Polygon from "ol/geom/Polygon";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
-import { CLASS_COLORS, css } from "../bundle/bundleScene";
+import { CLASS_COLORS, css } from "../scene/bundleScene";
 import { fromMap, toMap, type Pt } from "../core/geometry/coords";
 import type { Region } from "../core/api/api";
 import { OWNED, visibleRegionIds } from "../model/design/holes";

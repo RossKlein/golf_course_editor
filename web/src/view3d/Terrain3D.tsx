@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 import { designStore } from "../model/design/store";
 import type { Rect } from "../core/geometry/coords";
-import type { TerrainSource } from "../map/scene";
+import type { TerrainSource } from "../scene/scene";
 import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "../terrain/camera/camera";
 import { TUFT_RANGE } from "../terrain/passes/tufts/tufts";
-import { DRAPE_PIXELS, paintDrape } from "./drape";
+import { DRAPE_PIXELS, paintDrape } from "../scene/drape";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */
 export type Controls3d = {

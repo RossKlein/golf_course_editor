@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
-import { api, type EditorState, type Viewport } from "../core/api/api";
+import { api, type EditorState, type Viewport } from "../../core/api/api";
 import { serialise, withViewport } from "./editorState";
 
 export type SaveStatus = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };

@@ -1,12 +1,3 @@
 [
-  "bundle/bundleScene.ts -> map/layers.ts",
-  "bundle/bundleScene.ts -> map/terrainLayer.ts",
-  "commands/globalCommands.ts -> editors/registry.ts",
-  "editor/editorState.test.ts -> map/scene.ts",
-  "editor/editorState.ts -> map/scene.ts",
-  "tif/tifScene.ts -> map/layers.ts",
-  "tif/tifScene.ts -> map/terrainLayer.ts",
-  "view3d/drape.test.ts -> model/design/store.ts",
-  "view3d/drape.ts -> model/design/store.ts",
-  "view3d/drape.ts -> model/theme/colours.ts"
+  "commands/globalCommands.ts -> editors/registry.ts"
 ]

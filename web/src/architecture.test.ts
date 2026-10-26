@@ -42,11 +42,7 @@ const RULES: [RegExp, string][] = [
   // ---- legacy: files that are not in their final place yet
   [/^view3d\/Terrain3D\.tsx$/, "views"],
   [/^view3d\//, "terrain"],
-  [/^heights\/session\.ts$/, "scene"],
   [/^design\/(ol|useDesignLayers)/, "views"],
-  [/^design\/useDesignSession\.ts$/, "scene"],
-  [/^(selection|editor)\//, "model"],
-  [/^(bundle\/bundleScene\.ts|map\/scene\.ts|tif\/tifScene\.ts)$/, "scene"],
   [/^map\//, "views"],
   [/^panel\//, "views"],
   [/^(files|report|tif)\//, "shell"],

@@ -1,7 +1,7 @@
 import { Tabs } from "radix-ui";
 import type { BuildStatus, EditorState, TifView } from "../core/api/api";
-import type { BundleData } from "../bundle/bundleScene";
-import type { LayerState, ReadoutLine, Scene } from "../map/scene";
+import type { BundleData } from "../scene/bundleScene";
+import type { LayerState, ReadoutLine, Scene } from "../scene/scene";
 import LayerControls, { ExaggerationSlider, TerrainControls } from "../panel/LayerControls";
 import TifPanel from "../tif/TifPanel";
 import type { Formatter, Units } from "../core/units/units";

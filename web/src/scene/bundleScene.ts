@@ -8,7 +8,7 @@ import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../core/api/api";
-import { HeightSession } from "../heights/session";
+import { HeightSession } from "./heightSession";
 import { scatterWoods, splitByKind, treesFromBin } from "../terrain/scenery/trees";
 import { stripeDirections } from "../terrain/surfaces/stripes";
 import { loadCourseFiles } from "../terrain/course/course";
@@ -17,10 +17,10 @@ import { sunOfLook } from "../terrain/sun";
 import { decodeHeights, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../core/decode/decode";
 import { toMap } from "../core/geometry/coords";
 import { CLASS_COLORS, css, holeColor } from "../model/theme/colours";
-import { rasterLayer } from "../map/layers";
+import { rasterLayer } from "./layers";
 import { TerrainRenderer, terrainSupported } from "../terrain/terrain";
-import { terrainLayer } from "../map/terrainLayer";
-import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
+import { terrainLayer } from "./terrainLayer";
+import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "./scene";
 import type { Formatter } from "../core/units/units";
 
 // docs/golf-course-format.md: class map R = surface, G = owning hole; bounds = one in-bounds bit per hole.

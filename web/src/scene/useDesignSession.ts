@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BuildStatus } from "../core/api/api";
-import type { Scene } from "../map/scene";
+import type { Scene } from "./scene";
 import { boundsList, designStore, docFromApi, emptyDoc, regionList } from "../model/design/store";
 
 export type DesignSave = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };

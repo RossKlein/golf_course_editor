@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { Index } from "../core/api/api";
-import { hashFor, type Selection } from "../selection/selection";
+import { hashFor, type Selection } from "../scene/selection";
 import { setUnits, useUnits } from "../ui/useUnits";
 import type { Units } from "../core/units/units";
 

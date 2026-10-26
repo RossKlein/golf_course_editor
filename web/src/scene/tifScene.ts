@@ -2,10 +2,10 @@ import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../core/api/api";
 import { buildHillshade } from "../terrain/passes/flat/cpuHillshade";
 import { sunOfLook } from "../terrain/sun";
 import { decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../core/decode/decode";
-import { rasterLayer } from "../map/layers";
+import { rasterLayer } from "./layers";
 import { TerrainRenderer, terrainSupported } from "../terrain/terrain";
-import { terrainLayer } from "../map/terrainLayer";
-import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
+import { terrainLayer } from "./terrainLayer";
+import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "./scene";
 import type { Formatter } from "../core/units/units";
 
 /** A GeoTIFF on the map, in metres from its top-left corner (x east, z south). */

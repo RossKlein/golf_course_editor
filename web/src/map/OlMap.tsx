@@ -7,8 +7,8 @@ import MouseWheelZoom from "ol/interaction/MouseWheelZoom";
 import type { Viewport } from "../core/api/api";
 import { scaleBar, type Units } from "../core/units/units";
 import { fromMap } from "../core/geometry/coords";
-import { projection } from "./projection";
-import type { LayerState, Params, Scene } from "./scene";
+import { projection } from "../scene/projection";
+import type { LayerState, Params, Scene } from "../scene/scene";
 import { applyViewport, fitRect, sameViewport, viewportOf } from "./view";
 
 type Props = {

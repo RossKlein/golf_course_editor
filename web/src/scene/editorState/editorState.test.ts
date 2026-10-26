@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { EditorState } from "../core/api/api";
-import type { Scene, SceneLayer } from "../map/scene";
+import type { EditorState } from "../../core/api/api";
+import type { Scene, SceneLayer } from "../scene";
 import { defaultEditorState, mergeSaved, serialise, viewFromViewport, viewportFromView } from "./editorState";
 
 const layer = (id: string, visible: boolean, opacity = 1): SceneLayer => ({ id, label: id, visible, opacity, adjustable: true, olLayer: null as never });

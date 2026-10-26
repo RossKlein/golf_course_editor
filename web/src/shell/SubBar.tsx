@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { EditorState } from "../core/api/api";
-import { CLASS_COLORS, css } from "../bundle/bundleScene";
+import { CLASS_COLORS, css } from "../scene/bundleScene";
 import { BOUNDS_TOOLS, FEATURE_MODES } from "../editors/bounds/useBoundsEditor";
 import { CLASS_KEYS, TOOLS } from "../editors/course/useCourseEditor";
 import { editorMeta } from "../editors/registry";
