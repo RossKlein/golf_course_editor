@@ -542,7 +542,7 @@ export interface components {
             snap?: boolean;
             /**
              * Smoothing
-             * @default 1.5
+             * @default 0.1
              */
             smoothing?: number;
             /**
@@ -608,7 +608,7 @@ export interface components {
             snap: boolean;
             /**
              * Smoothing
-             * @default 1.5
+             * @default 0.1
              */
             smoothing: number;
             /**

@@ -206,7 +206,7 @@ class EditorState(Model):
     tool: Annotated[str, Field(max_length=32)] = "select"
     activeClass: Annotated[Int, Field(ge=0, le=max(spec.CLASSES.values()))] = spec.FAIRWAY  # the surface new regions get
     snap: bool = True
-    smoothing: Annotated[Number, Field(ge=0.1, le=10)] = 1.5  # freehand simplify tolerance, metres
+    smoothing: Annotated[Number, Field(ge=0, le=10)] = 0.1  # freehand simplify tolerance in screen pixels; 0 keeps every point
     leftCollapsed: bool = False
     rightTab: Literal["view", "data"] = "view"
 

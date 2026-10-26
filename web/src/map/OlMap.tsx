@@ -96,6 +96,7 @@ export default function OlMap({ scene, layerState, params, units, initialViewpor
       const t = e.target as HTMLElement;
       if (["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(t.tagName)) return;
       spaceDown.current = down;
+      m.set("spacePan", down); // lets a drawing tool know the primary button is panning
       vp.style.cursor = down ? "grab" : "";
       if (down) e.preventDefault();
     };

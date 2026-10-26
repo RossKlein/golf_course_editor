@@ -64,9 +64,9 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount }: Pr
       </div>
       <label className="check"><input type="checkbox" checked={editor.snap} onChange={(e) => patch({ snap: e.target.checked })} /> Snap</label>
       {editor.tool === "freehand" && (
-        <label className="slider" title="How much a freehand line is simplified, in metres">
-          Smoothing
-          <input type="range" min={0.2} max={5} step={0.1} value={editor.smoothing} onChange={(e) => patch({ smoothing: Number(e.target.value) })} />
+        <label className="slider" title="How far a freehand line may stray from what you drew when it is saved, in screen pixels. 0 keeps every point.">
+          Simplify
+          <input type="range" min={0} max={5} step={0.1} value={editor.smoothing} onChange={(e) => patch({ smoothing: Number(e.target.value) })} />
         </label>
       )}
       {notice && <span className="sub-notice" role="alert">{notice}</span>}

@@ -10,10 +10,12 @@ import { shiftKeyOnly } from "ol/events/condition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorState } from "../../api/api";
 import type { Command } from "../../commands/keymap";
-import { cleanFreehand, closeRing, dedupe, selfIntersects } from "../../design/geometry";
+import { closeRing, dedupe, outlineFromPoints, selfIntersects, snapToRings } from "../../design/geometry";
 import { createRegionLayer, mapRings, OWNED, ringsOf } from "../../design/olRegions";
 import { addRegion, designStore, removeRegions, reorderRegions, updateRegion } from "../../design/store";
+import { fromMap, toMap, type Pt } from "../../map/coords";
 import type { Scene } from "../../map/scene";
+import { FreehandInteraction } from "./freehand";
 
 /** Surface classes in the palette, with the key that picks each. Keys are fixed to class names, not positions. */
 export const CLASS_KEYS: { cls: number; key: string; label: string }[] = [
@@ -31,7 +33,7 @@ export const CLASS_KEYS: { cls: number; key: string; label: string }[] = [
 export const TOOLS = [
   { id: "select", label: "Select", key: "v", hint: "Click a region to select it; drag a vertex to move it, an edge to add one, Alt+click a vertex to remove it" },
   { id: "draw", label: "Polygon", key: "d", hint: "Click to add points; click the first point or press Enter to finish" },
-  { id: "freehand", label: "Freehand", key: "Shift+D", hint: "Drag to draw; the line is simplified and smoothed when you let go" },
+  { id: "freehand", label: "Freehand", key: "Shift+D", hint: "Drag to draw, lift and keep going as often as you like. Enter finishes the outline, Backspace removes the last stroke, Esc cancels. Middle-drag pans." },
 ] as const;
 export type ToolId = (typeof TOOLS)[number]["id"];
 
@@ -57,6 +59,8 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawRef = useRef<Draw | null>(null);
+  const freehandRef = useRef<FreehandInteraction | null>(null);
+  const finishFreehandRef = useRef<(pts: [number, number][]) => void>(() => undefined);
   const drawing = useRef(false);
   const latest = useRef({ editor, patch });
   latest.current = { editor, patch };
@@ -98,15 +102,28 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
       interactions.push(i);
     };
 
-    const finish = (f: Feature<Polygon>, freehand: boolean) => {
+    /** Add a finished outline (design coordinates) as a region of the active surface and hole. */
+    const addOutline = (ring: Pt[]) => {
       const { editor } = latest.current;
-      const { outer } = ringsOf(f);
-      const ring = dedupe(freehand ? cleanFreehand(outer, editor.smoothing) : outer);
       if (ring.length < 4) return say("Not enough points for a polygon.");
-      if (selfIntersects(ring)) return say("That outline crosses itself, so it was not added. Undo is not needed; just draw it again.");
+      if (selfIntersects(ring)) return say("That outline crosses itself, so it was not added. Draw it again; nothing needs undoing.");
       const cls = editor.activeClass;
       const id = addRegion(`Draw ${className(cls).toLowerCase()}`, { class: cls, hole: OWNED.includes(cls) ? editor.hole : null, outer: closeRing(ring), inner: [] });
       designStore.getState().select([id]);
+    };
+    const finishPolygon = (f: Feature<Polygon>) => addOutline(dedupe(ringsOf(f).outer));
+    /** Strokes become one outline, simplified to `smoothing` screen pixels at the current zoom. */
+    const finishFreehand = (points: [number, number][]) => {
+      const res = map.getView().getResolution() ?? 1;
+      addOutline(outlineFromPoints(points.map((p) => fromMap(p)), latest.current.editor.smoothing * res));
+    };
+    finishFreehandRef.current = finishFreehand;
+    // freehand snaps only where a stroke starts and ends, to the nearest vertex or edge of any region
+    const snapPoint = (c: [number, number]): [number, number] => {
+      if (!latest.current.editor.snap) return c;
+      const doc = designStore.getState().doc;
+      const rings = doc.order.flatMap((id) => [doc.regions[id].outer as Pt[], ...(doc.regions[id].inner as Pt[][])]);
+      return toMap(snapToRings(fromMap(c), rings, 10 * (map.getView().getResolution() ?? 1)));
     };
 
     if (tool === "select") {
@@ -136,18 +153,23 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
         s.end();
       });
       add(modify);
+    } else if (tool === "freehand") {
+      const freehand = new FreehandInteraction({ snap: snapPoint, onChange: () => undefined });
+      freehandRef.current = freehand;
+      add(freehand);
     } else {
-      const draw = new Draw({ type: "Polygon", freehand: tool === "freehand", snapTolerance: 12 });
+      const draw = new Draw({ type: "Polygon", snapTolerance: 12 });
       draw.on("drawstart", () => (drawing.current = true));
       draw.on("drawabort", () => (drawing.current = false));
       draw.on("drawend", (e) => {
         drawing.current = false;
-        finish(e.feature as Feature<Polygon>, tool === "freehand");
+        finishPolygon(e.feature as Feature<Polygon>);
       });
       drawRef.current = draw;
       add(draw);
     }
-    if (editor.snap) add(new Snap({ source: r.source, pixelTolerance: 10 }));
+    // select and polygon snap through OpenLayers; freehand snaps stroke ends itself (snapPoint)
+    if (editor.snap && tool !== "freehand") add(new Snap({ source: r.source, pixelTolerance: 10 }));
 
     return () => {
       for (const i of interactions) {
@@ -156,6 +178,7 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
         else map.removeInteraction(i);
       }
       drawRef.current = null;
+      freehandRef.current = null;
       drawing.current = false;
     };
   }, [map, active, isBundle, tool, editor.snap, layerReady, say]);
@@ -194,16 +217,22 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
     } },
     { id: "course.deselect", label: "Clear selection", scope: sel, keys: ["Escape"], group: "Edit", when: hasSelection, run: () => designStore.getState().select([]) },
   );
-  for (const t of ["draw", "freehand"]) {
-    const T = `tool:course/${t}` as const;
-    commands.push(
-      { id: `course.${t}.cancel`, label: "Cancel the outline", scope: T, keys: ["Escape"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.abortDrawing() },
-      { id: `course.${t}.finish`, label: "Finish the outline", scope: T, keys: ["Enter"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.finishDrawing() },
-      { id: `course.${t}.back`, label: "Remove the last point", scope: T, keys: ["Backspace"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.removeLastPoint() },
-    );
-  }
+  const polygon = "tool:course/draw" as const;
+  const freehand = "tool:course/freehand" as const;
+  const freehandActive = () => !!freehandRef.current?.isDrawing;
+  commands.push(
+    { id: "course.draw.cancel", label: "Cancel the outline", scope: polygon, keys: ["Escape"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.abortDrawing() },
+    { id: "course.draw.finish", label: "Finish the outline", scope: polygon, keys: ["Enter"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.finishDrawing() },
+    { id: "course.draw.back", label: "Remove the last point", scope: polygon, keys: ["Backspace"], group: "Drawing", when: () => drawing.current, run: () => drawRef.current?.removeLastPoint() },
+    { id: "course.freehand.cancel", label: "Cancel the outline", scope: freehand, keys: ["Escape"], group: "Drawing", when: freehandActive, run: () => freehandRef.current?.cancel() },
+    { id: "course.freehand.finish", label: "Finish the outline", scope: freehand, keys: ["Enter"], group: "Drawing", when: freehandActive, run: () => {
+      const pts = freehandRef.current?.finish();
+      if (pts) finishFreehandRef.current(pts);
+    } },
+    { id: "course.freehand.back", label: "Remove the last stroke", scope: freehand, keys: ["Backspace"], group: "Drawing", when: freehandActive, run: () => freehandRef.current?.undoStroke() },
+  );
   // leaving a drawing tool with Escape when nothing is being drawn returns to Select
-  commands.push({ id: "course.draw.exit", label: "Back to the Select tool", scope: "editor:course", keys: ["Escape"], group: "Tools", when: () => latest.current.editor.tool !== "select" && !drawing.current, run: () => latest.current.patch({ tool: "select" }) });
+  commands.push({ id: "course.draw.exit", label: "Back to the Select tool", scope: "editor:course", keys: ["Escape"], group: "Tools", when: () => latest.current.editor.tool !== "select" && !drawing.current && !freehandActive(), run: () => latest.current.patch({ tool: "select" }) });
 
   return { commands, notice, leftDragPans: !isBundle || !active || tool === "select" };
 }

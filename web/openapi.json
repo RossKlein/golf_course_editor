@@ -1240,8 +1240,8 @@
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
-            "default": 1.5,
-            "ge": 0.1,
+            "default": 0.1,
+            "ge": 0,
             "le": 10
           },
           "leftCollapsed": {
@@ -1335,8 +1335,8 @@
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
-            "default": 1.5,
-            "ge": 0.1,
+            "default": 0.1,
+            "ge": 0,
             "le": 10
           },
           "leftCollapsed": {
