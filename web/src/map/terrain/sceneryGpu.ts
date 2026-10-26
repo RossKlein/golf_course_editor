@@ -1,8 +1,10 @@
 import { boxVisible, frustumOf, type Frustum } from "../../view3d/frustum";
-import { chunkTrees, treeMesh, TREE_KINDS, type Mesh, type TreeChunk } from "../../view3d/scenery";
+import type { Look } from "../../api/api";
+import { chunkTrees, treeMesh, type Mesh, type TreeChunk } from "../../view3d/scenery";
 import { compileProgram, tryProgram, type Program } from "../../gfx/shader/program";
-import type { Gl } from "./gl";
+import { currentContext, type Gl } from "./gl";
 import { TUFT_TILE } from "./limits";
+import { setLookUniforms } from "./look";
 import { SHADERS } from "./shaders";
 
 // The standing things on the ground, drawn on top of the terrain: tufts of grass in the rough and low-poly trees.
@@ -69,13 +71,20 @@ export class SceneryGpu {
     models: Model[];
     quad: WebGLVertexArrayObject;
   } | null = null;
-  private groups: Float32Array[] = Array.from({ length: TREE_KINDS }, () => new Float32Array(0));
-  private chunks: TreeChunk[][] = Array.from({ length: TREE_KINDS }, () => []);
+  private look: Look | null = null;
+  private groups: Float32Array[] = [];
+  private chunks: TreeChunk[][] = [];
   private dirty = true;
   /** What the last draw sent, out of what there is: for checking that culling works. */
   stats = { tuftTiles: 0, tuftTilesAll: 0, treeChunks: 0, treeChunksAll: 0, tufts: 0, tuftsAll: 0, trees: 0, treesAll: 0 };
 
-  /** The trees, packed four to a tree (x, z, height, kind) and grouped by model kind. */
+  /** The course's look: the tree models, the light they take, the tufts and what grows where. The tree models are rebuilt. */
+  setLook(look: Look) {
+    this.free(currentContext());
+    this.look = look;
+  }
+
+  /** The trees, packed four to a tree (x, z, height, kind) and grouped by the look's model kinds. */
   setTrees(groups: Float32Array[]) {
     const chunked = groups.map((g) => chunkTrees(g));
     this.groups = chunked.map((c) => c.sorted);
@@ -96,7 +105,7 @@ export class SceneryGpu {
       return b;
     };
     const models: Model[] = [];
-    for (let kind = 0; kind < TREE_KINDS; kind++) {
+    for (const kind of this.look!.trees.kinds) {
       const mesh: Mesh = treeMesh(kind);
       const vao = gl.createVertexArray()!;
       gl.bindVertexArray(vao);
@@ -132,14 +141,17 @@ export class SceneryGpu {
    */
   draw(g: Gl, p: SceneryParams, bindHeight: (p: Program) => void, bindClasses: (p: Program) => void) {
     const { gl } = g;
+    if (!this.look) return;
+    const look = this.look;
     if (!this.made || this.made.generation !== g.generation) this.make(g);
     const m = this.made!;
     if (this.dirty) {
       this.dirty = false;
       m.models.forEach((model, k) => {
         gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
-        gl.bufferData(gl.ARRAY_BUFFER, this.groups[k], gl.DYNAMIC_DRAW);
-        model.count = this.groups[k].length / 4;
+        const trees = this.groups[k] ?? new Float32Array(0);
+        gl.bufferData(gl.ARRAY_BUFFER, trees, gl.DYNAMIC_DRAW);
+        model.count = trees.length / 4;
       });
     }
 
@@ -154,13 +166,14 @@ export class SceneryGpu {
       gl.uniformMatrix4fv(t.u.uViewProj, false, p.viewProj);
       gl.uniform3f(t.u.uSunDir, ...p.sunDir);
       gl.uniform1f(t.u.uScale, p.scale);
+      setLookUniforms(gl, t, look);
       this.stats.treeChunks = this.stats.treeChunksAll = this.stats.trees = 0;
       this.stats.treesAll = this.treeCount;
       m.models.forEach((model, k) => {
         if (!model.count) return;
         gl.bindVertexArray(model.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
-        for (const c of this.chunks[k]) {
+        for (const c of this.chunks[k] ?? []) {
           this.stats.treeChunksAll++;
           // a tree reaches `radius` times its height from its trunk, up to 15% more when it is spread
           const r = model.radius * c.tallest * 1.15;
@@ -185,8 +198,8 @@ export class SceneryGpu {
       gl.uniform1f(t.u.uCell, cell);
       gl.uniform1i(t.u.uN, across);
       gl.uniform1f(t.u.uRadius, p.tuftRange);
-      gl.uniform1f(t.u.uTall, 0.4);
       gl.uniform1f(t.u.uScale, p.scale);
+      setLookUniforms(gl, t, look);
       gl.bindVertexArray(m.quad);
       const tiles = tuftTiles(p.target, p.tuftRange, p.tuftDensity, frustum, y0, y1 + 1);
       this.stats.tuftTiles = tiles.length;

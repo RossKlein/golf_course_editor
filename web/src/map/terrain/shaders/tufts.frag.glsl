@@ -1,5 +1,8 @@
 #include "head.glsl"
 
+uniform vec3 uTuftRoot;
+uniform vec3 uTuftTip;
+
 in vec2 vUv;
 in float vSeed;
 out vec4 outColor;
@@ -18,7 +21,5 @@ void main() {
     if (vUv.y < top && abs(x) < 0.085 * (1.0 - vUv.y / top)) shade = vUv.y / top;
   }
   if (shade < 0.0) discard;
-  vec3 root = vec3(0.16, 0.31, 0.10);
-  vec3 tip = vec3(0.46, 0.66, 0.24);
-  outColor = vec4(mix(root, tip, shade) * (0.85 + 0.3 * vSeed), 1.0);
+  outColor = vec4(mix(uTuftRoot, uTuftTip, shade) * (0.85 + 0.3 * vSeed), 1.0);
 }

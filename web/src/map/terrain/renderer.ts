@@ -7,7 +7,10 @@ import { packHeights } from "./reference";
 import { Sculptor } from "./sculptor";
 import { SPECKLE_SIZE, speckleTexels } from "../../view3d/scenery";
 import { SceneryGpu } from "./sceneryGpu";
-import { SUN, sunDirection } from "./sun";
+import type { Look } from "../../api/api";
+import { setLookUniforms } from "./look";
+import { sunDirection, sunOfLook, type Sun } from "./sun";
+import { DEFAULT_THEME, setThemeUniforms, type TerrainTheme } from "./theme";
 
 export type TerrainStyle = {
   /** Relief exaggeration for the lighting. */
@@ -52,8 +55,6 @@ export type View3d = {
   contour: number;
   slope: boolean;
 };
-
-const SKY: [number, number, number] = [0.62, 0.76, 0.9];
 
 /** Whether terrain can be drawn on the GPU here. Callers fall back to the CPU hillshade when it cannot. */
 export function terrainSupported(grid?: HeightGrid): boolean {
@@ -119,8 +120,24 @@ export class TerrainRenderer {
   private tileAverage: [number, number, number] = [1, 1, 1];
   private stripes: Float32Array = new Float32Array(48);
 
-  /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. */
-  constructor(private readonly data: TerrainGrid) {}
+  private look!: Look;
+  private sun!: Sun;
+
+  /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
+  constructor(private readonly data: TerrainGrid, look: Look, private theme: TerrainTheme = DEFAULT_THEME) {
+    this.setLook(look);
+  }
+
+  /** Use a new look (the course was rebuilt, or its look edited): the sun, sky, surfaces, tufts and trees all follow it. */
+  setLook(look: Look) {
+    this.look = look;
+    this.sun = sunOfLook(look);
+    this.scenery.setLook(look);
+  }
+
+  setTheme(theme: TerrainTheme) {
+    this.theme = theme;
+  }
 
   /** Make the terrain editable. `effective` is the CPU copy of base + sculpting that the sculptor keeps up to date. */
   enableSculpt(effective: HeightGrid): Sculptor {
@@ -302,7 +319,8 @@ export class TerrainRenderer {
     gl.uniform1f(flat.u.uExaggeration, style.exaggeration);
     gl.uniform1f(flat.u.uContour, style.contour);
     gl.uniform1f(flat.u.uSlope, style.slope ? 1 : 0);
-    gl.uniform2f(flat.u.uSun, SUN.azimuth, SUN.altitude);
+    gl.uniform2f(flat.u.uSun, this.sun.azimuth, this.sun.altitude);
+    setThemeUniforms(gl, flat, this.theme);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     return canvas;
   }
@@ -316,7 +334,7 @@ export class TerrainRenderer {
     this.resize(g, size);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
-    gl.clearColor(SKY[0], SKY[1], SKY[2], 1);
+    gl.clearColor(...this.look.sky, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.useProgram(mesh.program);
     this.bindHeight(g, mesh);
@@ -337,10 +355,12 @@ export class TerrainRenderer {
     gl.uniform1f(mesh.u.uLineAlpha, this.linesImage ? v.lines : 0);
 
     gl.uniformMatrix4fv(mesh.u.uViewProj, false, v.viewProj);
-    gl.uniform3f(mesh.u.uSunDir, ...sunDirection());
+    gl.uniform3f(mesh.u.uSunDir, ...sunDirection(this.sun));
+    setLookUniforms(gl, mesh, this.look);
+    setThemeUniforms(gl, mesh, this.theme);
     gl.uniform1f(mesh.u.uRelief, v.relief);
     gl.uniform1f(mesh.u.uShading, v.shading);
-    gl.uniform3f(mesh.u.uSpeckle, v.target[0], v.target[1], v.tuftRange); // sand is speckled as far as the grass grows
+    gl.uniform3f(mesh.u.uSpeckle, v.target[0], v.target[1], v.tuftRange); // speckle shows as far as the grass grows
     gl.uniform1f(mesh.u.uScale, v.scale);
     gl.uniform1f(mesh.u.uContour, v.contour);
     gl.uniform1f(mesh.u.uSlope, v.slope ? 1 : 0);
@@ -352,7 +372,6 @@ export class TerrainRenderer {
     this.speckleTexture.bind(g, 7);
     gl.uniform1i(mesh.u.uSpeckleTex, 7);
     gl.uniform3f(mesh.u.uTileAvg, ...this.tileAverage);
-    gl.uniform1f(mesh.u.uTileMetres, 3);
     gl.uniform2fv(mesh.u.uStripe, this.stripes);
     gl.uniform1f(mesh.u.uGame, game ? 1 : 0);
     // outermost ring first; where rings overlap the finer one wins, so the coarser ones are pushed back a little in depth
@@ -372,7 +391,7 @@ export class TerrainRenderer {
     if (v.tufts || v.trees) {
       this.scenery.draw(
         g,
-        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, ground: this.groundRange(), tufts: v.tufts && !!this.classes, tuftRange: v.tuftRange, tuftDensity: v.tuftDensity, trees: v.trees },
+        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(this.sun), scale: v.scale, ground: this.groundRange(), tufts: v.tufts && !!this.classes, tuftRange: v.tuftRange, tuftDensity: v.tuftDensity, trees: v.trees },
         (p) => this.bindHeight(g, p),
         (p) => this.bindClasses(g, p),
       );

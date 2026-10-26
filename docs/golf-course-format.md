@@ -162,15 +162,32 @@ Landmarks are always rendered at full detail (never collapsed into far-distance 
       "par": 4,
       "route": [[812.0, 640.0], [840.5, 700.2], [902.3, 811.7]]
     }
-  ]
+  ],
+  "look": { "...": "see Look" }
 }
 ```
 
+- `look` is how the course is drawn (see Look below). The compiler always writes one; a `course.json` without it is read with the default look.
 - `landmarks` may be empty or omitted.
 - `holes[].route` is the annotated tee-to-green polyline in course metres. The first point is the tee, and yardage is derived from the line. It is also the camera and aiming reference.
 - A hole's tee, fairway and green are the cells of those classes in `class.png` whose hole number matches. Its green is the green (2) cells it owns; the loader derives the green's centre from them for camera and aim.
 - **Pins.** The host picks a pin by trying random cells that are green (2) and owned by the hole, and accepting the first whose surrounding ring of cells (about 3 m out) is also green and owned by the hole, so the pin is never near an edge. After a few failed tries it falls back to the green's centre. The pin is never stored in the map.
 - Hole numbers are 1-based and contiguous.
+
+## Look
+
+`course.json`'s `look` holds everything an artist would change about how the course is drawn. The editor and the game read the same values, so no colour or size is written into a shader. The schema is the `Look` model in `course_maker/models.py` (its ranges are validated there) and the defaults are `course_maker/look_defaults.py`. Colours are `[r, g, b]`, each 0 to 1.
+
+| Field | What it holds |
+| --- | --- |
+| `sky` | the sky colour |
+| `sun` | `latitude`, `declination` (23.44 at the June solstice) and `hourAngle` (15 degrees an hour from solar noon, negative in the morning). The default is 11 am daylight time in midsummer on the US east coast: about 98 degrees round and 57 degrees up. |
+| `surfaces` | exactly one entry per surface class, in class order (rough, fairway, green, collar, tee, bunker, water, path, woods). Each has `color`; optional `color2` and `stripe` (metres across one mowing stripe, 0 for none) for mown surfaces; `grain` (how much grass texture shows); `shade` (how much the relief shading applies, 1 normally); `speckleDark` and `specklePale` (salt and pepper, 0 for none); optional `earth` and `mottle` (a second colour the surface is mottled with, as the forest floor is); and `tuft` (height of standing grass as a multiple of `tufts.height`, 0 for none) |
+| `grass` | `tile` (the seamless grass texture, by file name), `tileMetres` (ground one tile covers), `wobble` (how far surface edges are wobbled, in class cells), `speckleGrain` (metres across one grain) |
+| `tufts` | the standing grass in the rough: `height` (metres, for a surface with `tuft` 1), `width` (a multiple of the height), `root` and `tip` colours |
+| `trees` | `kinds`, each a tree model 1 unit tall made of `parts` (a cone or frustum, or a faceted ball: size, position and colour) with a `name` and a typical `height` range in metres; and the light trees take: `ambient`, `direct` and `base` (brightness at the foot). A tree's `kind` in `trees.bin` picks a model, wrapping past the last. |
+
+What the look does not hold: how the editor draws its own aids (slope colours, contour strength, overlay colours), and quality settings of whoever is viewing (grass range and density, shadow quality). Those are not part of the course.
 
 ## Validation
 

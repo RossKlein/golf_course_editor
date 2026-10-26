@@ -3,7 +3,9 @@ import { hillshadePixels, type HeightGrid } from "../../decode/decode";
 import { M_PER_FT } from "../../units/units";
 import { contourOptions, nearestContour, nextContour } from "./contours";
 import { contourIndex, packHeights, shadeOf } from "./reference";
-import { SUN, solarPosition, sunDirection } from "./sun";
+import { testSun as SUN } from "./look.fixture";
+import { solarPosition, sunDirection, sunOfLook } from "./sun";
+import { testLook } from "./look.fixture";
 
 /** A grid of `cols` x `rows` heights from a function of (col, row). */
 function grid(cols: number, rows: number, h: (c: number, r: number) => number): HeightGrid {
@@ -14,24 +16,24 @@ function grid(cols: number, rows: number, h: (c: number, r: number) => number): 
 
 describe("terrain lighting", () => {
   it("flat ground is lit by the sun's height alone", () => {
-    expect(shadeOf(0, 0, 3)).toBeCloseTo(Math.sin(SUN.altitude), 6);
+    expect(shadeOf(0, 0, 3, SUN)).toBeCloseTo(Math.sin(SUN.altitude), 6);
   });
 
   it("faces toward the sun are brighter than faces away from it", () => {
     // the sun is in the east, so ground that falls to the east faces it
-    expect(shadeOf(-0.2, 0, 3)).toBeGreaterThan(shadeOf(0, 0, 3));
-    expect(shadeOf(0.2, 0, 3)).toBeLessThan(shadeOf(0, 0, 3));
+    expect(shadeOf(-0.2, 0, 3, SUN)).toBeGreaterThan(shadeOf(0, 0, 3, SUN));
+    expect(shadeOf(0.2, 0, 3, SUN)).toBeLessThan(shadeOf(0, 0, 3, SUN));
   });
 
   it("exaggeration steepens the shading", () => {
-    expect(Math.abs(shadeOf(0.2, 0.2, 6) - shadeOf(0, 0, 6))).toBeGreaterThan(Math.abs(shadeOf(0.2, 0.2, 1) - shadeOf(0, 0, 1)));
+    expect(Math.abs(shadeOf(0.2, 0.2, 6, SUN) - shadeOf(0, 0, 6, SUN))).toBeGreaterThan(Math.abs(shadeOf(0.2, 0.2, 1, SUN) - shadeOf(0, 0, 1, SUN)));
   });
 
   it("matches the CPU hillshade the viewer used before, on a tilted plane", () => {
     const g = grid(5, 5, (c, r) => 0.3 * c - 0.1 * r);
     const px = new Uint8ClampedArray(25 * 4);
-    hillshadePixels(g, 1, 1, 3, px);
-    expect(px[(2 * 5 + 2) * 4]).toBe(Math.round(shadeOf(0.3, -0.1, 3) * 255));
+    hillshadePixels(g, 1, 1, 3, px, SUN);
+    expect(px[(2 * 5 + 2) * 4]).toBe(Math.round(shadeOf(0.3, -0.1, 3, SUN) * 255));
   });
 });
 
@@ -83,6 +85,12 @@ describe("the sun", () => {
     expect(deg(SUN.altitude)).toBeLessThan(62);
   });
 
+  it("is the look's sun, however the look sets it", () => {
+    expect(sunOfLook(testLook)).toEqual(SUN);
+    const noon = sunOfLook({ ...testLook, sun: { latitude: 33.5, declination: 23.44, hourAngle: 0 } });
+    expect(deg(noon.azimuth)).toBeCloseTo(180, 4);
+  });
+
   it("is due south and at its highest at solar noon", () => {
     const noon = solarPosition(33.5, 23.44, 0);
     expect(deg(noon.azimuth)).toBeCloseTo(180, 4);
@@ -95,7 +103,7 @@ describe("the sun", () => {
   });
 
   it("points east and up in course axes", () => {
-    const [x, y, z] = sunDirection();
+    const [x, y, z] = sunDirection(SUN);
     expect(x).toBeGreaterThan(0.4); // east is +x
     expect(y).toBeGreaterThan(0.7);
     expect(z).toBeLessThan(0.2); // slightly south of east would be +z

@@ -176,6 +176,25 @@
         }
       }
     },
+    "/api/look/default": {
+      "get": {
+        "summary": "Look Default",
+        "description": "The look a new course starts with, for views of things that are not courses yet (a GeoTIFF's hillshade).",
+        "operationId": "look_default_api_look_default_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Look"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bundle": {
       "get": {
         "summary": "Bundle Course",
@@ -988,6 +1007,96 @@
         ],
         "title": "BakeResult"
       },
+      "Blob": {
+        "properties": {
+          "shape": {
+            "type": "string",
+            "const": "blob",
+            "title": "Shape",
+            "default": "blob"
+          },
+          "cx": {
+            "type": "number",
+            "title": "Cx"
+          },
+          "cy": {
+            "type": "number",
+            "title": "Cy"
+          },
+          "cz": {
+            "type": "number",
+            "title": "Cz"
+          },
+          "rx": {
+            "type": "number",
+            "title": "Rx",
+            "gt": 0
+          },
+          "ry": {
+            "type": "number",
+            "title": "Ry",
+            "gt": 0
+          },
+          "rz": {
+            "type": "number",
+            "title": "Rz",
+            "gt": 0
+          },
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "sides": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 3.0,
+            "title": "Sides",
+            "default": 7
+          },
+          "rings": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 2.0,
+            "title": "Rings",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shape",
+          "cx",
+          "cy",
+          "cz",
+          "rx",
+          "ry",
+          "rz",
+          "color",
+          "sides",
+          "rings"
+        ],
+        "title": "Blob",
+        "description": "A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz)."
+      },
       "BoundsArea-Input": {
         "properties": {
           "id": {
@@ -1351,6 +1460,9 @@
             },
             "type": "array",
             "title": "Holes"
+          },
+          "look": {
+            "$ref": "#/components/schemas/Look"
           }
         },
         "additionalProperties": false,
@@ -1369,7 +1481,8 @@
           "patches",
           "trees",
           "landmarks",
-          "holes"
+          "holes",
+          "look"
         ],
         "title": "Course"
       },
@@ -1908,6 +2021,120 @@
         "title": "ElevationLayer",
         "description": "16-bit heights in R/G of a PNG, as in the bundle format; A = 0 marks no data."
       },
+      "Frustum": {
+        "properties": {
+          "shape": {
+            "type": "string",
+            "const": "frustum",
+            "title": "Shape",
+            "default": "frustum"
+          },
+          "y0": {
+            "type": "number",
+            "title": "Y0"
+          },
+          "r0": {
+            "type": "number",
+            "title": "R0",
+            "ge": 0
+          },
+          "y1": {
+            "type": "number",
+            "title": "Y1"
+          },
+          "r1": {
+            "type": "number",
+            "title": "R1",
+            "ge": 0
+          },
+          "sides": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 3.0,
+            "title": "Sides"
+          },
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "shade": {
+            "type": "number",
+            "title": "Shade",
+            "default": 0.12,
+            "ge": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shape",
+          "y0",
+          "r0",
+          "y1",
+          "r1",
+          "sides",
+          "color",
+          "shade"
+        ],
+        "title": "Frustum",
+        "description": "A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's."
+      },
+      "Grass": {
+        "properties": {
+          "tile": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Tile"
+          },
+          "tileMetres": {
+            "type": "number",
+            "title": "Tilemetres",
+            "gt": 0,
+            "le": 100
+          },
+          "wobble": {
+            "type": "number",
+            "title": "Wobble",
+            "ge": 0,
+            "le": 4
+          },
+          "speckleGrain": {
+            "type": "number",
+            "title": "Specklegrain",
+            "gt": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tile",
+          "tileMetres",
+          "wobble",
+          "speckleGrain"
+        ],
+        "title": "Grass"
+      },
       "Grid": {
         "properties": {
           "file": {
@@ -2207,6 +2434,65 @@
         ],
         "title": "Layout",
         "description": "Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote."
+      },
+      "Look": {
+        "properties": {
+          "sky": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Sky"
+          },
+          "sun": {
+            "$ref": "#/components/schemas/Sun"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/Surface"
+            },
+            "type": "array",
+            "maxItems": 9,
+            "minItems": 9,
+            "title": "Surfaces"
+          },
+          "grass": {
+            "$ref": "#/components/schemas/Grass"
+          },
+          "tufts": {
+            "$ref": "#/components/schemas/Tufts"
+          },
+          "trees": {
+            "$ref": "#/components/schemas/Trees"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sky",
+          "sun",
+          "surfaces",
+          "grass",
+          "tufts",
+          "trees"
+        ],
+        "title": "Look"
       },
       "Patch": {
         "properties": {
@@ -2537,6 +2823,188 @@
         "title": "Report",
         "description": "The result of validating a bundle."
       },
+      "Sun": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "title": "Latitude",
+            "ge": -90,
+            "le": 90
+          },
+          "declination": {
+            "type": "number",
+            "title": "Declination",
+            "ge": -23.5,
+            "le": 23.5
+          },
+          "hourAngle": {
+            "type": "number",
+            "title": "Hourangle",
+            "ge": -180,
+            "le": 180
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "latitude",
+          "declination",
+          "hourAngle"
+        ],
+        "title": "Sun",
+        "description": "Where the sun is: a place, a time of year and a time of day."
+      },
+      "Surface": {
+        "properties": {
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "color2": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  }
+                ],
+                "type": "array",
+                "maxItems": 3,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color2"
+          },
+          "stripe": {
+            "type": "number",
+            "title": "Stripe",
+            "default": 0.0,
+            "ge": 0,
+            "le": 100
+          },
+          "grain": {
+            "type": "number",
+            "title": "Grain",
+            "ge": 0,
+            "le": 1
+          },
+          "shade": {
+            "type": "number",
+            "title": "Shade",
+            "default": 1.0,
+            "ge": 0,
+            "le": 2
+          },
+          "speckleDark": {
+            "type": "number",
+            "title": "Speckledark",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "specklePale": {
+            "type": "number",
+            "title": "Specklepale",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "earth": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  }
+                ],
+                "type": "array",
+                "maxItems": 3,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earth"
+          },
+          "mottle": {
+            "type": "number",
+            "title": "Mottle",
+            "default": 0.0,
+            "ge": 0,
+            "le": 10
+          },
+          "tuft": {
+            "type": "number",
+            "title": "Tuft",
+            "default": 0.0,
+            "ge": 0,
+            "le": 4
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "color",
+          "color2",
+          "stripe",
+          "grain",
+          "shade",
+          "speckleDark",
+          "specklePale",
+          "earth",
+          "mottle",
+          "tuft"
+        ],
+        "title": "Surface",
+        "description": "How one surface class is coloured, and what grows on it. The look has one for each class, in class order."
+      },
       "TifEntry": {
         "properties": {
           "path": {
@@ -2682,6 +3150,103 @@
         "title": "TifView",
         "description": "A GeoTIFF rendered for the viewer. Rendered pixels may be decimated from the source."
       },
+      "TreeKind": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "height": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "gt": 0
+              },
+              {
+                "type": "number",
+                "gt": 0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Height"
+          },
+          "parts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Frustum"
+                },
+                {
+                  "$ref": "#/components/schemas/Blob"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "shape",
+                "mapping": {
+                  "blob": "#/components/schemas/Blob",
+                  "frustum": "#/components/schemas/Frustum"
+                }
+              }
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Parts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "height",
+          "parts"
+        ],
+        "title": "TreeKind",
+        "description": "One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last."
+      },
+      "Trees": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/TreeKind"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Kinds"
+          },
+          "ambient": {
+            "type": "number",
+            "title": "Ambient",
+            "ge": 0,
+            "le": 1
+          },
+          "direct": {
+            "type": "number",
+            "title": "Direct",
+            "ge": 0,
+            "le": 2
+          },
+          "base": {
+            "type": "number",
+            "title": "Base",
+            "ge": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kinds",
+          "ambient",
+          "direct",
+          "base"
+        ],
+        "title": "Trees"
+      },
       "TreesRef": {
         "properties": {
           "file": {
@@ -2702,6 +3267,78 @@
           "count"
         ],
         "title": "TreesRef"
+      },
+      "Tufts": {
+        "properties": {
+          "height": {
+            "type": "number",
+            "title": "Height",
+            "gt": 0,
+            "le": 5
+          },
+          "width": {
+            "type": "number",
+            "title": "Width",
+            "gt": 0,
+            "le": 5
+          },
+          "root": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Root"
+          },
+          "tip": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Tip"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "height",
+          "width",
+          "root",
+          "tip"
+        ],
+        "title": "Tufts",
+        "description": "The standing grass in the rough, drawn as billboards."
       },
       "ValidationError": {
         "properties": {

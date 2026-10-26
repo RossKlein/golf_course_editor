@@ -87,6 +87,112 @@ class Hole(Model):
     route: Annotated[list[tuple[Number, Number]], Field(min_length=2)]
 
 
+# --- the look: how the course is drawn --------------------------------------------
+# Everything an artist would change about how the course looks lives here, in course.json, so the editor's view and the
+# game draw the same thing and no colour or size is a literal in a shader. Defaults are in look_defaults.py.
+
+Unit = Annotated[Number, Field(ge=0, le=1)]
+Color = tuple[Unit, Unit, Unit]  # red, green, blue, each 0 to 1
+
+
+class Sun(Model):
+    """Where the sun is: a place, a time of year and a time of day."""
+
+    latitude: Annotated[Number, Field(ge=-90, le=90)]
+    declination: Annotated[Number, Field(ge=-23.5, le=23.5)]  # the sun's latitude: 23.44 at the June solstice
+    hourAngle: Annotated[Number, Field(ge=-180, le=180)]  # 15 degrees an hour from solar noon, negative in the morning
+
+
+class Surface(Model):
+    """How one surface class is coloured, and what grows on it. The look has one for each class, in class order."""
+
+    color: Color
+    color2: Color | None = None  # the other mowing stripe's colour; with no stripes, unused
+    stripe: Annotated[Number, Field(ge=0, le=100)] = 0.0  # metres across one mowing stripe; 0 for none
+    grain: Unit  # how much of the grass texture shows through the colour
+    shade: Annotated[Number, Field(ge=0, le=2)] = 1.0  # how much the relief shading applies; 1 as for grass
+    speckleDark: Unit = 0.0  # salt and pepper: how much a dark grain darkens
+    specklePale: Unit = 0.0  # and how much a pale one lightens
+    earth: Color | None = None  # a second colour the surface is mottled with (the forest floor's soil)
+    mottle: Annotated[Number, Field(ge=0, le=10)] = 0.0  # how strongly the earth shows through; 0 for none
+    tuft: Annotated[Number, Field(ge=0, le=4)] = 0.0  # height of standing grass as a multiple of tufts.height; 0 for none
+
+
+class Grass(Model):
+    tile: Name  # the seamless grass texture the ground is tiled with, by file name
+    tileMetres: Annotated[Number, Field(gt=0, le=100)]  # ground one tile covers
+    wobble: Annotated[Number, Field(ge=0, le=4)]  # how far surface edges are wobbled by the texture, in class cells
+    speckleGrain: Annotated[Number, Field(gt=0, le=1)]  # metres across one grain of speckle
+
+
+class Tufts(Model):
+    """The standing grass in the rough, drawn as billboards."""
+
+    height: Annotated[Number, Field(gt=0, le=5)]  # metres, for a surface with tuft = 1
+    width: Annotated[Number, Field(gt=0, le=5)]  # as a multiple of the height
+    root: Color
+    tip: Color
+
+
+class Frustum(Model):
+    """A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's."""
+
+    shape: Literal["frustum"] = "frustum"
+    y0: Number
+    r0: Annotated[Number, Field(ge=0)]
+    y1: Number
+    r1: Annotated[Number, Field(ge=0)]
+    sides: Annotated[Int, Field(ge=3, le=16)]
+    color: Color
+    shade: Unit = 0.12  # how much alternate faces are darkened
+
+
+class Blob(Model):
+    """A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz)."""
+
+    shape: Literal["blob"] = "blob"
+    cx: Number
+    cy: Number
+    cz: Number
+    rx: Annotated[Number, Field(gt=0)]
+    ry: Annotated[Number, Field(gt=0)]
+    rz: Annotated[Number, Field(gt=0)]
+    color: Color
+    sides: Annotated[Int, Field(ge=3, le=16)] = 7
+    rings: Annotated[Int, Field(ge=2, le=8)] = 3
+
+
+class TreeKind(Model):
+    """One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last."""
+
+    name: Name
+    height: tuple[Annotated[Number, Field(gt=0)], Annotated[Number, Field(gt=0)]]  # a typical tree's height range in metres, for scattering trees where there is no data
+    parts: Annotated[list[Annotated[Frustum | Blob, Field(discriminator="shape")]], Field(min_length=1, max_length=16)]
+
+
+class Trees(Model):
+    kinds: Annotated[list[TreeKind], Field(min_length=1, max_length=8)]
+    ambient: Unit  # light a tree takes from every side
+    direct: Annotated[Number, Field(ge=0, le=2)]  # and from the sun, on faces turned towards it
+    base: Unit  # brightness at the foot of a tree, rising to full at the top
+
+
+class Look(Model):
+    sky: Color
+    sun: Sun
+    # one for each surface class, in class order: rough, fairway, green, collar, tee, bunker, water, path, woods
+    surfaces: Annotated[list[Surface], Field(min_length=len(spec.CLASSES), max_length=len(spec.CLASSES))]
+    grass: Grass
+    tufts: Tufts
+    trees: Trees
+
+
+def _default_look() -> "Look":
+    from .look_defaults import default_look  # it builds Looks, so it cannot be imported until this module is done
+
+    return default_look()
+
+
 class Course(Model):
     name: Name
     attribution: Name
@@ -102,6 +208,7 @@ class Course(Model):
     trees: TreesRef
     landmarks: list[Landmark] = []
     holes: list[Hole]
+    look: Look = Field(default_factory=_default_look)
 
     @property
     def extent(self) -> tuple[float, float]:

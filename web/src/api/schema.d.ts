@@ -92,6 +92,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/look/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look Default
+         * @description The look a new course starts with, for views of things that are not courses yet (a GeoTIFF's hillshade).
+         */
+        get: operations["look_default_api_look_default_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bundle": {
         parameters: {
             query?: never;
@@ -415,6 +435,45 @@ export interface components {
             report: components["schemas"]["Report"];
         };
         /**
+         * Blob
+         * @description A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz).
+         */
+        Blob: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            shape: "blob";
+            /** Cx */
+            cx: number;
+            /** Cy */
+            cy: number;
+            /** Cz */
+            cz: number;
+            /** Rx */
+            rx: number;
+            /** Ry */
+            ry: number;
+            /** Rz */
+            rz: number;
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Sides
+             * @default 7
+             */
+            sides: number;
+            /**
+             * Rings
+             * @default 3
+             */
+            rings: number;
+        };
+        /**
          * BoundsArea
          * @description Part of the ground that is in bounds for one hole. A hole's in-bounds ground is the union of its areas; a hole
          *     with none yet is in bounds everywhere (so unfinished holes are not flagged as out of bounds).
@@ -563,6 +622,7 @@ export interface components {
             landmarks: components["schemas"]["Landmark"][];
             /** Holes */
             holes: components["schemas"]["Hole"][];
+            look: components["schemas"]["Look"];
         };
         /**
          * DesignDoc
@@ -881,6 +941,49 @@ export interface components {
             /** Hmax */
             hMax: number;
         };
+        /**
+         * Frustum
+         * @description A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's.
+         */
+        Frustum: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            shape: "frustum";
+            /** Y0 */
+            y0: number;
+            /** R0 */
+            r0: number;
+            /** Y1 */
+            y1: number;
+            /** R1 */
+            r1: number;
+            /** Sides */
+            sides: number;
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Shade
+             * @default 0.12
+             */
+            shade: number;
+        };
+        /** Grass */
+        Grass: {
+            /** Tile */
+            tile: string;
+            /** Tilemetres */
+            tileMetres: number;
+            /** Wobble */
+            wobble: number;
+            /** Specklegrain */
+            speckleGrain: number;
+        };
         /** Grid */
         Grid: {
             /** File */
@@ -987,6 +1090,21 @@ export interface components {
              * @default []
              */
             holes: components["schemas"]["DesignHole-Output"][];
+        };
+        /** Look */
+        Look: {
+            /** Sky */
+            sky: [
+                number,
+                number,
+                number
+            ];
+            sun: components["schemas"]["Sun"];
+            /** Surfaces */
+            surfaces: components["schemas"]["Surface"][];
+            grass: components["schemas"]["Grass"];
+            tufts: components["schemas"]["Tufts"];
+            trees: components["schemas"]["Trees"];
         };
         /** Patch */
         Patch: {
@@ -1105,6 +1223,74 @@ export interface components {
             /** Total Bytes */
             readonly total_bytes: number;
         };
+        /**
+         * Sun
+         * @description Where the sun is: a place, a time of year and a time of day.
+         */
+        Sun: {
+            /** Latitude */
+            latitude: number;
+            /** Declination */
+            declination: number;
+            /** Hourangle */
+            hourAngle: number;
+        };
+        /**
+         * Surface
+         * @description How one surface class is coloured, and what grows on it. The look has one for each class, in class order.
+         */
+        Surface: {
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /** Color2 */
+            color2: [
+                number,
+                number,
+                number
+            ] | null;
+            /**
+             * Stripe
+             * @default 0
+             */
+            stripe: number;
+            /** Grain */
+            grain: number;
+            /**
+             * Shade
+             * @default 1
+             */
+            shade: number;
+            /**
+             * Speckledark
+             * @default 0
+             */
+            speckleDark: number;
+            /**
+             * Specklepale
+             * @default 0
+             */
+            specklePale: number;
+            /** Earth */
+            earth: [
+                number,
+                number,
+                number
+            ] | null;
+            /**
+             * Mottle
+             * @default 0
+             */
+            mottle: number;
+            /**
+             * Tuft
+             * @default 0
+             */
+            tuft: number;
+        };
         /** TifEntry */
         TifEntry: {
             /** Path */
@@ -1151,12 +1337,60 @@ export interface components {
             /** Bakeable */
             bakeable: boolean;
         };
+        /**
+         * TreeKind
+         * @description One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last.
+         */
+        TreeKind: {
+            /** Name */
+            name: string;
+            /** Height */
+            height: [
+                number,
+                number
+            ];
+            /** Parts */
+            parts: (components["schemas"]["Frustum"] | components["schemas"]["Blob"])[];
+        };
+        /** Trees */
+        Trees: {
+            /** Kinds */
+            kinds: components["schemas"]["TreeKind"][];
+            /** Ambient */
+            ambient: number;
+            /** Direct */
+            direct: number;
+            /** Base */
+            base: number;
+        };
         /** TreesRef */
         TreesRef: {
             /** File */
             file: string;
             /** Count */
             count: number;
+        };
+        /**
+         * Tufts
+         * @description The standing grass in the rough, drawn as billboards.
+         */
+        Tufts: {
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
+            /** Root */
+            root: [
+                number,
+                number,
+                number
+            ];
+            /** Tip */
+            tip: [
+                number,
+                number,
+                number
+            ];
         };
         /** ValidationError */
         ValidationError: {
@@ -1332,6 +1566,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    look_default_api_look_default_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Look"];
                 };
             };
         };

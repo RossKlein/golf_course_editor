@@ -3,7 +3,8 @@ import { TUFT_TILE } from "../map/terrain/limits";
 import { TUFT_RANGE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
 import { frustumOf } from "./frustum";
 import { lookAt, multiply, perspective } from "./mat4";
-import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
+import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, type ClassImage } from "./scenery";
+import { testLook } from "../map/terrain/look.fixture";
 
 /** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
 function classes(w: number, h: number, fn: (c: number, r: number) => number): ClassImage {
@@ -11,6 +12,8 @@ function classes(w: number, h: number, fn: (c: number, r: number) => number): Cl
   for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) data[(r * w + c) * 4] = fn(c, r);
   return { data, width: w, height: h };
 }
+
+const KINDS = testLook.trees.kinds;
 
 describe("hash", () => {
   it("is deterministic and spread over [0, 1)", () => {
@@ -60,13 +63,13 @@ describe("woods scatter", () => {
   const img = classes(200, 200, (c) => (c >= 100 ? 8 : 1)); // 100 x 100 m at 0.5 m cells, woods in the east half
 
   it("puts trees only in woods", () => {
-    const t = scatterWoods(img, 0.5);
+    const t = scatterWoods(img, 0.5, KINDS);
     expect(t.length).toBeGreaterThan(0);
     for (let i = 0; i < t.length; i += 4) expect(t[i]).toBeGreaterThanOrEqual(50 - 0.01);
   });
 
   it("is deterministic, one tree to a cell of the grid, and gives plausible heights and kinds", () => {
-    const a = scatterWoods(img, 0.5), b = scatterWoods(img, 0.5);
+    const a = scatterWoods(img, 0.5, KINDS), b = scatterWoods(img, 0.5, KINDS);
     expect(Array.from(a)).toEqual(Array.from(b));
     expect(a.length / 4).toBeLessThanOrEqual(10 * 20); // 5 m cells over the 50 x 100 m of woods
     expect(a.length / 4).toBeGreaterThan(150);
@@ -78,7 +81,7 @@ describe("woods scatter", () => {
   });
 
   it("no woods, no trees", () => {
-    expect(scatterWoods(classes(50, 50, () => 0), 0.5).length).toBe(0);
+    expect(scatterWoods(classes(50, 50, () => 0), 0.5, KINDS).length).toBe(0);
   });
 });
 
@@ -97,8 +100,8 @@ describe("trees.bin", () => {
   });
 
   it("splits by model kind, wrapping kinds past the models we have", () => {
-    const groups = splitByKind(new Float32Array([0, 0, 10, 0, 1, 1, 10, 1, 2, 2, 10, 4]));
-    expect(groups).toHaveLength(TREE_KINDS);
+    const groups = splitByKind(new Float32Array([0, 0, 10, 0, 1, 1, 10, 1, 2, 2, 10, 4]), 3);
+    expect(groups).toHaveLength(3);
     expect(groups.map((g) => g.length / 4)).toEqual([1, 2, 0]);
   });
 });
@@ -164,9 +167,9 @@ describe("mowing stripes", () => {
 });
 
 describe("tree meshes", () => {
-  for (let kind = 0; kind < TREE_KINDS; kind++) {
+  for (let kind = 0; kind < KINDS.length; kind++) {
     it(`kind ${kind} stands on the ground, is one unit tall and has unit normals`, () => {
-      const m = treeMesh(kind);
+      const m = treeMesh(KINDS[kind]);
       expect(m.positions.length).toBe(m.normals.length);
       expect(m.positions.length).toBe(m.colors.length);
       expect(m.positions.length % 9).toBe(0);
@@ -183,12 +186,12 @@ describe("tree meshes", () => {
     });
 
     it(`kind ${kind} stays low-poly`, () => {
-      expect(treeMesh(kind).positions.length / 9).toBeLessThan(160);
+      expect(treeMesh(KINDS[kind]).positions.length / 9).toBeLessThan(160);
     });
   }
 
   it("the broadleaf crown faces outward and upward at the top", () => {
-    const m = treeMesh(1);
+    const m = treeMesh(KINDS[1]);
     let topY = -1, topN = 0;
     for (let i = 0; i < m.positions.length; i += 3) {
       if (m.positions[i + 1] > topY) {

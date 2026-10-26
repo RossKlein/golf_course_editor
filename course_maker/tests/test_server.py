@@ -1,5 +1,6 @@
 """Run from the repo root:  python -m unittest discover -s course_maker/tests -t ."""
 import io
+import json
 import shutil
 import tempfile
 import unittest
@@ -109,6 +110,20 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/bundle", params={"path": "bundles/augusta"}).json()["name"], "Augusta")
         self.assertEqual(self.client.get("/files/bundles/augusta/height.png").headers["content-type"], "image/png")
         self.assertTrue(self.client.get("/api/bundle/validate", params={"path": "bundles/augusta"}).json()["ok"])
+
+    def test_the_look_is_in_the_bundle_and_survives_a_rebuild(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        course = self.client.get("/api/bundle", params=q).json()
+        self.assertEqual(len(course["look"]["surfaces"]), 9)
+        self.assertEqual(self.client.get("/api/look/default").json(), course["look"])
+        # an edit to the look in course.json is kept when the bundle is built from the design
+        path = self.root / "bundles/augusta/course.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw["look"]["surfaces"][1]["stripe"] = 3.0
+        path.write_text(json.dumps(raw), encoding="utf-8")
+        self.assertEqual(self.client.post("/api/bundle/build", params=q).status_code, 200)
+        self.assertEqual(self.client.get("/api/bundle", params=q).json()["look"]["surfaces"][1]["stripe"], 3.0)
 
     def test_bundle_aerial_is_placed_in_course_coordinates(self):
         self.bake()

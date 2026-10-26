@@ -31,10 +31,12 @@ from ..models import (
     EditorState,
     HeightBase,
     Index,
+    Look,
     Report,
     TifEntry,
     TifView,
 )
+from ..look_defaults import default_look
 from ..project.store import read_editor, stack_for, write_editor
 from . import rasters
 from .aerial import aerial_meta, relative_to
@@ -152,6 +154,11 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
                 os.remove(tmp)
         st = target.stat()
         return TifEntry(path=target.relative_to(root).as_posix(), size=st.st_size, modified=st.st_mtime)
+
+    @app.get("/api/look/default", response_model=Look, response_model_by_alias=True, response_model_exclude_none=True)
+    def look_default():
+        """The look a new course starts with, for views of things that are not courses yet (a GeoTIFF's hillshade)."""
+        return default_look()
 
     # --- bundles ---
 

@@ -3,3 +3,6 @@
 
 /** Tufts are drawn in square tiles of this many across, so a tile that is out of view is never sent to the GPU. */
 export const TUFT_TILE = 32;
+
+/** Surface classes in the bundle format (spec.CLASSES): the look has one surface for each, and shaders size their table by it. */
+export const SURFACES = 9;

@@ -1,4 +1,4 @@
-import { SUN } from "../map/terrain/sun";
+import type { Sun } from "../map/terrain/sun";
 
 // Pixel decoding shared by the bundle and GeoTIFF views. PNGs are decoded with no color conversion, exactly as
 // the game's loader will (docs/golf-course-format.md): 16-bit heights live in R (high byte) and G (low byte).
@@ -70,16 +70,16 @@ export function sampleGrid(grid: HeightGrid, fx: number, fz: number): number | n
   return (v[0] * (1 - tx) + v[1] * tx) * (1 - tz) + (v[2] * (1 - tx) + v[3] * tx) * tz;
 }
 
-/** Grey hillshade lit by the terrain sun (map/terrain/sun.ts). Missing data is transparent. */
-export function buildHillshade(grid: HeightGrid, resX: number, resZ: number, exaggeration: number) {
-  return pixelCanvas(grid.cols, grid.rows, (d) => hillshadePixels(grid, resX, resZ, exaggeration, d));
+/** Grey hillshade lit by the sun (the look's, see map/terrain/sun.ts). Missing data is transparent. */
+export function buildHillshade(grid: HeightGrid, resX: number, resZ: number, exaggeration: number, sun: Sun) {
+  return pixelCanvas(grid.cols, grid.rows, (d) => hillshadePixels(grid, resX, resZ, exaggeration, d, sun));
 }
 
 /** The pixels of the hillshade, written into `d` (RGBA, one per sample). The viewer's fallback when WebGL2 is missing. */
-export function hillshadePixels(grid: HeightGrid, resX: number, resZ: number, exaggeration: number, d: Uint8ClampedArray) {
+export function hillshadePixels(grid: HeightGrid, resX: number, resZ: number, exaggeration: number, d: Uint8ClampedArray, sun: Sun) {
   const { values, valid, cols, rows } = grid;
-  const az = SUN.azimuth;
-  const alt = SUN.altitude;
+  const az = sun.azimuth;
+  const alt = sun.altitude;
   {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {

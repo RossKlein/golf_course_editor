@@ -1,4 +1,6 @@
-// The light every terrain view uses. One sun, so the 2D relief and the 3D view agree.
+// The light every terrain view uses: the look's sun, so the 2D relief and the 3D view agree.
+
+import type { Look } from "../../api/api";
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -21,16 +23,11 @@ export function solarPosition(latitude: number, declination: number, hourAngle: 
   return { azimuth: (fromSouth + Math.PI + 2 * Math.PI) % (2 * Math.PI), altitude };
 }
 
-/**
- * 11 am daylight time in midsummer on the US east coast, taken at Augusta's latitude. Solar noon there is about 1:25 pm
- * daylight time (the clock runs an hour ahead and the city sits west of its time zone's meridian), so 11 am is about
- * 2.4 hours before it: an hour angle of -36 degrees. That puts the sun nearly due east and high, about 98 degrees round
- * and 57 degrees up.
- */
-export const SUN: Sun = solarPosition(33.5, 23.44, -36);
+/** Where the look's sun is. */
+export const sunOfLook = (look: Look): Sun => solarPosition(look.sun.latitude, look.sun.declination, look.sun.hourAngle);
 
 /** The unit vector pointing at the sun in course axes: x east, y up, z south. */
-export function sunDirection(sun: Sun = SUN): [number, number, number] {
+export function sunDirection(sun: Sun): [number, number, number] {
   const c = Math.cos(sun.altitude);
   return [Math.sin(sun.azimuth) * c, Math.sin(sun.altitude), -Math.cos(sun.azimuth) * c];
 }

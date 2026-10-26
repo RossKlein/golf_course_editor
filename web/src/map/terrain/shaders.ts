@@ -10,22 +10,23 @@
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
-import { SPECKLE_GRAIN, SPECKLE_SIZE } from "../../view3d/scenery";
+import { SPECKLE_SIZE } from "../../view3d/scenery";
 import brushFrag from "./shaders/brush.frag.glsl?raw";
 import flatFrag from "./shaders/flat.frag.glsl?raw";
 import fullscreenVert from "./shaders/fullscreen.vert.glsl?raw";
 import groundFrag from "./shaders/ground.frag.glsl?raw";
 import groundVert from "./shaders/ground.vert.glsl?raw";
 import head from "./shaders/head.glsl?raw";
+import look from "./shaders/look.glsl?raw";
 import height from "./shaders/height.glsl?raw";
 import overlays from "./shaders/overlays.glsl?raw";
 import treesFrag from "./shaders/trees.frag.glsl?raw";
 import treesVert from "./shaders/trees.vert.glsl?raw";
 import tuftsFrag from "./shaders/tufts.frag.glsl?raw";
 import tuftsVert from "./shaders/tufts.vert.glsl?raw";
-import { TUFT_TILE } from "./limits";
+import { SURFACES, TUFT_TILE } from "./limits";
 
-const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays };
+const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look };
 
 const program = (vertex: string, fragment: string, defines: Record<string, number | string> = {}) => ({
   vertex: preprocess(vertex, chunks, defines),
@@ -35,8 +36,8 @@ const program = (vertex: string, fragment: string, defines: Record<string, numbe
 /** Every program's finished source, ready to compile. */
 export const SHADERS = {
   flat: program(fullscreenVert, flatFrag),
-  ground: program(groundVert, groundFrag, { SPECKLE_GRAIN, SPECKLE_SIZE }),
-  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE }),
+  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES }),
+  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES }),
   trees: program(treesVert, treesFrag),
   brush: program(fullscreenVert, brushFrag),
 };

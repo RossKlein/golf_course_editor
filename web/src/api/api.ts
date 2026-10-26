@@ -8,6 +8,11 @@ export type TifEntry = Schemas["TifEntry"];
 export type BundleEntry = Schemas["BundleEntry"];
 export type TifView = Schemas["TifView"];
 export type Course = Schemas["Course"];
+export type Look = Schemas["Look"];
+export type Surface = Schemas["Surface"];
+export type TreeKind = Schemas["TreeKind"];
+export type Frustum = Schemas["Frustum"];
+export type Blob = Schemas["Blob"];
 export type Report = Schemas["Report"];
 export type AerialMeta = Schemas["AerialMeta"];
 export type HeightBase = Schemas["HeightBase"];
@@ -77,7 +82,10 @@ export const tifElevationUrl = (path: string) => `/api/tif/elevation.png?path=${
 export const api = {
   index: () => request<Index>("/api/index"),
   tif: (path: string) => request<TifView>(`/api/tif?path=${q(path)}`),
-  course: (bundle: string) => request<Course>(fileUrl(bundle, "course.json")),
+  /** The bundle's course.json as the server reads it, with a look filled in for a bundle built before it had one. */
+  course: (bundle: string) => request<Course>(`/api/bundle?path=${q(bundle)}`),
+  /** The look a new course starts with, for views of things that are not courses (a GeoTIFF's hillshade). */
+  defaultLook: () => request<Look>("/api/look/default"),
   validate: (bundle: string) => request<Report>(`/api/bundle/validate?path=${q(bundle)}`),
   /** The bundle's aerial placement, or null when its source stack is unknown. */
   aerial: async (bundle: string) => {

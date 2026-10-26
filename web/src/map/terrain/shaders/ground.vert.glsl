@@ -19,7 +19,7 @@ void main() {
   vec2 p = first + vec2(corner) * uSpacing;
   vXZ = p;
   if (uInner.z > uInner.x && first.x >= uInner.x && first.y >= uInner.y && first.x + uSpacing <= uInner.z && first.y + uSpacing <= uInner.w) {
-    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture (allow-literal: a position, not a colour)
     return;
   }
   gl_Position = uViewProj * vec4(p.x, heightAt(p).x * uScale, p.y, 1.0);

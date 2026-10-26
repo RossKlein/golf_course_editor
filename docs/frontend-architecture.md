@@ -159,14 +159,16 @@ Rules for this layer:
 ### 3.4 The look: data in the map, not literals in the shaders
 
 **Rule.** A shader or pass may contain maths, structure and hash constants. It may not contain a colour, a size in metres,
-a strength, or a rule about which surface does what. Those are fields of the **look**, loaded from the bundle.
+a strength, or a rule about which surface does what. Those are fields of the **look**, loaded from the bundle. The
+lighting model's own scalars (how much the relief weighs against the sun, the curvature gain) stay as named constants in the
+shader: they are how the shading is computed, not a choice about this course.
 
 Three kinds of value, and where each lives:
 
 | Kind | Example | Where |
 | --- | --- | --- |
 | **Course look**: what an artist would change, and what the game needs too | fairway colours, stripe width, tuft height, tree colours, sun, sky | the `look` in `course.json` (this section) |
-| **Editor theme**: how the editor draws its own aids | slope palette, contour style, class and hole overlay colours, selection colours | a theme module in `model/theme/`, passed to shaders as uniforms; never in the bundle |
+| **Editor theme**: how the editor draws its own aids | slope palette, contour strength, the bare-ground colour, class and hole overlay colours, selection colours | a theme module (`terrain/theme.ts` for now, `model/theme/` after step 7), passed to shaders as uniforms; never in the bundle |
 | **Engine limit**: quality and performance caps, not looks | mesh ring count and size, the tuft patch cap, polygon offsets, tuft tile size | named constants in one `terrain/limits.ts`, injected with `#define` or a uniform |
 
 The test for a value: *would the game artist change it for this course?* Look. *Does it only keep the frame rate or the
@@ -174,9 +176,10 @@ maths safe?* Limit. *Does it only help the editor?* Theme.
 
 **The look in the bundle.** `course.json` gets a `look` object. Its single source of truth is a pydantic `Look` model in
 `course_maker/models.py`, with ranges validated there, so the generated TypeScript types, the compiler and the game's loader
-all agree. The authored copy lives in the project folder beside the design (with the same backups) and the build copies it
-into `course.json`. Defaults live in `spec.py` and are exactly today's values, so adopting the look changes nothing
-visible.
+all agree. Defaults live in `course_maker/look_defaults.py` and are exactly the values the shaders used to hold, so adopting
+the look changed nothing visible. `course.json` holds the only copy: a rebuild from the design carries it through, a bake
+writes the default, and a `course.json` without one is read with the default. When the Look editor arrives it will change it
+through the API.
 
 What the look holds, from the inventory in section 1:
 
@@ -195,17 +198,17 @@ What the look holds, from the inventory in section 1:
 - **trees**: the model kinds, each a short list of primitives (a frustum or a blob: size, position, colour). Tree models are
   data too. When the game's own tree models arrive from the Rally_Club project, they replace these entries.
 
-**How it reaches the GPU.** `terrain/look/LookBlock` describes the look's fields once and from that table produces both the
-GLSL declaration (`uniform Look { ... }`, std140) and the packing code, so the shader and the TypeScript cannot drift. The
-surface table is an array of structs in the block. The tuft and tree passes read the same block. Changing a colour in the
-editor changes the block's data, not a shader.
+**How it reaches the GPU.** As plain uniforms, not a uniform block: the surfaces are one table (four `vec4`s each) that
+`packSurfaces` writes and `shaders/look.glsl` reads through small accessors (`surfaceColor(cls)`, `surfaceTuft(cls)`, ...),
+and the rest are a few named uniforms. `setLookUniforms` sets whichever of them a program has, for every program, so the
+ground, tuft and tree passes share it. Changing a colour in the editor changes uniform data, not a shader.
 
 **How it is kept honest.**
 
 - A test scans every `.glsl` file for colour-like literals (a `vec3` or `vec4` built from three or four fractional numbers)
-  and fails on any that is not marked `// allow-literal`. Maths vectors such as directions or axes are marked.
-- A test loads the default look and checks it equals the values the shaders used before (until step 3 lands, this is the
-  regression guard for "no visible change").
+  and fails on any that is not marked `// allow-literal`. Positions that are not colours are marked.
+- The Python tests check the default look validates and round-trips, that a course without one gets it, and that a rebuild
+  keeps an edited look.
 - The look is edited in the editor later (a Look panel, with live update and undo through the design store); this plan only
   makes that possible and does not build the panel.
 
@@ -372,9 +375,9 @@ string to `.glsl` files with the same text; replace the hand-written uniform lis
 *Done when:* every program builds through the new path, the smoke check passes, and the 2D and 3D views look identical.
 
 **Step 3: the look.** *(visual)*
-Add the pydantic `Look` model and its defaults (today's values, from the inventory in section 1), validated. Authored copy
-in the project folder, written into `course.json` by the build; regenerate the TypeScript types; update
-`docs/golf-course-format.md`. Add `terrain/look/` with the `LookBlock` uniform block. Move the surface colours, stripe
+Add the pydantic `Look` model and its defaults (today's values, from the inventory in section 1), validated, in
+`course.json`; regenerate the TypeScript types; update `docs/golf-course-format.md`. Add `look.ts` (the surface table and
+`setLookUniforms`) and the `look.glsl` accessors. Move the surface colours, stripe
 widths, grain amounts, forest earth, tuft colours and height rules, tree models and colours, speckle, grass tile size, sun
 and sky out of the shaders and `scenery.ts` into the look. Move the slope palette and the overlay colours into
 `model/theme/`. Move the engine limits into `terrain/limits.ts`. Add the literal-scan test. *Done when:* no `.glsl` file has

@@ -1,6 +1,8 @@
 // The things that make the 3D view look like the game rather than a map: trees built from a few flat-shaded primitives, as
 // the game builds its own, where trees go in a wood, and which way the mowing stripes run on each hole.
 
+import type { TreeKind } from "../api/api";
+
 export const WOODS_CLASS = 8;
 export const MAX_HOLES = 24;
 
@@ -12,8 +14,7 @@ export function hash2(a: number, b: number, seed = 0): number {
   return (h >>> 0) / 4294967296;
 }
 
-/** Metres a grain of sand speckle covers, and the texels across the speckle texture, which tiles. */
-export const SPECKLE_GRAIN = 0.03;
+/** The texels across the speckle texture, which tiles. A grain is one texel; how many metres it covers is the look's (grass.speckleGrain). */
 export const SPECKLE_SIZE = 256;
 
 /**
@@ -36,10 +37,11 @@ export type ClassImage ={ data: ArrayLike<number>; width: number; height: number
 
 /**
  * Trees to show where a bundle has none yet: one in each cell of a jittered grid wherever the class map says woods. The
- * same spacing and look the tree editor will build from, so what you see is roughly what you will get. Returns
- * x, z, height (metres) and kind for each tree, packed four to a tree.
+ * same spacing and look the tree editor will build from, so what you see is roughly what you will get. A tree's kind is
+ * one of the look's, and its height is within that kind's range. Returns x, z, height (metres) and kind for each tree,
+ * packed four to a tree.
  */
-export function scatterWoods(img: ClassImage, res: number, spacing = 5, seed = 1): Float32Array {
+export function scatterWoods(img: ClassImage, res: number, kinds: readonly TreeKind[], spacing = 5, seed = 1): Float32Array {
   const out: number[] = [];
   const nx = Math.ceil((img.width * res) / spacing), nz = Math.ceil((img.height * res) / spacing);
   for (let j = 0; j < nz; j++) {
@@ -48,8 +50,9 @@ export function scatterWoods(img: ClassImage, res: number, spacing = 5, seed = 1
       const z = (j + 0.15 + 0.7 * hash2(i, j, seed + 1)) * spacing;
       const c = Math.min(img.width - 1, Math.floor(x / res)), r = Math.min(img.height - 1, Math.floor(z / res));
       if (img.data[(r * img.width + c) * 4] !== WOODS_CLASS) continue;
-      const kind = Math.floor(hash2(i, j, seed + 2) * 3);
-      out.push(x, z, kind === 1 ? 9 + 6 * hash2(i, j, seed + 3) : 14 + 10 * hash2(i, j, seed + 3), kind);
+      const kind = Math.min(kinds.length - 1, Math.floor(hash2(i, j, seed + 2) * kinds.length));
+      const [low, high] = kinds[kind].height;
+      out.push(x, z, low + (high - low) * hash2(i, j, seed + 3), kind);
     }
   }
   return new Float32Array(out);
@@ -69,12 +72,10 @@ export function treesFromBin(bytes: ArrayBuffer): Float32Array {
   return out;
 }
 
-export const TREE_KINDS = 3;
-
-/** Kinds partitioned: the packed trees of each of the model kinds, so each can be drawn with its own mesh. */
-export function splitByKind(trees: Float32Array): Float32Array[] {
-  const groups: number[][] = Array.from({ length: TREE_KINDS }, () => []);
-  for (let i = 0; i < trees.length; i += 4) groups[trees[i + 3] % TREE_KINDS].push(trees[i], trees[i + 1], trees[i + 2], trees[i + 3]);
+/** Kinds partitioned: the packed trees of each of the look's `kinds` models, so each can be drawn with its own mesh. A kind past the last wraps. */
+export function splitByKind(trees: Float32Array, kinds: number): Float32Array[] {
+  const groups: number[][] = Array.from({ length: kinds }, () => []);
+  for (let i = 0; i < trees.length; i += 4) groups[trees[i + 3] % kinds].push(trees[i], trees[i + 1], trees[i + 2], trees[i + 3]);
   return groups.map((g) => new Float32Array(g));
 }
 
@@ -214,28 +215,12 @@ class Builder {
   }
 }
 
-const TRUNK: V = [0.42, 0.29, 0.18];
-
-/** The tree models, each 1 unit tall on y = 0: a tall pine, a round broadleaf and a layered fir. */
-export function treeMesh(kind: number): Mesh {
+/** A tree model built from its look: parts of cones and faceted balls, 1 unit tall standing on y = 0. */
+export function treeMesh(kind: TreeKind): Mesh {
   const b = new Builder();
-  switch (kind % TREE_KINDS) {
-    case 0: // pine: a long bare trunk and a narrow crown of stacked cones
-      b.frustum(0, 0.028, 0.4, 0.02, 6, TRUNK);
-      b.frustum(0.3, 0.17, 0.62, 0.0, 7, [0.16, 0.42, 0.2]);
-      b.frustum(0.5, 0.14, 0.82, 0.0, 7, [0.19, 0.48, 0.23]);
-      b.frustum(0.7, 0.1, 1.0, 0.0, 7, [0.22, 0.54, 0.26]);
-      break;
-    case 1: // broadleaf: a short trunk and a wide faceted crown
-      b.frustum(0, 0.04, 0.42, 0.03, 6, TRUNK);
-      b.blob(0, 0.68, 0, 0.3, 0.3, 0.3, [0.3, 0.6, 0.2]);
-      b.blob(0.1, 0.84, 0.05, 0.19, 0.17, 0.19, [0.4, 0.7, 0.25]);
-      break;
-    default: // fir: dense overlapping cones from low down
-      b.frustum(0, 0.03, 0.2, 0.025, 6, TRUNK);
-      b.frustum(0.12, 0.26, 0.5, 0.0, 8, [0.1, 0.35, 0.2]);
-      b.frustum(0.34, 0.2, 0.74, 0.0, 8, [0.13, 0.41, 0.23]);
-      b.frustum(0.56, 0.14, 1.0, 0.0, 8, [0.16, 0.47, 0.26]);
+  for (const p of kind.parts) {
+    if (p.shape === "frustum") b.frustum(p.y0, p.r0, p.y1, p.r1, p.sides, p.color, p.shade);
+    else b.blob(p.cx, p.cy, p.cz, p.rx, p.ry, p.rz, p.color, p.sides, p.rings);
   }
   return b.build();
 }

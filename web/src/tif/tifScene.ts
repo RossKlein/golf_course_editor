@@ -1,4 +1,5 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
+import { sunOfLook } from "../map/terrain/sun";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
 import { rasterLayer } from "../map/layers";
 import { TerrainRenderer, terrainSupported } from "../map/terrain/renderer";
@@ -34,11 +35,12 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     ? decodeHeights(await loadPixels(tifElevationUrl(path)), view.elevation.hMin, view.elevation.hMax)
     : null;
   if (grid) {
+    const look = await api.defaultLook(); // a raster has no course, so it is lit by the look a new course starts with
     let style = { exaggeration: 3, contour: 0, slope: false };
     const opacity = view.rgb ? 0.55 : 1;
     if (terrainSupported(grid)) {
       // elevation samples are pixel centres
-      const renderer = new TerrainRenderer({ grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ });
+      const renderer = new TerrainRenderer({ grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ }, look);
       const aerial = imagery ? { image: imagery, rect } : null;
       renderer.setAerial(aerial?.image ?? null, aerial?.rect ?? null);
       terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / view.resX - 0.5, z / view.resZ - 0.5), aerial, redraw: () => {} };
@@ -51,7 +53,7 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
           terrain.redraw();
         } });
     } else {
-      const shade = memoLast((exaggeration: number) => buildHillshade(grid, view.resX, view.resZ, exaggeration));
+      const shade = memoLast((exaggeration: number) => buildHillshade(grid, view.resX, view.resZ, exaggeration, sunOfLook(look)));
       const hs = add("hillshade", "Hillshade", { image: () => shade(style.exaggeration), rect, smooth: true, multiply: !!view.rgb }, opacity);
       hs.entry.onParams = (p) => {
         if (p.exaggeration !== style.exaggeration) {

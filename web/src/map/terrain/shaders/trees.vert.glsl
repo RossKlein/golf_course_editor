@@ -9,6 +9,7 @@ layout(location = 3) in vec4 aTree;   // per tree: x, z, height in metres, kind
 uniform mat4 uViewProj;
 uniform vec3 uSunDir;
 uniform float uScale;
+uniform vec3 uTreeLight;  // ambient, direct, and the brightness at the foot of a tree
 
 out vec3 vColor;
 
@@ -24,7 +25,7 @@ void main() {
   vec3 n = vec3(turned.x, aNormal.y, turned.y);
   float ground = heightAt(aTree.xy).x * uScale;
   vec3 world = vec3(aTree.x + xz.x, ground + aPosition.y * h, aTree.y + xz.y);
-  float lit = 0.5 + 0.65 * max(dot(normalize(n), uSunDir), 0.0);
-  vColor = aColor * lit * (0.78 + 0.22 * aPosition.y);
+  float lit = uTreeLight.x + uTreeLight.y * max(dot(normalize(n), uSunDir), 0.0);
+  vColor = aColor * lit * (uTreeLight.z + (1.0 - uTreeLight.z) * aPosition.y);
   gl_Position = uViewProj * vec4(world, 1.0);
 }

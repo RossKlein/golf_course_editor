@@ -10,6 +10,7 @@ import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { HeightSession } from "../heights/session";
 import { scatterWoods, splitByKind, stripeDirections, treesFromBin } from "../view3d/scenery";
+import { sunOfLook } from "../map/terrain/sun";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { CLASS_COLORS, css, holeColor } from "./colours";
@@ -73,7 +74,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
   let setScenery = () => {}; // gives the 3D view the class map, stripes and trees; again after each build
   if (terrainSupported(grid)) {
     // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
-    const renderer = new TerrainRenderer({ grid: baseGrid, origin: { x: 0, z: 0 }, resX: res, resZ: res });
+    const renderer = new TerrainRenderer({ grid: baseGrid, origin: { x: 0, z: 0 }, resX: res, resZ: res }, course.look);
     renderer.setAerial(aerialSource?.image ?? null, aerialSource?.rect ?? null);
     let redraw = () => {};
     terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / res, z / res), aerial: aerialSource, redraw: () => redraw() };
@@ -88,11 +89,12 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     loadImage("/game/grass.png").then((img) => renderer.setGrassTile(img)).catch(() => renderer.setGrassTile(null));
     terrainSource.treeInfo = { preview: false };
     setScenery = () => {
+      renderer.setLook(course.look); // a rebuilt bundle may have a changed look
       renderer.setSurfaces(px.class, course.class.res, stripeDirections(course.holes.map((h) => h.route as [number, number][])));
       const real = treesFromBin(treeBytes);
-      const trees = real.length ? real : scatterWoods(px.class, course.class.res);
+      const trees = real.length ? real : scatterWoods(px.class, course.class.res, course.look.trees.kinds);
       terrainSource!.treeInfo!.preview = !real.length;
-      renderer.setTrees(splitByKind(trees));
+      renderer.setTrees(splitByKind(trees, course.look.trees.kinds.length));
     };
     setScenery();
     terrain.layer.setOpacity(aerial ? 0.55 : 1);
@@ -103,7 +105,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
         terrain.redraw();
       } });
   } else {
-    const shade = memoLast((exaggeration: number) => buildHillshade(grid, res, res, exaggeration));
+    const shade = memoLast((exaggeration: number) => buildHillshade(grid, res, res, exaggeration, sunOfLook(course.look)));
     const hillshade = raster("hillshade", "Hillshade", {
       image: () => shade(view.exaggeration), smooth: true, multiply: !!aerial,
       rect: { x: -0.5, z: -0.5, w: cols, h: rows },
