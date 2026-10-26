@@ -8,7 +8,7 @@ export type Gl = {
   flat: Program;
   /** The 3D programs, which can fail to build without taking the flat map with them. */
   mesh: Program | null;
-  anisotropy: { ext: { TEXTURE_MAX_ANISOTROPY_EXT: number } | null; max: number };
+  anisotropy: { ext: { TEXTURE_MAX_ANISOTROPY_EXT: number; MAX_TEXTURE_MAX_ANISOTROPY_EXT: number } | null; max: number };
   /** Rendering to float textures, which sculpting needs. */
   floatTargets: boolean;
   /** Changes when the context is replaced, so textures made for an old one are known to be gone. */
@@ -63,7 +63,7 @@ export function context(): Gl {
     gl,
     flat: compileProgram(gl, VERTEX, FRAGMENT, FLAT_UNIFORMS, "terrain"),
     mesh: tryProgram(() => compileProgram(gl, VERTEX_3D, FRAGMENT_3D, MESH_UNIFORMS, "terrain 3D")),
-    anisotropy: { ext, max: ext ? gl.getParameter(ext.TEXTURE_MAX_ANISOTROPY_EXT) : 1 },
+    anisotropy: { ext, max: ext ? (gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT) as number) || 1 : 1 },
     floatTargets: !!gl.getExtension("EXT_color_buffer_float"),
     generation: ++generation,
   };

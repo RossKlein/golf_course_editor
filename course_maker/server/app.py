@@ -302,6 +302,9 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     app.state.builds = builds  # exposed so tests can wait for the background build
     if (WEB_DIST / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
+    for folder in ("game",):  # files from web/public that the page loads by name (the game's grass texture)
+        if (WEB_DIST / folder).is_dir():
+            app.mount(f"/{folder}", StaticFiles(directory=WEB_DIST / folder), name=folder)
     return app
 
 

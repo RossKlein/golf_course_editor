@@ -97,7 +97,7 @@ export class TerrainRenderer {
   private sculptor: Sculptor | null = null;
   private readonly scenery = new SceneryGpu();
   private readonly classTexture = new LazyTexture((g) => this.uploadClasses(g));
-  private readonly tileTexture = new LazyTexture((g) => this.uploadImage(g, this.tileImage, true, true));
+  private readonly tileTexture = new LazyTexture((g) => this.uploadImage(g, this.tileImage, true, true, [255, 255, 255, 255]));
   private classes: { image: ImageData; res: number } | null = null;
   private tileImage: Image | null = null;
   private tileAverage: [number, number, number] = [1, 1, 1];
@@ -192,7 +192,8 @@ export class TerrainRenderer {
     gl.uniform3f(p.u.uClassInfo, c?.res ?? 1, c?.image.width ?? 1, c?.image.height ?? 1);
   }
 
-  private uploadImage(g: Gl, image: Image | null, mipmaps: boolean, repeat = false) {
+  /** `blank` is the single pixel used when there is no image: transparent for overlays, opaque white for the grass tile. */
+  private uploadImage(g: Gl, image: Image | null, mipmaps: boolean, repeat = false, blank = [0, 0, 0, 0]) {
     const { gl } = g;
     const limit = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
     let source: Image | null = image;
@@ -206,7 +207,7 @@ export class TerrainRenderer {
     }
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     if (source) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
-    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(blank));
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
