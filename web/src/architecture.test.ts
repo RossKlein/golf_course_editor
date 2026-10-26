@@ -43,7 +43,6 @@ const RULES: [RegExp, string][] = [
   [/^(api|units|decode)\//, "core"],
   [/^map\/coords\.ts$/, "core"],
   [/^design\/geometry/, "core"],
-  [/^view3d\/(mat4|frustum)/, "gfx"],
   [/^map\/terrain\/terrainLayer\.ts$/, "views"],
   [/^map\/terrain\//, "terrain"],
   [/^view3d\/Terrain3D\.tsx$/, "views"],

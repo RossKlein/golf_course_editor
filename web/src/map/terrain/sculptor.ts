@@ -2,7 +2,9 @@ import type { HeightGrid } from "../../decode/decode";
 import type { BrushKind } from "../../heights/brush";
 import { readTile, tileRect, tilesInBox, writeTile } from "../../heights/tiles";
 import { compileProgram, type Program } from "../../gfx/shader/program";
-import { context, currentContext, LazyTexture, type Gl } from "./gl";
+import type { Device } from "../../gfx/device/device";
+import { LazyTexture } from "../../gfx/resource/texture";
+import { context, currentContext, type Gl } from "./gl";
 import type { TerrainGrid } from "./renderer";
 import { SHADERS } from "./shaders";
 
@@ -60,7 +62,7 @@ export class Sculptor {
     this.texture.bind(g, unit);
   }
 
-  private upload(g: Gl) {
+  private upload(g: Device) {
     const { gl } = g;
     const { cols, rows } = this.grid;
     const rgba = new Float32Array(cols * rows * 4);

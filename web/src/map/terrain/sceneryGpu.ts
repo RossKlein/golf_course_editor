@@ -1,4 +1,4 @@
-import { boxVisible, frustumOf, type Frustum } from "../../view3d/frustum";
+import { boxVisible, frustumOf, type Frustum } from "../../gfx/math/frustum";
 import type { Look } from "../../api/api";
 import { chunkTrees, treeMesh, type Mesh, type TreeChunk } from "../../view3d/scenery";
 import { compileProgram, tryProgram, type Program } from "../../gfx/shader/program";

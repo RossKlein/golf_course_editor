@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { TUFT_TILE } from "../map/terrain/limits";
 import { TUFT_RANGE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
-import { frustumOf } from "./frustum";
-import { lookAt, multiply, perspective } from "./mat4";
+import { frustumOf } from "../gfx/math/frustum";
+import { lookAt, multiply, perspective } from "../gfx/math/mat4";
 import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, type ClassImage } from "./scenery";
 import { testLook } from "../map/terrain/look.fixture";
 

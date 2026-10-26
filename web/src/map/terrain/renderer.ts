@@ -1,8 +1,10 @@
 import type { HeightGrid } from "../../decode/decode";
-import type { Mat4 } from "../../view3d/mat4";
+import type { Mat4 } from "../../gfx/math/mat4";
 import type { Rect } from "../coords";
 import type { Program } from "../../gfx/shader/program";
-import { context, currentContext, LazyTexture, type Gl } from "./gl";
+import type { Device } from "../../gfx/device/device";
+import { LazyTexture } from "../../gfx/resource/texture";
+import { context, currentContext, type Gl } from "./gl";
 import { packHeights } from "./reference";
 import { Sculptor } from "./sculptor";
 import { SPECKLE_SIZE, speckleTexels } from "../../view3d/scenery";
@@ -226,7 +228,7 @@ export class TerrainRenderer {
     this.linesTexture.invalidate();
   }
 
-  private uploadClasses(g: Gl) {
+  private uploadClasses(g: Device) {
     const { gl } = g;
     const image = this.classes?.image;
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -247,7 +249,7 @@ export class TerrainRenderer {
   }
 
   /** `blank` is the single pixel used when there is no image: transparent for overlays, opaque white for the grass tile. */
-  private uploadImage(g: Gl, image: Image | null, mipmaps: boolean, repeat = false, blank = [0, 0, 0, 0]) {
+  private uploadImage(g: Device, image: Image | null, mipmaps: boolean, repeat = false, blank = [0, 0, 0, 0]) {
     const { gl } = g;
     const limit = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
     let source: Image | null = image;
