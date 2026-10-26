@@ -296,7 +296,7 @@ void main() {
     float gain = clamp(footprint / ${SPECKLE_GRAIN}, 1.0, 12.0);
     float speck = clamp((texture(uSpeckleTex, p / (${SPECKLE_GRAIN} * ${SPECKLE_SIZE}.0)).r - 0.5) * 2.0 * gain, -1.0, 1.0);
     float visible = 1.0 - smoothstep(0.7 * uSpeckle.z, uSpeckle.z, distance(p, uSpeckle.xy));
-    albedo *= 1.0 + sand * visible * (speck < 0.0 ? speck * 0.2 : speck * 0.14);
+    albedo *= 1.0 + sand * visible * (speck < 0.0 ? speck * 0.1 : speck * 0.07);
   }
   else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
 
