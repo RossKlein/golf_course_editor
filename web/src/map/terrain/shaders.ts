@@ -243,6 +243,13 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
 
 // the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
 // surfaces meet the way mown grass does rather than along a ruler
+// a hash of a grain of ground, 0 to 1, without the precision trouble that sin has far from the origin
+float grainHash(vec2 cell) {
+  vec3 q = fract(vec3(mod(cell, 1024.0).xyx) * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+
 // sand comes back as how much of the point is bunker, 0 to 1, so the lighting can be eased off there
 vec3 gameGround(vec2 p, out float sand) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
@@ -285,6 +292,14 @@ void main() {
     albedo = gameGround(p, sand);
     // a bunker's dip would otherwise darken it as a hollow; sand keeps its colour, with a trace of shape at the lip
     light = mix(light, 1.0 + (light - 1.0) * 0.12, sand);
+    // salt and pepper: grains 3 cm across, some paler, some darker. They fade out once a pixel covers more than a grain,
+    // so distant sand is smooth rather than shimmering.
+    float grainSize = 0.03;
+    float footprint = max(fwidth(p.x), fwidth(p.y));
+    float visible = 1.0 - smoothstep(grainSize * 0.5, grainSize * 1.5, footprint);
+    float n = grainHash(floor(p / grainSize));
+    float speck = n < 0.14 ? -0.2 : (n > 0.86 ? 0.14 : (n - 0.5) * 0.12);
+    albedo *= 1.0 + sand * visible * speck;
   }
   else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
 
