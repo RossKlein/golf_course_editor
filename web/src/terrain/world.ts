@@ -1,4 +1,4 @@
-import type { Look } from "../api/api";
+import type { Look } from "../core/api/api";
 import type { Frustum } from "../gfx/math/frustum";
 import type { HeightField } from "./heightfield/heightfield";
 import type { Overlays } from "./passes/drape/overlays";

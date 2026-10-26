@@ -1,4 +1,4 @@
-import type { Look, Surface } from "../../api/api";
+import type { Look, Surface } from "../../core/api/api";
 import type { Program } from "../../gfx/shader/program";
 import { SURFACES } from "../limits";
 

@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { makeFormatter, type Formatter, type Units } from "./units";
+import { makeFormatter, type Formatter, type Units } from "../core/units/units";
 
 // A per-user display preference, kept in this browser. (When an app-level workspace file exists it can move there.)
 const KEY = "course-maker.units";

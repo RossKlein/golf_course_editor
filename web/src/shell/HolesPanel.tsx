@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Wand2 } from "lucide-react";
 import type { BundleData } from "../bundle/bundleScene";
-import { routeLength, unassignedCount } from "../design/holes";
-import { removeHole, updateHole, updateLayout, useDesign } from "../design/store";
-import type { Formatter } from "../units/units";
+import { routeLength, unassignedCount } from "../model/design/holes";
+import { removeHole, updateHole, updateLayout, useDesign } from "../model/design/store";
+import type { Formatter } from "../core/units/units";
 
 /** A text field that changes the document when you leave it or press Enter, so typing is one undo step, not one per key. */
 function TextField({ value, placeholder, onCommit, label }: { value: string; placeholder?: string; onCommit: (v: string) => void; label: string }) {

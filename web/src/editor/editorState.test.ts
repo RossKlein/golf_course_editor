@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EditorState } from "../api/api";
+import type { EditorState } from "../core/api/api";
 import type { Scene, SceneLayer } from "../map/scene";
 import { defaultEditorState, mergeSaved, serialise, viewFromViewport, viewportFromView } from "./editorState";
 

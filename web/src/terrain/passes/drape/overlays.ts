@@ -2,7 +2,7 @@ import type { Device } from "../../../gfx/device/device";
 import { uploadImage, type Image } from "../../../gfx/resource/image";
 import { LazyTexture } from "../../../gfx/resource/texture";
 import type { Program } from "../../../gfx/shader/program";
-import type { Rect } from "../../../map/coords";
+import type { Rect } from "../../../core/geometry/coords";
 
 /** How strongly to show each overlay this frame. */
 export type OverlayShow = { aerial: boolean; fill: number; lines: number };

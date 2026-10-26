@@ -5,9 +5,9 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import { css, holeColor } from "../bundle/bundleScene";
-import type { Pt } from "../map/coords";
+import type { Pt } from "../core/geometry/coords";
 import { mapRings } from "./olRegions";
-import { designStore, type Doc } from "./store";
+import { designStore, type Doc } from "../model/design/store";
 
 export type BoundsView = { hole: number; showOthers: boolean };
 

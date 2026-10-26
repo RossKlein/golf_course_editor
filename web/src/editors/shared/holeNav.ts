@@ -1,8 +1,8 @@
 import type Map from "ol/Map";
 import { useCallback, useRef, useState } from "react";
 import type { Command } from "../../commands/keymap";
-import { holeView } from "../../design/holes";
-import { addHole, designStore } from "../../design/store";
+import { holeView } from "../../model/design/holes";
+import { addHole, designStore } from "../../model/design/store";
 import { flyToRect } from "../../map/view";
 
 /** A short message for the sub-bar that clears itself. */

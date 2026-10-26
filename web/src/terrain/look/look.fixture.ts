@@ -1,4 +1,4 @@
-import type { Look, Surface } from "../../api/api";
+import type { Look, Surface } from "../../core/api/api";
 import { solarPosition } from "../sun";
 
 // A look for tests (the real default is the server's, in course_maker/look_defaults.py): nine surfaces, three tree models and

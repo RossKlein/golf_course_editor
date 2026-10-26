@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Region } from "../api/api";
-import type { Pt } from "../map/coords";
-import { ringArea } from "./geometry";
+import type { Region } from "../../core/api/api";
+import type { Pt } from "../../core/geometry/coords";
+import { ringArea } from "../../core/geometry/geometry";
 import { coveringRegions, visibleGeometry } from "./layering";
 
 const rect = (x: number, z: number, w: number, h: number): Pt[] => [[x, z], [x + w, z], [x + w, z + h], [x, z + h], [x, z]];

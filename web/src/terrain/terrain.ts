@@ -1,9 +1,9 @@
-import type { Look } from "../api/api";
-import type { HeightGrid } from "../decode/decode";
+import type { Look } from "../core/api/api";
+import type { HeightGrid } from "../core/decode/decode";
 import { resizeCanvas } from "../gfx/device/device";
 import type { Image } from "../gfx/resource/image";
 import { frustumOf } from "../gfx/math/frustum";
-import type { Rect } from "../map/coords";
+import type { Rect } from "../core/geometry/coords";
 import { context, currentContext } from "./context";
 import { HeightField, type TerrainGrid } from "./heightfield/heightfield";
 import { Overlays } from "./passes/drape/overlays";

@@ -1,6 +1,6 @@
 import type Map from "ol/Map";
 import { useEffect, useState } from "react";
-import type { EditorState } from "../api/api";
+import type { EditorState } from "../core/api/api";
 import { createBoundsLayer } from "./olBounds";
 import { createRegionLayer } from "./olRegions";
 import { createRouteLayer } from "./olRoutes";

@@ -4,9 +4,10 @@ import View from "ol/View";
 import { defaults as defaultInteractions } from "ol/interaction/defaults";
 import DragPan from "ol/interaction/DragPan";
 import MouseWheelZoom from "ol/interaction/MouseWheelZoom";
-import type { Viewport } from "../api/api";
-import { scaleBar, type Units } from "../units/units";
-import { fromMap, projection } from "./coords";
+import type { Viewport } from "../core/api/api";
+import { scaleBar, type Units } from "../core/units/units";
+import { fromMap } from "../core/geometry/coords";
+import { projection } from "./projection";
 import type { LayerState, Params, Scene } from "./scene";
 import { applyViewport, fitRect, sameViewport, viewportOf } from "./view";
 

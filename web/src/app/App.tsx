@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import type Map from "ol/Map";
 import { Tooltip } from "radix-ui";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
-import { api, type EditorState, type Index, type TifView, type Viewport } from "../api/api";
+import { api, type EditorState, type Index, type TifView, type Viewport } from "../core/api/api";
 import { loadBundleScene, type BundleData } from "../bundle/bundleScene";
 import { globalCommands } from "../commands/globalCommands";
 import HelpDialog from "../commands/HelpDialog";
 import type { Scope } from "../commands/keymap";
 import { useHotkeys } from "../commands/useHotkeys";
-import { designStore, useDesign } from "../design/store";
+import { designStore, useDesign } from "../model/design/store";
 import { useDesignSession } from "../design/useDesignSession";
 import { defaultEditorState, mergeSaved } from "../editor/editorState";
 import { useEditorPersistence } from "../editor/useEditorPersistence";
@@ -20,7 +20,7 @@ import { BRUSHES } from "../terrain/sculpt/brush";
 import { useNotice } from "../editors/shared/holeNav";
 import FileList from "../files/FileList";
 import OlMap from "../map/OlMap";
-import { fromMap, toMap } from "../map/coords";
+import { fromMap, toMap } from "../core/geometry/coords";
 import type { Scene } from "../map/scene";
 import { fitRect, panBy, zoomBy } from "../map/view";
 import { hashFor, useSelection } from "../selection/selection";
@@ -31,7 +31,7 @@ import { loadTifScene } from "../tif/tifScene";
 import { nextContour } from "../terrain/passes/flat/contours";
 import { cameraFor, visibleHeightOf, type Camera } from "../terrain/camera/camera";
 import Terrain3D, { type Controls3d } from "../view3d/Terrain3D";
-import { setUnits, useFormatter, useUnits } from "../units/useUnits";
+import { setUnits, useFormatter, useUnits } from "../ui/useUnits";
 
 type Loaded =
   | { kind: "tif"; scene: Scene; view: TifView; editor: EditorState }

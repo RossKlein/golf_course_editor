@@ -1,5 +1,5 @@
-import type { Course } from "../../api/api";
-import { loadBytes, loadPixels } from "../../decode/decode";
+import type { Course } from "../../core/api/api";
+import { loadBytes, loadPixels } from "../../core/decode/decode";
 
 /** The files a bundle's course.json names, read and decoded: what a renderer needs to draw the course. */
 export type CourseFiles = {

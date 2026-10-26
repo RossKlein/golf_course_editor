@@ -1,4 +1,4 @@
-import type { HeightGrid } from "../../decode/decode";
+import type { HeightGrid } from "../../core/decode/decode";
 import type { BrushKind } from "./brush";
 import { readTile, tileRect, tilesInBox, writeTile } from "./tiles";
 import { compileProgram, type Program } from "../../gfx/shader/program";

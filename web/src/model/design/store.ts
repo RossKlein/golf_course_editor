@@ -1,7 +1,7 @@
 import { applyPatches, enablePatches, produceWithPatches, type Patch } from "immer";
 import { useSyncExternalStore } from "react";
 import { createStore } from "zustand/vanilla";
-import type { BoundsArea, DesignDoc, DesignHole, Layout, Region } from "../api/api";
+import type { BoundsArea, DesignDoc, DesignHole, Layout, Region } from "../../core/api/api";
 import { MAX_HOLES } from "./holes";
 
 enablePatches();

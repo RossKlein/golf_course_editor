@@ -1,6 +1,6 @@
-import { api } from "../api/api";
-import type { HeightGrid } from "../decode/decode";
-import { designStore } from "../design/store";
+import { api } from "../core/api/api";
+import type { HeightGrid } from "../core/decode/decode";
+import { designStore } from "../model/design/store";
 import type { Sculptor, Stamp } from "../terrain/sculpt/sculptor";
 import { decodeDelta, encodeDelta } from "../terrain/sculpt/tiles";
 

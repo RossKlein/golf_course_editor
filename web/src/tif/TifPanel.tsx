@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { api, type BakeResult, type TifView } from "../api/api";
+import { api, type BakeResult, type TifView } from "../core/api/api";
 import ReportView from "../report/ReportView";
-import { useFormatter } from "../units/useUnits";
+import { useFormatter } from "../ui/useUnits";
 
 type Props = { view: TifView; onBaked: (bundle: string) => void };
 

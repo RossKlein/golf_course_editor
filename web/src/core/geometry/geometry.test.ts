@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { closeRing, dedupe, nearestVertex, outlineFromPoints, ringArea, selfIntersects, snapToRings, withoutLineVertex, withoutRingVertex } from "./geometry";
-import type { Pt } from "../map/coords";
+import type { Pt } from "./coords";
 
 const square: Pt[] = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]];
 

@@ -1,4 +1,4 @@
-import type { Pt, Rect } from "../map/coords";
+import type { Pt, Rect } from "../../core/geometry/coords";
 import type { Doc } from "./store";
 
 /** Classes that belong to a hole: fairway, green, tee. Every other surface is shared. */

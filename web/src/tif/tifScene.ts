@@ -1,11 +1,12 @@
-import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
+import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../core/api/api";
+import { buildHillshade } from "../terrain/passes/flat/cpuHillshade";
 import { sunOfLook } from "../terrain/sun";
-import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
+import { decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../core/decode/decode";
 import { rasterLayer } from "../map/layers";
 import { TerrainRenderer, terrainSupported } from "../terrain/terrain";
 import { terrainLayer } from "../map/terrainLayer";
 import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
-import type { Formatter } from "../units/units";
+import type { Formatter } from "../core/units/units";
 
 /** A GeoTIFF on the map, in metres from its top-left corner (x east, z south). */
 export async function loadTifScene(path: string): Promise<{ scene: Scene; view: TifView }> {

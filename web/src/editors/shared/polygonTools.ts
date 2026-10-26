@@ -10,10 +10,10 @@ import type Map from "ol/Map";
 import type VectorSource from "ol/source/Vector";
 import { shiftKeyOnly } from "ol/events/condition";
 import type { Command } from "../../commands/keymap";
-import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, snapToRings, withoutRingVertex } from "../../design/geometry";
+import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, snapToRings, withoutRingVertex } from "../../core/geometry/geometry";
 import { mapRings, ringsOf } from "../../design/olRegions";
-import { designStore } from "../../design/store";
-import { fromMap, toMap, type Pt } from "../../map/coords";
+import { designStore } from "../../model/design/store";
+import { fromMap, toMap, type Pt } from "../../core/geometry/coords";
 import { FreehandInteraction } from "../course/freehand";
 
 /** A corner the user can right-click to remove, with how far from the pointer it is. */

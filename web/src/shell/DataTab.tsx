@@ -1,12 +1,12 @@
-import type { BuildStatus } from "../api/api";
+import type { BuildStatus } from "../core/api/api";
 import { CLASS_NAMES } from "../bundle/bundleScene";
 import type { BundleData } from "../bundle/bundleScene";
 import { OWNED } from "../design/olRegions";
-import { ringArea } from "../design/geometry";
-import { designStore, removeBoundsAreas, reorderRegions, removeRegions, updateBoundsArea, updateRegion, useDesign } from "../design/store";
+import { ringArea } from "../core/geometry/geometry";
+import { designStore, removeBoundsAreas, reorderRegions, removeRegions, updateBoundsArea, updateRegion, useDesign } from "../model/design/store";
 import ReportView from "../report/ReportView";
 import HolesPanel from "./HolesPanel";
-import type { Formatter } from "../units/units";
+import type { Formatter } from "../core/units/units";
 
 function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number }) {
   const selected = useDesign((s) => s.selected);

@@ -1,11 +1,11 @@
 import type Map from "ol/Map";
 import { useEffect, useMemo, useRef } from "react";
-import type { EditorState } from "../../api/api";
+import type { EditorState } from "../../core/api/api";
 import type { Command } from "../../commands/keymap";
 import { ringsOf } from "../../design/olRegions";
 import type { DesignLayers } from "../../design/useDesignLayers";
-import { addBoundsArea, designStore, removeBoundsAreas, updateBoundsArea, useDesign } from "../../design/store";
-import type { Pt } from "../../map/coords";
+import { addBoundsArea, designStore, removeBoundsAreas, updateBoundsArea, useDesign } from "../../model/design/store";
+import type { Pt } from "../../core/geometry/coords";
 import { holeCommands, makeHoleNav } from "../shared/holeNav";
 import { installPolygonTools, polygonCommands, type PolygonControls, type PolygonTarget } from "../shared/polygonTools";
 

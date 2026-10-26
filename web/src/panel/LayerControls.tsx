@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import type { EditorState } from "../api/api";
+import type { EditorState } from "../core/api/api";
 import type { LayerState, SceneLayer } from "../map/scene";
 import { contourOptions, nearestContour } from "../terrain/passes/flat/contours";
-import { makeFormatter, type Units } from "../units/units";
+import { makeFormatter, type Units } from "../core/units/units";
 
 type Props = {
   layers: SceneLayer[];

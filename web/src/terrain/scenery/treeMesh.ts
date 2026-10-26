@@ -1,6 +1,6 @@
 // Tree models built from the look's parts: cones and faceted balls, flat-shaded, each 1 unit tall standing on y = 0.
 
-import type { TreeKind } from "../../api/api";
+import type { TreeKind } from "../../core/api/api";
 
 export type Mesh = {
   /** x, y, z per vertex, for a tree 1 unit tall standing on y = 0. Triangles are not indexed, so each face has its own normal. */

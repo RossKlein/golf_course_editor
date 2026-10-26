@@ -1,4 +1,4 @@
-import type { Report } from "../api/api";
+import type { Report } from "../core/api/api";
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 

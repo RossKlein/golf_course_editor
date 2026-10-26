@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Region } from "../api/api";
-import type { Pt } from "../map/coords";
+import type { Region } from "../../core/api/api";
+import type { Pt } from "../../core/geometry/coords";
 import { holeExtent, holeView, routeLength, suggestHoles, unassignedCount, visibleRegionIds } from "./holes";
 import { addBoundsArea, addHole, addRegion, assignHoles, designStore, emptyDoc, removeBoundsAreas, removeHole, setRoute, updateBoundsArea, updateHole } from "./store";
 

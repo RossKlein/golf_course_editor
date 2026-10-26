@@ -1,4 +1,4 @@
-import type { HeightGrid } from "../../decode/decode";
+import type { HeightGrid } from "../../core/decode/decode";
 import type { Device } from "../../gfx/device/device";
 import { LazyTexture } from "../../gfx/resource/texture";
 import type { Program } from "../../gfx/shader/program";

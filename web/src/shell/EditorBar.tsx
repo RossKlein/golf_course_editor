@@ -1,6 +1,6 @@
 import { Tabs } from "radix-ui";
 import { Redo2, Undo2, CircleHelp, Hammer, Box, Map as MapIcon } from "lucide-react";
-import type { BuildStatus } from "../api/api";
+import type { BuildStatus } from "../core/api/api";
 import type { DesignSave } from "../design/useDesignSession";
 import { EDITORS } from "../editors/registry";
 import { Hint } from "../ui/Hint";

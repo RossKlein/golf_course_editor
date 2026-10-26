@@ -1,8 +1,8 @@
 import { useRef } from "react";
-import type { Index } from "../api/api";
+import type { Index } from "../core/api/api";
 import { hashFor, type Selection } from "../selection/selection";
-import { setUnits, useUnits } from "../units/useUnits";
-import type { Units } from "../units/units";
+import { setUnits, useUnits } from "../ui/useUnits";
+import type { Units } from "../core/units/units";
 
 type Props = {
   index: Index | null;

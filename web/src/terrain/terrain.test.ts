@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { hillshadePixels, type HeightGrid } from "../decode/decode";
-import { M_PER_FT } from "../units/units";
+import type { HeightGrid } from "../core/decode/decode";
+import { hillshadePixels } from "./passes/flat/cpuHillshade";
+import { M_PER_FT } from "../core/units/units";
 import { contourOptions, nearestContour, nextContour } from "./passes/flat/contours";
 import { packHeights } from "./heightfield/heightfield";
 import { contourIndex, shadeOf } from "./passes/flat/reference";

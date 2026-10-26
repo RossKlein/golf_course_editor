@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyDoc, type Doc } from "../design/store";
+import { emptyDoc, type Doc } from "../model/design/store";
 import { paintDrape } from "./drape";
 
 /** A drawing context that records what was done, in order. */

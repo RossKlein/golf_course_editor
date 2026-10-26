@@ -1,4 +1,4 @@
-import type { EditorState, Viewport } from "../api/api";
+import type { EditorState, Viewport } from "../core/api/api";
 import { initialLayerState, type Scene } from "../map/scene";
 
 // The editor's saved state (.course_maker/editor.json). The shape is defined by the pydantic model EditorState.

@@ -1,7 +1,7 @@
 // Where trees are: a bundle's trees.bin, a scatter over the woods where there is none yet, and the grouping the renderer
 // draws them in. A tree is x, z, height (metres) and kind, packed four to a tree.
 
-import type { TreeKind } from "../../api/api";
+import type { TreeKind } from "../../core/api/api";
 import { hash2 } from "./hash";
 
 export const WOODS_CLASS = 8;

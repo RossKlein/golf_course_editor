@@ -1,8 +1,8 @@
 import type BaseLayer from "ol/layer/Base";
-import type { Formatter } from "../units/units";
+import type { Formatter } from "../core/units/units";
 import type { HeightSession } from "../heights/session";
 import type { TerrainRenderer } from "../terrain/terrain";
-import type { Rect } from "./coords";
+import type { Rect } from "../core/geometry/coords";
 
 export type { Rect };
 

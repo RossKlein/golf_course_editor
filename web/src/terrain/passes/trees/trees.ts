@@ -1,4 +1,4 @@
-import type { Look } from "../../../api/api";
+import type { Look } from "../../../core/api/api";
 import { boxVisible } from "../../../gfx/math/frustum";
 import { compileProgram, tryProgram, type Program } from "../../../gfx/shader/program";
 import type { Gl } from "../../context";

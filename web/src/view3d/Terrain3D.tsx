@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
-import { designStore } from "../design/store";
-import type { Rect } from "../map/coords";
+import { designStore } from "../model/design/store";
+import type { Rect } from "../core/geometry/coords";
 import type { TerrainSource } from "../map/scene";
 import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "../terrain/camera/camera";
 import { TUFT_RANGE } from "../terrain/passes/tufts/tufts";

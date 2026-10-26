@@ -1,7 +1,8 @@
 import ImageLayer from "ol/layer/Image";
 import ImageCanvas from "ol/source/ImageCanvas";
 import type RenderEvent from "ol/render/Event";
-import { projection, type Rect } from "./coords";
+import type { Rect } from "../core/geometry/coords";
+import { projection } from "./projection";
 
 const dims = (img: CanvasImageSource) => {
   const a = img as { naturalWidth?: number; width: number; naturalHeight?: number; height: number };

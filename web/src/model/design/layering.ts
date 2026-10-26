@@ -1,6 +1,6 @@
 import difference from "@turf/difference";
-import type { Region } from "../api/api";
-import type { Pt } from "../map/coords";
+import type { Region } from "../../core/api/api";
+import type { Pt } from "../../core/geometry/coords";
 
 /** What the build makes of overlapping regions, for display: a later region of another surface covers the ones below. */
 

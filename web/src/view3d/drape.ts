@@ -1,6 +1,6 @@
-import { CLASS_COLORS, css, holeColor } from "../bundle/colours";
-import type { Rect } from "../map/coords";
-import type { Doc } from "../design/store";
+import { CLASS_COLORS, css, holeColor } from "../model/theme/colours";
+import type { Rect } from "../core/geometry/coords";
+import type { Doc } from "../model/design/store";
 
 type Ring = readonly (readonly [number, number])[];
 type Ctx = Pick<

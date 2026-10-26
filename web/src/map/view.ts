@@ -1,6 +1,6 @@
 import type Map from "ol/Map";
-import type { Viewport } from "../api/api";
-import { fromMap, toMap, type Rect } from "./coords";
+import type { Viewport } from "../core/api/api";
+import { fromMap, toMap, type Rect } from "../core/geometry/coords";
 
 /** The saved form of the view: centre in course metres and pixels per metre, independent of the window size. */
 export function viewportOf(map: Map): Viewport | null {

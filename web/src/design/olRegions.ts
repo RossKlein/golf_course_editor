@@ -8,11 +8,11 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import { CLASS_COLORS, css } from "../bundle/bundleScene";
-import { fromMap, toMap, type Pt } from "../map/coords";
-import type { Region } from "../api/api";
-import { OWNED, visibleRegionIds } from "./holes";
-import { coveringRegions, visibleGeometry } from "./layering";
-import { designStore, type Doc } from "./store";
+import { fromMap, toMap, type Pt } from "../core/geometry/coords";
+import type { Region } from "../core/api/api";
+import { OWNED, visibleRegionIds } from "../model/design/holes";
+import { coveringRegions, visibleGeometry } from "../model/design/layering";
+import { designStore, type Doc } from "../model/design/store";
 
 export { OWNED }; // fairway, green, tee: the classes that belong to a hole
 

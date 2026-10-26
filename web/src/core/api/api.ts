@@ -1,6 +1,6 @@
 // Typed client for the course maker server. Types come from the pydantic models through the OpenAPI schema:
 //   python -m course_maker openapi   then   npm run types
-import type { components } from "./schema";
+import type { components } from "./schema.d";
 
 type Schemas = components["schemas"];
 export type Index = Schemas["Index"];

@@ -1,6 +1,6 @@
 import kinks from "@turf/kinks";
 import simplify from "@turf/simplify";
-import type { Pt } from "../map/coords";
+import type { Pt } from "./coords";
 
 export const closeRing = (ring: Pt[]): Pt[] => {
   const a = ring[0], b = ring[ring.length - 1];
