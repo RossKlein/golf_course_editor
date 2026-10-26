@@ -15,10 +15,14 @@ type Props = {
   onRelief: (value: number) => void;
   /** Whether the bundle's design can be drawn over the ground. */
   hasDesign: boolean;
+  /** A brush is out, so the left button sculpts. */
+  sculpting: boolean;
+  /** How the last frames went: draws a second and milliseconds a draw, or null before there are any. */
+  timing: { perSecond: number; ms: number } | null;
 };
 
 /** The sliders and switches over the 3D view. */
-export default function OptionsPanel({ terrain, opts, set, counts, relief, onRelief, hasDesign }: Props) {
+export default function OptionsPanel({ terrain, opts, set, counts, relief, onRelief, hasDesign, sculpting, timing }: Props) {
   return (
     <div className="v3-panel">
       {terrain.renderer.hasSurfaces && (
@@ -84,7 +88,23 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
         Height ×{opts.scale}
         <input type="range" min={1} max={5} step={0.5} value={opts.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
       </label>
-      <p className="muted">Drag to orbit, right-drag to pan, wheel to zoom. <kbd>3</kbd> returns to the 2D map.</p>
+      {sculpting && (
+        <label className="check" title="While you hold the brush down, draw only the ground, so it keeps up with the brush. The grass, trees and shadows come back a moment after you let go.">
+          <input type="checkbox" checked={opts.leanStrokes} onChange={(e) => set({ leanStrokes: e.target.checked })} /> Ground only while sculpting
+        </label>
+      )}
+      {timing && (
+        <div className="hint" title="How fast the last frames were drawn. Frames are only drawn when something changes, so this is the pace while you moved or sculpted.">
+          {Math.round(timing.perSecond)} frames/s, {timing.ms.toFixed(1)} ms a frame
+        </div>
+      )}
+      <p className="muted">
+        {sculpting ? (
+          <>Left-drag sculpts, right-drag orbits, middle-drag or <kbd>Space</kbd>-drag pans, wheel zooms. <kbd>3</kbd> returns to the 2D map.</>
+        ) : (
+          <>Drag to orbit, right-drag to pan, wheel to zoom. <kbd>3</kbd> returns to the 2D map.</>
+        )}
+      </p>
     </div>
   );
 }

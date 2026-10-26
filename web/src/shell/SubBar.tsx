@@ -79,7 +79,8 @@ function Simplify({ editor, patch }: { editor: EditorState; patch: Props["patch"
 /** The open editor's options: tools, what it draws with, the active hole, snapping and what to show. */
 export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole, view3d, fmt, canSculpt }: Props) {
   const meta = editorMeta(editor.editor);
-  if (view3d) {
+  const sculpting3d = view3d && editor.editor === "heightmap" && canEdit && canSculpt; // the brush works in 3D, so it keeps its bar
+  if (view3d && !sculpting3d) {
     return (
       <div className="sub-bar">
         <span className="sub-hint">3D view: drag to orbit, right-drag to pan, wheel to zoom. Press <kbd>3</kbd> to go back to the 2D map and keep editing.</span>
@@ -124,7 +125,11 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHo
           Hardness {Math.round(editor.brushHardness * 100)}%
           <input type="range" min={0} max={1} step={0.05} value={editor.brushHardness} onChange={(e) => patch({ brushHardness: Number(e.target.value) })} />
         </label>
-        {notice ? <span className="sub-notice" role="alert">{notice}</span> : <span className="sub-hint tool-hint" title={brush?.hint}>{brush?.hint}. <kbd>Shift</kbd>+<kbd>C</kbd> contours, <kbd>Shift</kbd>+<kbd>S</kbd> slope.</span>}
+        {notice ? (
+          <span className="sub-notice" role="alert">{notice}</span>
+        ) : (
+          <span className="sub-hint tool-hint" title={brush?.hint}>{brush?.hint}. {view3d ? <>Press <kbd>3</kbd> for the 2D map.</> : <><kbd>Shift</kbd>+<kbd>C</kbd> contours, <kbd>Shift</kbd>+<kbd>S</kbd> slope.</>}</span>
+        )}
       </div>
     );
   }

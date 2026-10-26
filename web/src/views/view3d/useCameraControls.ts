@@ -1,6 +1,7 @@
 import { useEffect, useRef, type MutableRefObject, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { Rect } from "../../core/geometry/coords";
 import { cameraFor, nudge, orbit, pan, zoom, type Camera } from "../../terrain/camera/camera";
+import { dragMode, type DragMode } from "./dragMode";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */
 export type Controls3d = {
@@ -19,13 +20,16 @@ type Args = {
   extentRef: RefObject<Rect>;
   /** Ask for a redraw. */
   request: () => void;
+  /** A tool works on the ground with the left button, so the camera uses the others (see dragMode). */
+  tool: boolean;
+  space: RefObject<boolean>;
 };
 
 /**
  * Pointer, wheel and keyboard control of the camera: drag to orbit, shift- or right-drag to pan, wheel to zoom. Returns the
  * pointer handlers for the canvas; wheel and resize are attached to it here, and `controlsRef` offers zoom, nudge and fit.
  */
-export function useCameraControls({ canvasRef, cameraRef, controlsRef, extentRef, request }: Args) {
+export function useCameraControls({ canvasRef, cameraRef, controlsRef, extentRef, request, tool, space }: Args) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const observer = new ResizeObserver(request);
@@ -63,11 +67,13 @@ export function useCameraControls({ canvasRef, cameraRef, controlsRef, extentRef
     };
   }, [cameraRef, controlsRef, extentRef, request]);
 
-  const drag = useRef<{ x: number; y: number; mode: "orbit" | "pan" } | null>(null);
+  const drag = useRef<{ x: number; y: number; mode: DragMode } | null>(null);
   return {
     onPointerDown: (e: ReactPointerEvent<HTMLCanvasElement>) => {
+      const mode = dragMode(e, tool, !!space.current);
+      if (!mode) return;
       e.currentTarget.setPointerCapture(e.pointerId);
-      drag.current = { x: e.clientX, y: e.clientY, mode: e.button === 0 && !e.shiftKey && !e.ctrlKey ? "orbit" : "pan" };
+      drag.current = { x: e.clientX, y: e.clientY, mode };
     },
     onPointerMove: (e: ReactPointerEvent<HTMLCanvasElement>) => {
       const d = drag.current;

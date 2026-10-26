@@ -19,7 +19,7 @@ The golf renderer, built on `gfx/`. It draws a course from a height grid, the cl
 | `passes/drape/` | the aerial and the design's painted overlays |
 | `sculpt/` | the GPU brush, the offset tiles, the delta format (editor only) |
 | `scenery/` | where trees are, and tree models built from the look |
-| `camera/` | the orbit camera and the windows of ground that mesh and drape cover |
+| `camera/` | the orbit camera, the windows of ground that mesh and drape cover, and picking the ground under a screen point (`pick.ts`) |
 | `look/` | the course's look as uniforms; `course/` loads a course's files; `theme.ts` is the editor's own colours |
 | `shaders/` | the shared GLSL chunks and each program's finished source |
 

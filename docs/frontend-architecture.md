@@ -447,6 +447,13 @@ self-shadow ray march in the ground pass; (f) the look's `shadows` fields and a 
 panel, with the cost in the stats counter. *Done when:* trees throw shadows onto the ground and each other, hills shade
 hills, sculpting updates the shadows live, and `low` holds the frame rate on an older PC.
 
+**Afterwards: the brush in 3D.** *(visual)*
+The Heightmap editor's brush works in the 3D view. `terrain/camera/pick.ts` finds the ground under a pixel (a ray march against
+the CPU heights, held to the level where a stroke began, since the CPU copy only catches up when a stroke ends). `editors/heightmap/stroke.ts`
+is one stroke, the same in either view; the view hands the editor's `GroundTool` the pointer. The ring is drawn on a canvas over
+the picture, so moving the cursor costs no 3D frame. While a stroke goes only the ground is drawn (an option), and
+`TerrainSource.watch` makes the view redraw on every stamp, undo and redo.
+
 ### After the plan
 
 These become cheap once the steps are done, and are not part of them:

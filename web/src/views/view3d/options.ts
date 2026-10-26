@@ -14,6 +14,8 @@ export type Options = {
   scale: number;
   shading: number;
   shadows: ShadowQuality;
+  /** While a brush stroke is going, leave out the grass, trees and shadows so the ground keeps up with the brush. */
+  leanStrokes: boolean;
 };
 
 /** How the view starts: in the game's look when the terrain has the surfaces for it. */
@@ -29,4 +31,5 @@ export const defaultOptions = (hasSurfaces: boolean): Options => ({
   scale: 1,
   shading: 1,
   shadows: "low",
+  leanStrokes: true,
 });

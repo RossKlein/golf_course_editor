@@ -151,7 +151,7 @@ export default function App() {
   const layers = useDesignLayers(map, loaded?.kind === "bundle", canEdit, editor);
   const course = useCourseEditor({ map, layers, active: canEdit && editor.editor === "course", editor, patch, say });
   const bounds = useBoundsEditor({ map, layers, active: canEdit && editor.editor === "bounds", editor, patch, say });
-  const height = useHeightEditor({ map, terrain: scene?.terrain, active: canEdit && editor.editor === "heightmap", editor, patch, say });
+  const height = useHeightEditor({ map, terrain: scene?.terrain, active: canEdit && editor.editor === "heightmap", view3d, editor, patch, say });
   const nav = editor.editor === "bounds" ? bounds : course; // the open editor's way of moving between holes
   const holeCount = useDesign((s) => s.doc.layout.holes.length);
   const canUndo = useDesign((s) => s.past.length > 0);
@@ -197,7 +197,8 @@ export default function App() {
     ...height.commands,
   ];
   const scopes: Scope[] = ["global"];
-  if (canEdit && !view3d && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
+  // the editors draw on the map, so only the Heightmap editor, whose brush works in 3D too, keeps its keys there
+  if (canEdit && (!view3d || editor.editor === "heightmap") && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
   useHotkeys(commands, scopes, !helpOpen);
 
   const upload = async (files: File[]) => {
@@ -294,6 +295,7 @@ export default function App() {
                   relief={editor.exaggeration}
                   onRelief={(exaggeration) => patch({ exaggeration })}
                   hasDesign={loaded?.kind === "bundle"}
+                  tool={height.tool3d}
                 />
               )}
               {!scene && !status && <div className="empty">Choose a bundle or GeoTIFF, or drop a .tif here.</div>}

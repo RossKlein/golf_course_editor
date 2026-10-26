@@ -32,6 +32,8 @@ export type TerrainSource = {
   aerial: { image: HTMLImageElement; rect: Rect } | null;
   /** Redraw the map's terrain layer after the heights changed. */
   redraw: () => void;
+  /** Be told whenever the heights change (a brush stamp, an undo, a redo), so a view can redraw. Returns a way to stop. */
+  watch: (listener: () => void) => () => void;
   /** Where the trees come from: the bundle's own, or (when it has none yet) a preview scattered over its woods. */
   treeInfo?: { preview: boolean };
   /** Sculpting, for bundles whose GPU can do it. */

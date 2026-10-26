@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The editors: Course, Out of bounds and Heightmap today, and Hi-res patches, Greens, Landmarks and Trees to come. Each is a hook that attaches tools to the map, with its own commands.
+The editors: Course, Out of bounds and Heightmap today, and Hi-res patches, Greens, Landmarks and Trees to come. Each is a hook that attaches tools to the map, with its own commands. The Heightmap editor's brush also works in the 3D view, through a `GroundTool` it hands to the view.
 
 ## Shape
 

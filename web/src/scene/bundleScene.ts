@@ -77,15 +77,26 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
     const renderer = new TerrainRenderer({ grid: baseGrid, origin: { x: 0, z: 0 }, resX: res, resZ: res }, course.look);
     renderer.setAerial(aerialSource?.image ?? null, aerialSource?.rect ?? null);
-    let redraw = () => {};
-    terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / res, z / res), aerial: aerialSource, redraw: () => redraw() };
+    let redrawMap = () => {};
+    const watchers = new Set<() => void>();
+    const redraw = () => {
+      redrawMap();
+      watchers.forEach((w) => w());
+    };
+    terrainSource = {
+      renderer,
+      ground: (x, z) => sampleGrid(grid, x / res, z / res),
+      aerial: aerialSource,
+      redraw,
+      watch: (listener) => (watchers.add(listener), () => void watchers.delete(listener)),
+    };
     const sculptor = renderer.enableSculpt(grid);
     if (sculptor.supported()) {
-      terrainSource.sculpt = new HeightSession(path, sculptor, grid, () => redraw());
+      terrainSource.sculpt = new HeightSession(path, sculptor, grid, redraw);
       await terrainSource.sculpt.load();
     }
     const terrain = terrainLayer({ renderer, style: () => view, multiply: !!aerial });
-    redraw = terrain.redraw;
+    redrawMap = terrain.redraw;
     // the game's look needs the grass texture, the surfaces and the trees
     loadImage("/game/grass.png").then((img) => renderer.setGrassTile(img)).catch(() => renderer.setGrassTile(null));
     terrainSource.treeInfo = { preview: false };

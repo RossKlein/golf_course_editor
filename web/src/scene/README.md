@@ -7,6 +7,7 @@ Joins the app's data to what is drawn. A `Scene` is what the map shows for somet
 ## Belongs here
 
 - `scene.ts`: the `Scene` and `TerrainSource` types
+- `groundTool.ts`: the `GroundTool` type, how a view hands the pointer on the ground to a tool
 - `bundleScene.ts`, `tifScene.ts`: loading a bundle or a raster into a scene
 - `layers.ts`, `terrainLayer.ts`, `projection.ts`: building the OpenLayers layers a scene is made of
 - `heightSession.ts`: sculpting, saved and undone through the design store
