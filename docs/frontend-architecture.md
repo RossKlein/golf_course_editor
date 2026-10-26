@@ -208,7 +208,7 @@ What the look holds, from the inventory in section 1:
   mown surfaces, how much grass grain shows through, and an optional speckle (grain size, strength of the dark and pale
   grains, and their share). The forest floor is a surface with an `earth` colour to mix with the rough and a patchiness
   strength, not a special case in the shader.
-- **grass**: the tile texture (a file in the bundle), how many metres it covers, how far surface edges are wobbled, and how soft the line between two surfaces is.
+- **grass**: the tile texture (a file in the bundle), how many metres it covers, how far surface edges are wobbled, and how many metres the blend between two surfaces spans.
 - **tufts**: per surface class, a height factor (0 for none), so "grows on rough and woods, shorter in woods" is data; and
   the root and tip colours, base height, and width ratio.
 - **trees**: the model kinds, each a short list of primitives (a frustum or a blob: size, position, colour). Tree models are

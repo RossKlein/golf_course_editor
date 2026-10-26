@@ -14,7 +14,7 @@ uniform float uShading;     // how strongly the shading shows, 1 for the map's l
 uniform vec3 uSpeckle;      // where speckle shows: the ground point looked at (x, z) and how far out, the same as the grass
 uniform float uSpeckleGrain; // metres across one grain of speckle
 uniform float uWobble;      // how far the grass texture wobbles the edges of surfaces, in class cells
-uniform float uEdge;        // how soft the line between two surfaces is: 0 is one pixel, 1 a wide blend
+uniform float uEdge;        // metres across the soft blend between two surfaces: 0 is one pixel
 uniform vec3 uBare;         // the ground's colour with no aerial and no game look (the editor's theme)
 
 uniform sampler2D uAerial;
@@ -75,6 +75,12 @@ vec4 bspline(float t) {
   return vec4(1.0 - 3.0 * t + 3.0 * t2 - t3, 4.0 - 6.0 * t2 + 3.0 * t3, 1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3, t3) / 6.0;
 }
 
+// The weight difference across a straight edge changes by 1.5 a cell, so a blend of the given metres spans this much of it on
+// either side of the line (blend.ts has the same)
+float edgeWidth(float metres, float cellMetres) {
+  return 0.75 * metres / cellMetres;
+}
+
 // the ground in the game's look. The class map is one surface per cell, so a slanted edge is a staircase of cells. Each
 // surface's weight is spread over the sixteen nearest cells with a B-spline, which turns the staircase into a smooth curve,
 // and the two heaviest surfaces are blended across the line where their weights are equal, as narrowly as a pixel (and the
@@ -111,7 +117,7 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
     else if (weight[k] > wb) { wb = weight[k]; b = k; }
   }
   float d = wa - wb;
-  float width = max(fwidth(d) * 0.75, uEdge);
+  float width = max(fwidth(d) * 0.75, edgeWidth(uEdge, uClassInfo.x)); // in units of the weight difference
   float share = width > 0.0 ? smoothstep(-width, width, d) : (d > 0.0 ? 1.0 : 0.5);
 
   // each surface takes its hole from the nearest cell of that surface, for the direction of its stripes

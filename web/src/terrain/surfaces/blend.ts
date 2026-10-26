@@ -37,6 +37,12 @@ const smoothstep = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/**
+ * How much of the weight difference a blend of `metres` spans on either side of the line between two surfaces. Across a
+ * straight edge the difference changes by 1.5 a cell, so half the blend is 0.75 times its metres, in cells.
+ */
+export const edgeWidth = (metres: number, cellMetres: number) => (0.75 * metres) / cellMetres;
+
 export type Blend = {
   /** The heaviest surface and the runner-up (the same when only one is near). */
   a: number;
@@ -48,7 +54,7 @@ export type Blend = {
 /**
  * The two surfaces to show at a point and how much of each. The line between them is where their weights are equal; across
  * it the blend is `max(footprint, edge)` wide, in units of the weight difference: `footprint` is how much that difference
- * changes across a pixel (so an edge is never sharper than a pixel), `edge` is the look's softness.
+ * changes across a pixel (so an edge is never sharper than a pixel), `edge` is the look's softness (see `edgeWidth`).
  */
 export function blend(weights: Map<number, number>, edge: number, footprint = 0): Blend {
   let a = -1, b = -1, wa = -1, wb = -1;

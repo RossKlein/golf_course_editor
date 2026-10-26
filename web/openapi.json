@@ -2128,7 +2128,7 @@
             "type": "number",
             "title": "Edge",
             "ge": 0,
-            "le": 1
+            "le": 5
           }
         },
         "additionalProperties": false,

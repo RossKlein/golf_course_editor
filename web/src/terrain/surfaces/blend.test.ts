@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blend, bspline, surfaceWeights, type CellAt } from "./blend";
+import { blend, bspline, edgeWidth, surfaceWeights, type CellAt } from "./blend";
 
 /** Class 1 for cells right of the line x = z (centres at index + 0.5), else class 0: a 45 degree staircase. */
 const diagonal: CellAt = (cx, cz) => (cx > cz ? 1 : 0);
@@ -89,6 +89,18 @@ describe("the line between two surfaces", () => {
     expect(share(x, 0)).toBe(1); // a crisp edge with nothing to soften it
     expect(share(x, 0.6)).toBeLessThan(share(x, 0.1)); // softer: still mixed further from the line
     expect(share(x, 0, 2)).toBeLessThan(1); // a coarse pixel softens it even with a crisp edge
+  });
+
+  it("blends over the metres the look asks for", () => {
+    const cell = 0.5, edge = edgeWidth(0.6, cell); // a 0.6 m blend over 0.5 m cells
+    const share = (metres: number) => blend(surfaceWeights(vertical, 9.5 + metres / cell, 5.5), edge).share;
+    expect(share(0)).toBeCloseTo(0.5, 6); // half and half on the line
+    expect(share(0.05)).toBeGreaterThan(0.5);
+    expect(share(0.05)).toBeLessThan(0.8); // still mixed close to the line
+    expect(share(0.3)).toBeGreaterThan(0.95); // all but one surface by half the blend away
+    expect(share(0.6)).toBeCloseTo(1, 3);
+    const wider = blend(surfaceWeights(vertical, 9.5 + 0.1 / cell, 5.5), edgeWidth(1.5, cell)).share;
+    expect(wider).toBeLessThan(share(0.1)); // a wider blend is still mixed at the same distance
   });
 
   it("does not jump where the runner-up changes from one surface to another", () => {
