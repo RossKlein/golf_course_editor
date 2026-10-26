@@ -13,6 +13,7 @@ export const defaultEditorState = (): EditorState => ({
   tool: "select",
   activeClass: 1,
   snap: true,
+  hideOthers: false,
   smoothing: 0.1,
   leftCollapsed: false,
   rightTab: "view",

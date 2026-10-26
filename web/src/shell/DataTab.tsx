@@ -1,11 +1,11 @@
 import type { BuildStatus } from "../api/api";
 import { CLASS_NAMES } from "../bundle/bundleScene";
-import BundlePanel from "../bundle/BundlePanel";
 import type { BundleData } from "../bundle/bundleScene";
 import { OWNED } from "../design/olRegions";
 import { ringArea } from "../design/geometry";
 import { designStore, reorderRegions, removeRegions, updateRegion, useDesign } from "../design/store";
 import ReportView from "../report/ReportView";
+import HolesPanel from "./HolesPanel";
 import type { Formatter } from "../units/units";
 
 function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number }) {
@@ -41,7 +41,7 @@ function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number
           title={allOwned ? "The hole this surface belongs to" : "Only fairways, greens and tees belong to a hole; other surfaces are shared"}
         >
           <option value="">{allOwned ? "none yet" : "shared by all holes"}</option>
-          {Array.from({ length: Math.max(holeCount, 18) }, (_, i) => i + 1).map((n) => <option key={n} value={n}>Hole {n}</option>)}
+          {Array.from({ length: Math.max(holeCount, ...rs.map((r) => r.hole ?? 0)) }, (_, i) => i + 1).map((n) => <option key={n} value={n}>Hole {n}</option>)}
         </select>
       </label>
       {one && (
@@ -76,15 +76,18 @@ function BuildInfo({ build }: { build: BuildStatus | null }) {
 }
 
 /** The Data tab for a bundle: the selected region, the last build, validation problems and course info. */
-export default function DataTab({ data, build, fmt, hole, onHole }: { data: BundleData; build: BuildStatus | null; fmt: Formatter; hole: number; onHole: (n: number) => void }) {
+type Props = { data: BundleData; build: BuildStatus | null; fmt: Formatter; hole: number; onHole: (n: number) => void; onAddHole: () => void; onAssign: () => void };
+
+export default function DataTab({ data, build, fmt, hole, onHole, onAddHole, onAssign }: Props) {
+  const holeCount = useDesign((s) => s.doc.layout.holes.length);
   return (
     <>
-      <RegionInspector fmt={fmt} holeCount={data.course.holes.length} />
+      <RegionInspector fmt={fmt} holeCount={holeCount} />
       <BuildInfo build={build} />
       <h2>Problems</h2>
       <ReportView report={build?.report ?? data.report} />
       <h2>Course</h2>
-      <BundlePanel data={data} hole={hole} onHole={onHole} />
+      <HolesPanel data={data} hole={hole} fmt={fmt} onHole={onHole} onAddHole={onAddHole} onAssign={onAssign} />
     </>
   );
 }

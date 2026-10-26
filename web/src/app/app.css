@@ -123,3 +123,15 @@ kbd { display: inline-block; padding: 0 5px; margin: 0 2px; font: 11px/18px ui-m
 .help-grid dl > div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 13px; }
 .help-grid dd { margin: 0; white-space: nowrap; }
 .dialog-close { margin-top: 14px; }
+
+.holes-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.holes-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 2px 4px; }
+.holes-table td { padding: 2px 4px; vertical-align: middle; }
+.holes-table tr.on td { background: rgb(255 255 255 / 7%); }
+.holes-table input[type="text"] { width: 100%; min-width: 0; }
+.holes-table input[type="number"] { width: 44px; }
+.holes-table tfoot td { color: var(--muted); border-top: 1px solid var(--line); }
+.holes-table .link { padding: 0 6px; background: transparent; border: 0; color: var(--accent); font-weight: 600; }
+.holes-table .icon { padding: 2px; }
+.warn-text { color: var(--warn); }
+.holes .row button { display: inline-flex; align-items: center; gap: 4px; }

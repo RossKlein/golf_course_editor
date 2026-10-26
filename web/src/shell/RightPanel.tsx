@@ -19,10 +19,13 @@ type Props = {
   readout: ReadoutLine[] | null;
   fmt: Formatter;
   onBaked: () => void;
+  onHole: (n: number) => void;
+  onAddHole: () => void;
+  onAssign: () => void;
 };
 
 /** The viewer and info side: a View tab (layers, readout) and a Data tab (selection, builds, problems, bake). */
-export default function RightPanel({ scene, tif, bundle, build, editor, patch, layerState, onLayer, readout, fmt, onBaked }: Props) {
+export default function RightPanel({ scene, tif, bundle, build, editor, patch, layerState, onLayer, readout, fmt, onBaked, onHole, onAddHole, onAssign }: Props) {
   return (
     <aside className="panel">
       <h1>{scene.title}</h1>
@@ -49,7 +52,7 @@ export default function RightPanel({ scene, tif, bundle, build, editor, patch, l
         </Tabs.Content>
         <Tabs.Content value="data">
           {bundle ? (
-            <DataTab data={bundle} build={build} fmt={fmt} hole={editor.hole} onHole={(hole) => patch({ hole })} />
+            <DataTab data={bundle} build={build} fmt={fmt} hole={editor.hole} onHole={onHole} onAddHole={onAddHole} onAssign={onAssign} />
           ) : tif ? (
             <TifPanel key={tif.path} view={tif} onBaked={onBaked} />
           ) : null}

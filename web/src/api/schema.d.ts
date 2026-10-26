@@ -541,6 +541,11 @@ export interface components {
              */
             snap?: boolean;
             /**
+             * Hideothers
+             * @default false
+             */
+            hideOthers?: boolean;
+            /**
              * Smoothing
              * @default 0.1
              */
@@ -606,6 +611,11 @@ export interface components {
              * @default true
              */
             snap: boolean;
+            /**
+             * Hideothers
+             * @default false
+             */
+            hideOthers: boolean;
             /**
              * Smoothing
              * @default 0.1

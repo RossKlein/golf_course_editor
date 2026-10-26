@@ -28,6 +28,14 @@ export function fitRect(map: Map, r: Rect) {
   view.setResolution(res);
 }
 
+/** Like fitRect, but glides there. */
+export function flyToRect(map: Map, r: Rect, duration = 300) {
+  const size = map.getSize();
+  if (!size || !size[0] || !size[1]) return;
+  const resolution = Math.max(r.w / size[0], r.h / size[1]) / 0.95;
+  map.getView().animate({ center: toMap([r.x + r.w / 2, r.z + r.h / 2]), resolution, duration });
+}
+
 export const sameViewport = (a: Viewport, b: Viewport) =>
   Math.abs(a.x - b.x) < 1e-6 * Math.max(1, Math.abs(a.x)) &&
   Math.abs(a.z - b.z) < 1e-6 * Math.max(1, Math.abs(a.z)) &&

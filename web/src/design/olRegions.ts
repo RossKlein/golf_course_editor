@@ -6,9 +6,10 @@ import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import { CLASS_COLORS, css } from "../bundle/bundleScene";
 import { fromMap, toMap, type Pt } from "../map/coords";
+import { OWNED, visibleRegionIds } from "./holes";
 import { designStore, type Doc } from "./store";
 
-export const OWNED = [1, 2, 4]; // fairway, green, tee: the classes that belong to a hole
+export { OWNED }; // fairway, green, tee: the classes that belong to a hole
 
 export const mapRings = (outer: Pt[], inner: Pt[][]) => [outer, ...inner].map((ring) => ring.map((p) => toMap(p)));
 
@@ -42,11 +43,16 @@ function regionStyle(f: FeatureLike): Style[] {
 /** The design's regions as an OpenLayers layer. The store is the source of truth; this only mirrors it. */
 export function createRegionLayer() {
   const source = new VectorSource<Feature<Polygon>>();
-  const layer = new VectorLayer({ source, style: regionStyle, zIndex: 50 });
+  const layer = new VectorLayer({ source, style: regionStyle, zIndex: 50, renderOrder: (a, b) => (a.get("z") ?? 0) - (b.get("z") ?? 0) });
   const features = new Map<string, Feature<Polygon>>();
+  // While other holes are hidden their features are taken out of the source, so selecting, editing and snapping
+  // (which all read the source) leave them alone too.
+  let only: number | null = null;
 
   const apply = (doc: Doc) => {
+    const shown = only === null ? null : visibleRegionIds(doc, only, designStore.getState().selected);
     for (const id of doc.order) {
+      if (shown && !shown.has(id)) continue;
       const r = doc.regions[id];
       const coords = mapRings(r.outer as Pt[], r.inner as Pt[][]);
       let f = features.get(id);
@@ -62,7 +68,7 @@ export function createRegionLayer() {
       f.set("hole", r.hole);
     }
     for (const [id, f] of features) {
-      if (!doc.regions[id]) {
+      if (!doc.regions[id] || (shown && !shown.has(id))) {
         source.removeFeature(f);
         features.delete(id);
       }
@@ -82,8 +88,18 @@ export function createRegionLayer() {
     }
     if (s.selected !== lastSel) {
       lastSel = s.selected;
+      if (only !== null) apply(s.doc); // the selection is always shown, even outside the hole
       layer.changed();
     }
   });
-  return { layer, source, dispose: unsub };
+  return {
+    layer,
+    source,
+    /** Show only this hole's surfaces (and what is near them), or everything when null. */
+    showOnly(hole: number | null) {
+      only = hole;
+      apply(designStore.getState().doc);
+    },
+    dispose: unsub,
+  };
 }

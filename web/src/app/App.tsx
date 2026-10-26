@@ -110,6 +110,7 @@ export default function App() {
 
   const canEdit = !!bundle && session.ready;
   const course = useCourseEditor({ map, scene, active: canEdit && editor.editor === "course", editor, patch });
+  const holeCount = useDesign((s) => s.doc.layout.holes.length);
   const canUndo = useDesign((s) => s.past.length > 0);
   const canRedo = useDesign((s) => s.future.length > 0);
 
@@ -184,7 +185,7 @@ export default function App() {
           build={session.build}
           loadError={session.loadError}
         />
-        <SubBar editor={editor} patch={patch} notice={course.notice} canEdit={canEdit} holeCount={loaded?.kind === "bundle" ? loaded.data.course.holes.length : 0} />
+        <SubBar editor={editor} patch={patch} notice={course.notice} canEdit={canEdit} holeCount={holeCount} onHole={course.goHole} onAddHole={course.newHole} />
         <Group orientation="horizontal" className="body">
           <Panel
             panelRef={left}
@@ -241,6 +242,9 @@ export default function App() {
                 readout={readout}
                 fmt={fmt}
                 onBaked={() => void refresh()}
+                onHole={course.goHole}
+                onAddHole={course.newHole}
+                onAssign={course.assignUnassigned}
               />
             ) : (
               <aside className="panel" />

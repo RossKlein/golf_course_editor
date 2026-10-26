@@ -1,7 +1,8 @@
 import { applyPatches, enablePatches, produceWithPatches, type Patch } from "immer";
 import { useSyncExternalStore } from "react";
 import { createStore } from "zustand/vanilla";
-import type { DesignDoc, Layout, Region } from "../api/api";
+import type { DesignDoc, DesignHole, Layout, Region } from "../api/api";
+import { MAX_HOLES } from "./holes";
 
 enablePatches();
 
@@ -143,6 +144,59 @@ export function reorderRegions(label: string, ids: string[], where: "front" | "b
     d.order = where === "front" ? [...rest, ...moved] : [...moved, ...rest];
   });
 }
+
+// ---- holes and course details ---------------------------------------------------------------------------------------
+
+/** Holes are numbered 1..n with no gaps, so every hole up to `n` exists once `n` does. */
+function fillHoles(d: Doc, n: number) {
+  while (d.layout.holes.length < Math.min(n, MAX_HOLES)) d.layout.holes.push({ number: d.layout.holes.length + 1, par: 4, name: null, route: [] });
+}
+
+/** Add the next hole. Returns its number, or null at the limit. */
+export function addHole(): number | null {
+  let n: number | null = null;
+  designStore.getState().commit("Add hole", (d) => {
+    if (d.layout.holes.length >= MAX_HOLES) return;
+    fillHoles(d, d.layout.holes.length + 1);
+    n = d.layout.holes.length;
+  });
+  return n;
+}
+
+/** Remove a hole. Later holes move down a number, and surfaces that belonged to it become unassigned. */
+export const removeHole = (n: number) =>
+  designStore.getState().commit(`Remove hole ${n}`, (d) => {
+    if (!d.layout.holes.some((h) => h.number === n)) return;
+    d.layout.holes = d.layout.holes.filter((h) => h.number !== n);
+    d.layout.holes.forEach((h, i) => (h.number = i + 1));
+    for (const r of Object.values(d.regions)) {
+      if (r.hole === n) r.hole = null;
+      else if (r.hole != null && r.hole > n) r.hole -= 1;
+    }
+  });
+
+export const updateHole = (n: number, patch: Partial<Pick<DesignHole, "par" | "name">>) =>
+  designStore.getState().commit(`Edit hole ${n}`, (d) => {
+    const h = d.layout.holes.find((x) => x.number === n);
+    if (h) Object.assign(h, patch);
+  });
+
+/** Set a hole's route, creating the hole (and any before it) if it does not exist yet. */
+export const setRoute = (n: number, route: [number, number][]) =>
+  designStore.getState().commit(`Set route of hole ${n}`, (d) => {
+    fillHoles(d, n);
+    const h = d.layout.holes.find((x) => x.number === n);
+    if (h) h.route = route;
+  });
+
+export const updateLayout = (label: string, patch: Partial<Pick<Layout, "name" | "attribution">>) =>
+  designStore.getState().commit(label, (d) => void Object.assign(d.layout, patch));
+
+/** Give surfaces their holes: `{ regionId: holeNumber }`, as one undo step. */
+export const assignHoles = (assignment: Record<string, number>) =>
+  designStore.getState().commit("Assign surfaces to holes", (d) => {
+    for (const [id, hole] of Object.entries(assignment)) if (d.regions[id]) d.regions[id].hole = hole;
+  });
 
 export const canUndo = () => designStore.getState().past.length > 0;
 export const canRedo = () => designStore.getState().future.length > 0;

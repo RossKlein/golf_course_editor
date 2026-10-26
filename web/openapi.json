@@ -1237,6 +1237,11 @@
             "title": "Snap",
             "default": true
           },
+          "hideOthers": {
+            "type": "boolean",
+            "title": "Hideothers",
+            "default": false
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1332,6 +1337,11 @@
             "title": "Snap",
             "default": true
           },
+          "hideOthers": {
+            "type": "boolean",
+            "title": "Hideothers",
+            "default": false
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
@@ -1366,6 +1376,7 @@
           "tool",
           "activeClass",
           "snap",
+          "hideOthers",
           "smoothing",
           "leftCollapsed",
           "rightTab"

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { EditorState } from "../api/api";
 import { CLASS_COLORS, css } from "../bundle/bundleScene";
 import { CLASS_KEYS, TOOLS } from "../editors/course/useCourseEditor";
@@ -11,10 +11,13 @@ type Props = {
   notice: string;
   canEdit: boolean;
   holeCount: number;
+  /** Make a hole active and bring it into view. */
+  onHole: (n: number) => void;
+  onAddHole: () => void;
 };
 
 /** The open editor's options: tools, surface palette, active hole, snapping. */
-export default function SubBar({ editor, patch, notice, canEdit, holeCount }: Props) {
+export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole }: Props) {
   const meta = editorMeta(editor.editor);
   if (editor.editor === "view") {
     return (
@@ -30,7 +33,7 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount }: Pr
       </div>
     );
   }
-  const holeLabel = holeCount ? `Hole ${editor.hole} of ${holeCount}` : `Hole ${editor.hole}`;
+  const holeLabel = holeCount ? `Hole ${editor.hole} of ${holeCount}` : "No holes yet";
   return (
     <div className="sub-bar">
       <div className="group" role="group" aria-label="Tools">
@@ -55,14 +58,20 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount }: Pr
       </div>
       <div className="group" role="group" aria-label="Active hole">
         <Hint label="Previous hole" keys={["BracketLeft"]}>
-          <button type="button" className="icon" onClick={() => patch({ hole: Math.max(1, editor.hole - 1) })} aria-label="Previous hole"><ChevronLeft size={14} /></button>
+          <button type="button" className="icon" disabled={editor.hole <= 1} onClick={() => onHole(editor.hole - 1)} aria-label="Previous hole"><ChevronLeft size={14} /></button>
         </Hint>
         <span className="hole-label" title="New fairways, greens and tees are assigned to this hole">{holeLabel}</span>
         <Hint label="Next hole" keys={["BracketRight"]}>
-          <button type="button" className="icon" onClick={() => patch({ hole: Math.min(24, editor.hole + 1) })} aria-label="Next hole"><ChevronRight size={14} /></button>
+          <button type="button" className="icon" disabled={editor.hole >= holeCount} onClick={() => onHole(editor.hole + 1)} aria-label="Next hole"><ChevronRight size={14} /></button>
+        </Hint>
+        <Hint label="Add a hole" keys={["h n"]}>
+          <button type="button" className="icon" onClick={onAddHole} aria-label="Add a hole"><Plus size={14} /></button>
         </Hint>
       </div>
       <label className="check"><input type="checkbox" checked={editor.snap} onChange={(e) => patch({ snap: e.target.checked })} /> Snap</label>
+      <Hint label="Show only the active hole's outlines and route" keys={["h o"]}>
+        <label className="check"><input type="checkbox" checked={editor.hideOthers} onChange={(e) => patch({ hideOthers: e.target.checked })} /> Only this hole</label>
+      </Hint>
       {editor.tool === "freehand" && (
         <label className="slider" title="How far a freehand line may stray from what you drew when it is saved, in screen pixels. 0 keeps every point.">
           Simplify
