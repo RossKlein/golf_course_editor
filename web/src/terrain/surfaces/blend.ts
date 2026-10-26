@@ -3,8 +3,8 @@
 //
 // The class map is one surface per cell, with no partial coverage, so a slanted edge is a staircase of cells. Blending the
 // four nearest cells (bilinear) only softens each step. Instead each surface's weight is spread over the sixteen nearest cells
-// with a cubic B-spline, which turns the staircase into a smooth curve, and the two heaviest surfaces are then blended across
-// the line where their weights are equal, as narrowly as the pixel (and the look's `edge`) allows.
+// with a cubic B-spline, which turns the staircase into a smooth curve, and the two heaviest surfaces are then told apart
+// across the line where their weights are equal, as narrowly as the pixel allows: a clean edge, not a blend.
 
 /** Cubic B-spline weights of the four cells around a point, `t` (0..1) being its place between the middle two. They sum to 1. */
 export function bspline(t: number): [number, number, number, number] {
@@ -38,15 +38,9 @@ const smoothstep = (a: number, b: number, x: number) => {
 };
 
 /**
- * How much of the weight difference a blend of `metres` spans on either side of the line between two surfaces. Across a
- * straight edge the difference changes by 1.5 a cell, so half the blend is 0.75 times its metres, in cells.
- */
-export const edgeWidth = (metres: number, cellMetres: number) => (0.75 * metres) / cellMetres;
-
-/**
  * How much of the heaviest surface to show, 0.5 to 1, from the weight difference `d` (0 on the line between two surfaces, 1
- * far from any). A smoothstep across `width` either side of the line, rescaled so d = 1 is always all of it: a wide blend
- * would otherwise leave a little of a surface that is not there in every pure area.
+ * far from any). A smoothstep across `width` either side of the line, rescaled so d = 1 is always all of it: a pixel that
+ * covers many cells (far away) would otherwise leave a little of a surface that is not there in every pure area.
  */
 export function blendShare(d: number, width: number): number {
   const top = smoothstep(-width, width, 1);
@@ -62,11 +56,11 @@ export type Blend = {
 };
 
 /**
- * The two surfaces to show at a point and how much of each. The line between them is where their weights are equal; across
- * it the blend is `max(footprint, edge)` wide, in units of the weight difference: `footprint` is how much that difference
- * changes across a pixel (so an edge is never sharper than a pixel), `edge` is the look's softness (see `edgeWidth`).
+ * The two surfaces to show at a point and how much of each. The line between them is where their weights are equal, and
+ * across it the change is as narrow as a pixel: `footprint` is how much the weight difference changes across a pixel (so
+ * the edge is antialiased, never softer). Surfaces are not blended beyond that; golf courses have clean edges.
  */
-export function blend(weights: Map<number, number>, edge: number, footprint = 0): Blend {
+export function blend(weights: Map<number, number>, footprint = 0): Blend {
   let a = -1, b = -1, wa = -1, wb = -1;
   for (const [cls, w] of weights) {
     if (w > wa) {
@@ -80,6 +74,6 @@ export function blend(weights: Map<number, number>, edge: number, footprint = 0)
     }
   }
   if (b < 0) return { a, b: a, share: 1 };
-  const width = Math.max(footprint * 0.75, edge);
+  const width = footprint * 0.75;
   return { a, b, share: width > 0 ? blendShare(wa - wb, width) : wa > wb ? 1 : 0.5 };
 }

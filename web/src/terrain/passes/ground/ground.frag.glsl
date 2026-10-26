@@ -14,7 +14,6 @@ uniform float uShading;     // how strongly the shading shows, 1 for the map's l
 uniform vec3 uSpeckle;      // where speckle shows: the ground point looked at (x, z) and how far out, the same as the grass
 uniform float uSpeckleGrain; // metres across one grain of speckle
 uniform float uWobble;      // how far the grass texture wobbles the edges of surfaces, in class cells
-uniform float uEdge;        // metres across the soft blend between two surfaces: 0 is one pixel
 uniform vec3 uBare;         // the ground's colour with no aerial and no game look (the editor's theme)
 
 uniform sampler2D uAerial;
@@ -75,15 +74,9 @@ vec4 bspline(float t) {
   return vec4(1.0 - 3.0 * t + 3.0 * t2 - t3, 4.0 - 6.0 * t2 + 3.0 * t3, 1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3, t3) / 6.0;
 }
 
-// The weight difference across a straight edge changes by 1.5 a cell, so a blend of the given metres spans this much of it on
-// either side of the line (blend.ts has the same)
-float edgeWidth(float metres, float cellMetres) {
-  return 0.75 * metres / cellMetres;
-}
-
 // How much of the heaviest surface to show, 0.5 to 1, from the weight difference d (0 on the line between two surfaces, 1 far
-// from any). The blend is a smoothstep across width either side of the line, rescaled so d = 1 is always all of it: a wide blend
-// would otherwise leave a little of a surface that is not there in every pure area. blend.ts is the same
+// from any). A smoothstep across width either side of the line, rescaled so d = 1 is always all of it: a pixel that covers
+// many cells (far away) would otherwise leave a little of a surface that is not there in every pure area. blend.ts is the same
 float blendShare(float d, float width) {
   float top = smoothstep(-width, width, 1.0);
   return 0.5 + 0.5 * (smoothstep(-width, width, d) - 0.5) / (top - 0.5);
@@ -125,7 +118,7 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
     else if (weight[k] > wb) { wb = weight[k]; b = k; }
   }
   float d = wa - wb;
-  float width = max(fwidth(d) * 0.75, edgeWidth(uEdge, uClassInfo.x)); // in units of the weight difference
+  float width = fwidth(d) * 0.75; // the edge is as narrow as a pixel: a clean line, antialiased, not a blend
   float share = width > 0.0 ? blendShare(d, width) : (d > 0.0 ? 1.0 : 0.5);
 
   // each surface takes its hole from the nearest cell of that surface, for the direction of its stripes

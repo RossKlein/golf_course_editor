@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blend, blendShare, bspline, edgeWidth, surfaceWeights, type CellAt } from "./blend";
+import { blend, blendShare, bspline, surfaceWeights, type CellAt } from "./blend";
 
 /** Class 1 for cells right of the line x = z (centres at index + 0.5), else class 0: a 45 degree staircase. */
 const diagonal: CellAt = (cx, cz) => (cx > cz ? 1 : 0);
@@ -73,42 +73,27 @@ describe("the line between two surfaces", () => {
     expect(smooth).toBeLessThan(old / 3);
   });
 
-  it("is blended across, and is one surface on either side", () => {
-    const at = (x: number, edge: number) => blend(surfaceWeights(vertical, x, 5.5), edge);
-    expect(at(5, 0.3)).toEqual({ a: 0, b: 0, share: 1 }); // well inside: only one surface is near
-    expect(at(9.5, 0.3).share).toBeCloseTo(0.5, 6); // on the line: half and half
-    const near = at(9.5 + 0.05, 0.3);
-    expect(near.a).toBe(1);
-    expect(near.share).toBeGreaterThan(0.5);
-    expect(near.share).toBeLessThan(1);
+  it("is one surface on either side of a crisp line, and half and half on it", () => {
+    const at = (x: number, footprint = 0) => blend(surfaceWeights(vertical, x, 5.5), footprint);
+    expect(at(5)).toEqual({ a: 0, b: 0, share: 1 }); // well inside: only one surface is near
+    expect(at(9.5 - 0.05)).toMatchObject({ a: 0, share: 1 });
+    expect(at(9.5 + 0.05)).toMatchObject({ a: 1, share: 1 }); // the change is at the line, with nothing between
+    expect(at(9.5, 0.01).share).toBeCloseTo(0.5, 3);
   });
 
-  it("is as wide as the look's edge says, and no narrower than a pixel", () => {
-    const share = (x: number, edge: number, footprint = 0) => blend(surfaceWeights(vertical, x, 5.5), edge, footprint).share;
-    const x = 9.5 + 0.1;
-    expect(share(x, 0)).toBe(1); // a crisp edge with nothing to soften it
-    expect(share(x, 0.6)).toBeLessThan(share(x, 0.1)); // softer: still mixed further from the line
-    expect(share(x, 0, 2)).toBeLessThan(1); // a coarse pixel softens it even with a crisp edge
+  it("is no sharper than a pixel", () => {
+    const share = (x: number, footprint: number) => blend(surfaceWeights(vertical, x, 5.5), footprint).share;
+    expect(share(9.6, 0)).toBe(1);
+    expect(share(9.6, 2)).toBeLessThan(1); // a pixel covering several cells softens the edge: antialiasing
+    expect(share(9.6, 2)).toBeGreaterThan(0.5);
   });
 
-  it("blends over the metres the look asks for", () => {
-    const cell = 0.5, edge = edgeWidth(0.6, cell); // a 0.6 m blend over 0.5 m cells
-    const share = (metres: number) => blend(surfaceWeights(vertical, 9.5 + metres / cell, 5.5), edge).share;
-    expect(share(0)).toBeCloseTo(0.5, 6); // half and half on the line
-    expect(share(0.05)).toBeGreaterThan(0.5);
-    expect(share(0.05)).toBeLessThan(0.8); // still mixed close to the line
-    expect(share(0.3)).toBeGreaterThan(0.95); // all but one surface by half the blend away
-    expect(share(0.6)).toBeCloseTo(1, 3);
-    const wider = blend(surfaceWeights(vertical, 9.5 + 0.1 / cell, 5.5), edgeWidth(1.5, cell)).share;
-    expect(wider).toBeLessThan(share(0.1)); // a wider blend is still mixed at the same distance
-  });
-
-  it("leaves a pure area pure however wide the blend", () => {
+  it("leaves a pure area pure however many cells a pixel covers", () => {
     for (const width of [0.1, 0.9, 1, 1.5, 2.7, 10]) {
       expect(blendShare(1, width)).toBeCloseTo(1, 12); // far from any other surface
       expect(blendShare(0, width)).toBeCloseTo(0.5, 12); // on the line
     }
-    expect(blend(new Map([[2, 1], [3, 0]]), edgeWidth(1.8, 0.5)).share).toBeCloseTo(1, 12);
+    expect(blend(new Map([[2, 1], [3, 0]]), 5).share).toBeCloseTo(1, 12);
   });
 
   it("stays between half and all at any width, and still rises with the weight difference", () => {
@@ -121,8 +106,8 @@ describe("the line between two surfaces", () => {
   });
 
   it("does not jump where the runner-up changes from one surface to another", () => {
-    const a = blend(new Map([[2, 0.7], [3, 0.2], [4, 0.1]]), 0.3);
-    const b = blend(new Map([[2, 0.7], [3, 0.1], [4, 0.2]]), 0.3);
+    const a = blend(new Map([[2, 0.7], [3, 0.2], [4, 0.1]]), 0.4);
+    const b = blend(new Map([[2, 0.7], [3, 0.1], [4, 0.2]]), 0.4);
     expect(a.share).toBeCloseTo(b.share, 12);
   });
 });
