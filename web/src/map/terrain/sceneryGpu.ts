@@ -126,10 +126,17 @@ in vec3 vColor;
 out vec4 outColor;
 void main() { outColor = vec4(vColor, 1.0); }`;
 
-/** Tufts of grass further than this from the camera's target are not drawn. */
-export const TUFT_RADIUS = 45;
-export const TUFT_CELL = 0.5;
-const TUFT_N = Math.ceil((2 * TUFT_RADIUS) / TUFT_CELL);
+/** The tufts' defaults: how far from the camera's target they grow, and the spacing that gives "density 1". */
+export const TUFT_RANGE = 45;
+const TUFT_CELL = 0.5;
+/** Most tufts across the patch, which caps the work however far or dense the sliders go. */
+const MAX_ACROSS = 1024;
+
+/** The grid of tufts for a range (metres) and a density (1 is the default, 2 is twice as many to the square metre). */
+export function tuftGrid(range: number, density: number): { cell: number; across: number } {
+  const cell = Math.max(TUFT_CELL / Math.sqrt(Math.max(density, 0.01)), (2 * range) / MAX_ACROSS);
+  return { cell, across: Math.ceil((2 * range) / cell) };
+}
 
 type Model = { vao: WebGLVertexArrayObject; vertices: number; instances: WebGLBuffer; count: number };
 
@@ -140,6 +147,9 @@ export type SceneryParams = {
   sunDir: [number, number, number];
   scale: number;
   tufts: boolean;
+  /** How far from the target tufts grow, in metres, and how many (1 is the default density). */
+  tuftRange: number;
+  tuftDensity: number;
   trees: boolean;
 };
 
@@ -240,14 +250,15 @@ export class SceneryGpu {
       bindClasses(t);
       gl.uniformMatrix4fv(t.u.uViewProj, false, p.viewProj);
       gl.uniform3f(t.u.uEye, ...p.eye);
-      gl.uniform2f(t.u.uCentre, Math.round(p.target[0] / TUFT_CELL) * TUFT_CELL, Math.round(p.target[1] / TUFT_CELL) * TUFT_CELL);
-      gl.uniform1f(t.u.uCell, TUFT_CELL);
-      gl.uniform1i(t.u.uN, TUFT_N);
-      gl.uniform1f(t.u.uRadius, TUFT_RADIUS);
+      const { cell, across } = tuftGrid(p.tuftRange, p.tuftDensity);
+      gl.uniform2f(t.u.uCentre, Math.round(p.target[0] / cell) * cell, Math.round(p.target[1] / cell) * cell);
+      gl.uniform1f(t.u.uCell, cell);
+      gl.uniform1i(t.u.uN, across);
+      gl.uniform1f(t.u.uRadius, p.tuftRange);
       gl.uniform1f(t.u.uTall, 0.4);
       gl.uniform1f(t.u.uScale, p.scale);
       gl.bindVertexArray(m.quad);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, TUFT_N * TUFT_N);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, across * across);
     }
     gl.bindVertexArray(null);
   }

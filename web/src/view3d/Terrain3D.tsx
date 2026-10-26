@@ -3,6 +3,7 @@ import { designStore } from "../design/store";
 import type { Rect } from "../map/coords";
 import type { TerrainSource } from "../map/scene";
 import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "./camera";
+import { TUFT_RANGE } from "../map/terrain/sceneryGpu";
 import { DRAPE_PIXELS, paintDrape } from "./drape";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */
@@ -30,7 +31,7 @@ type Props = {
   hasDesign: boolean;
 };
 
-type Options = { aerial: boolean; game: boolean; tufts: boolean; trees: boolean; surfaces: number; outlines: boolean; scale: number; shading: number };
+type Options = { aerial: boolean; game: boolean; tufts: boolean; grassRange: number; grassDensity: number; trees: boolean; surfaces: number; outlines: boolean; scale: number; shading: number };
 
 /**
  * The terrain as a 3D landscape you can fly around: the same height data and the same sun as the map, draped with the
@@ -38,7 +39,7 @@ type Options = { aerial: boolean; game: boolean; tufts: boolean; trees: boolean;
  */
 export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [opts, setOpts] = useState<Options>(() => ({ aerial: true, game: terrain.renderer.hasSurfaces, tufts: true, trees: true, surfaces: terrain.renderer.hasSurfaces ? 0 : 0.5, outlines: true, scale: 1, shading: 1 }));
+  const [opts, setOpts] = useState<Options>(() => ({ aerial: true, game: terrain.renderer.hasSurfaces, tufts: true, grassRange: TUFT_RANGE, grassDensity: 1, trees: true, surfaces: terrain.renderer.hasSurfaces ? 0 : 0.5, outlines: true, scale: 1, shading: 1 }));
   const latest = useRef({ terrain, extent, active, opts, contour, slope, relief, hasDesign });
   latest.current = { terrain, extent, active, opts, contour, slope, relief, hasDesign };
   const frame = useRef(0);
@@ -77,7 +78,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, meshes, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, trees: opts.trees, eye, target: [cam.x, cam.z],
+        viewProj, meshes, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, tuftRange: opts.grassRange, tuftDensity: opts.grassDensity, trees: opts.trees, eye, target: [cam.x, cam.z],
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       const ctx = canvas.getContext("2d")!;
@@ -188,6 +189,18 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
           <label className="check" title="Standing grass in the rough near the camera">
             <input type="checkbox" checked={opts.tufts} onChange={(e) => set({ tufts: e.target.checked })} /> Rough grass
           </label>
+        )}
+        {terrain.renderer.hasSurfaces && opts.tufts && (
+          <>
+            <label title="How far from where you are looking the grass grows. Further costs more.">
+              Grass range {Math.round(opts.grassRange)} m
+              <input type="range" min={10} max={150} step={5} value={opts.grassRange} onChange={(e) => set({ grassRange: Number(e.target.value) })} />
+            </label>
+            <label title="How many tufts to the square metre, as a multiple of the default. More costs more.">
+              Grass density ×{opts.grassDensity}
+              <input type="range" min={0.25} max={3} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
+            </label>
+          </>
         )}
         <label className="check" title={terrain.treeInfo?.preview ? "This bundle has no trees yet, so these are scattered over the woods surface to show how it will look" : "The bundle's trees"}>
           <input type="checkbox" checked={opts.trees} onChange={(e) => set({ trees: e.target.checked })} /> Trees{terrain.treeInfo?.preview ? " (preview)" : ""}

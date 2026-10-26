@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TUFT_RANGE, tuftGrid } from "../map/terrain/sceneryGpu";
 import { hash2, scatterWoods, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
 
 /** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
@@ -133,5 +134,27 @@ describe("tree meshes", () => {
       }
     }
     expect(topN).toBeGreaterThan(0);
+  });
+});
+
+describe("grass tuft grid", () => {
+  it("the default is a tuft every half metre across 90 m", () => {
+    expect(tuftGrid(TUFT_RANGE, 1)).toEqual({ cell: 0.5, across: 180 });
+  });
+
+  it("twice the density is twice the tufts to the square metre", () => {
+    const one = tuftGrid(45, 1), two = tuftGrid(45, 2);
+    expect((two.across * two.across) / (one.across * one.across)).toBeCloseTo(2, 1);
+  });
+
+  it("a longer range covers more ground at the same spacing", () => {
+    expect(tuftGrid(90, 1).cell).toBe(0.5);
+    expect(tuftGrid(90, 1).across).toBe(360);
+  });
+
+  it("is capped, so the sliders cannot ask for an unbounded number of tufts", () => {
+    const g = tuftGrid(150, 3);
+    expect(g.across).toBeLessThanOrEqual(1025);
+    expect(g.cell).toBeGreaterThan(0.25);
   });
 });

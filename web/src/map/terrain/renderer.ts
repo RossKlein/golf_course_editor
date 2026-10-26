@@ -38,6 +38,8 @@ export type View3d = {
   /** The game's look for the ground (needs `setSurfaces`), and the standing things drawn on it. */
   game: boolean;
   tufts: boolean;
+  tuftRange: number;
+  tuftDensity: number;
   trees: boolean;
   /** The camera, for the things that face it, and the ground point it looks at. */
   eye: [number, number, number];
@@ -332,7 +334,7 @@ export class TerrainRenderer {
     if (v.tufts || v.trees) {
       this.scenery.draw(
         g,
-        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, tufts: v.tufts && !!this.classes, trees: v.trees },
+        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, tufts: v.tufts && !!this.classes, tuftRange: v.tuftRange, tuftDensity: v.tuftDensity, trees: v.trees },
         (p) => this.bindHeight(g, p),
         (p) => this.bindClasses(g, p),
       );
