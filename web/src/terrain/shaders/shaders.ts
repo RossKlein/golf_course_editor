@@ -1,12 +1,14 @@
 // The terrain shaders. Their source is in shaders/*.glsl; this joins each program's pieces and builds the defines that
 // give a shader a number defined once in TypeScript.
 //
-// Heights are sampled exactly as the game does (bilinear between grid points) and normals come from central differences of
-// that surface, so the relief on screen is the relief the ball will see. The programs:
+// Heights are sampled exactly as the game does (bilinear between grid points), so the ground on screen is the ground the ball
+// will see. The lighting of the 3D ground reads a baked relief instead (slope and curvature of a spline over the heights, see
+// relief/), because the slope of a bilinear surface is faceted. The programs:
 //  - flat: a top-down shade for the map (one full-screen triangle, every pixel looks up the ground under it);
 //  - ground: a 3D mesh whose vertices are lifted by the same lookup, textured with the aerial and the design;
 //  - tufts and trees: the standing things drawn on the ground, placed entirely in the vertex shader;
-//  - brush: one pass of the sculpting brush over a box of heights.
+//  - brush: one pass of the sculpting brush over a box of heights;
+//  - relief: bakes the smoothed slope and curvature into a texture, all of it or the part a brush changed.
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
@@ -20,6 +22,7 @@ import head from "./head.glsl?raw";
 import look from "./look.glsl?raw";
 import height from "./height.glsl?raw";
 import overlays from "./overlays.glsl?raw";
+import reliefFrag from "../relief/relief.frag.glsl?raw";
 import shadow from "./shadow.glsl?raw";
 import tree from "./tree.glsl?raw";
 import depthFrag from "../passes/shadow/depth.frag.glsl?raw";
@@ -28,7 +31,7 @@ import treesFrag from "../passes/trees/trees.frag.glsl?raw";
 import treesVert from "../passes/trees/trees.vert.glsl?raw";
 import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
 import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
-import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SURFACES, TUFT_TILE } from "../limits";
+import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, RELIEF_TAPS_MAX, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SURFACES, TUFT_TILE } from "../limits";
 
 const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look, "shadow.glsl": shadow, "tree.glsl": tree };
 
@@ -47,4 +50,5 @@ export const SHADERS = {
   trees: program(treesVert, treesFrag, SHADOWS),
   shadowDepth: program(depthVert, depthFrag),
   brush: program(fullscreenVert, brushFrag),
+  relief: program(fullscreenVert, reliefFrag, { RELIEF_TAPS_MAX }),
 };

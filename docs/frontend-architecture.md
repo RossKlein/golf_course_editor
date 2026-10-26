@@ -454,6 +454,13 @@ is one stroke, the same in either view; the view hands the editor's `GroundTool`
 the picture, so moving the cursor costs no 3D frame. While a stroke goes only the ground is drawn (an option), and
 `TerrainSource.watch` makes the view redraw on every stamp, undo and redo.
 
+**Afterwards: baked relief.** *(visual)*
+The 3D ground is lit from a baked texture of the ground's slope and curvature instead of per-pixel differences of the heights.
+The grid is 1 m with bilinear heights, whose slope is faceted; a cubic B-spline over the heights (`look.relief.smoothing`) and
+its derivative give a smooth slope, baked once by `terrain/relief/` (and again for just the box a brush changes). Geometry
+and what the ball touches stay on the raw heights. This is the first baked-lighting step; baking the sun's shadows and ambient
+occlusion the same way is the natural next one.
+
 ### After the plan
 
 These become cheap once the steps are done, and are not part of them:

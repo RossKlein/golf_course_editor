@@ -128,6 +128,14 @@ class Grass(Model):
     smoothing: Annotated[Number, Field(ge=1, le=3)] = Field(default_factory=lambda: _default_look().grass.smoothing)
 
 
+class ReliefLook(Model):
+    """How the ground's slope is worked out for lighting."""
+
+    # metres either side of a point over which the heights are averaged by a cubic B-spline before the slope is taken: more
+    # gives smoother, broader shading and ignores smaller bumps. The height grid is 1 m, so 2 is the least that makes sense
+    smoothing: Annotated[Number, Field(ge=1, le=6)]
+
+
 class Tufts(Model):
     """The standing grass in the rough, drawn as billboards."""
 
@@ -198,6 +206,7 @@ class Look(Model):
     tufts: Tufts
     trees: Trees
     shadows: Shadows = Field(default_factory=lambda: _default_look().shadows)  # a look written before shadows existed gets the default
+    relief: ReliefLook = Field(default_factory=lambda: _default_look().relief)  # likewise for the relief
 
 
 def _default_look() -> "Look":

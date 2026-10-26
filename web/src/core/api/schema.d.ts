@@ -1108,6 +1108,7 @@ export interface components {
             tufts: components["schemas"]["Tufts"];
             trees: components["schemas"]["Trees"];
             shadows: components["schemas"]["Shadows"];
+            relief: components["schemas"]["ReliefLook"];
         };
         /** Patch */
         Patch: {
@@ -1198,6 +1199,14 @@ export interface components {
              * @default []
              */
             regions: components["schemas"]["Region-Output"][];
+        };
+        /**
+         * ReliefLook
+         * @description How the ground's slope is worked out for lighting.
+         */
+        ReliefLook: {
+            /** Smoothing */
+            smoothing: number;
         };
         /**
          * Report

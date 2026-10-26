@@ -2,7 +2,7 @@
 as constants in its shaders and scenery code, so adopting the look changed nothing on screen."""
 from __future__ import annotations
 
-from .models import Blob, Frustum, Grass, Look, Shadows, Sun, Surface, TreeKind, Trees, Tufts
+from .models import Blob, Frustum, Grass, Look, ReliefLook, Shadows, Sun, Surface, TreeKind, Trees, Tufts
 
 TRUNK = (0.42, 0.29, 0.18)
 ROUGH = (0.40, 0.65, 0.24)  # darker than the fairway
@@ -27,6 +27,7 @@ def default_look() -> Look:
             Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7),  # woods: rough mottled with soil
         ],
         grass=Grass(tile="grass.png", tileMetres=3.0, wobble=0.0, speckleGrain=0.03, smoothing=2.0),
+        relief=ReliefLook(smoothing=2.0),
         shadows=Shadows(strength=0.8, tint=(0.5, 0.58, 0.78), softness=0.6, distance=200),
         tufts=Tufts(height=0.4, width=1.1, root=(0.16, 0.31, 0.10), tip=(0.46, 0.66, 0.24)),
         trees=Trees(

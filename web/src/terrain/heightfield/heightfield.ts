@@ -1,7 +1,9 @@
 import type { HeightGrid } from "../../core/decode/decode";
 import type { Device } from "../../gfx/device/device";
+import type { Gl } from "../context";
 import { LazyTexture } from "../../gfx/resource/texture";
 import type { Program } from "../../gfx/shader/program";
+import { Relief } from "../relief/relief";
 import { Sculptor } from "../sculpt/sculptor";
 
 export type TerrainGrid = {
@@ -45,13 +47,17 @@ export class HeightField {
   });
   private sculptor: Sculptor | null = null;
   private span: [number, number] | null = null;
+  /** The slope and curvature of the heights, smoothed, baked for lighting. */
+  readonly relief: Relief;
 
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. */
-  constructor(readonly data: TerrainGrid) {}
+  constructor(readonly data: TerrainGrid) {
+    this.relief = new Relief(data);
+  }
 
   /** Make the terrain editable. `effective` is the CPU copy of base + sculpting that the sculptor keeps up to date. */
   enableSculpt(effective: HeightGrid): Sculptor {
-    this.sculptor ??= new Sculptor(this.data, effective, (d, unit) => this.base.bind(d, unit));
+    this.sculptor ??= new Sculptor(this.data, effective, (d, unit) => this.base.bind(d, unit), (box) => (box ? this.relief.touch(box) : this.relief.touchAll()));
     return this.sculptor;
   }
 
@@ -68,6 +74,19 @@ export class HeightField {
     gl.uniform2i(p.u.uGrid, grid.cols, grid.rows);
     gl.uniform2f(p.u.uOrigin, origin.x, origin.z);
     gl.uniform2f(p.u.uRes, resX, resZ);
+  }
+
+  /**
+   * Bring the baked relief up to date, before a 3D frame that lights the ground. It changes the framebuffer, program and
+   * viewport, so call it first and set those afterwards.
+   */
+  prepare(g: Gl) {
+    this.relief.prepare(g, (d, p) => this.bind(d, p));
+  }
+
+  /** Bind the baked relief for a program that lights the ground with it (see prepare). */
+  bindRelief(d: Device, p: Program) {
+    this.relief.bind(d, p);
   }
 
   /** The lowest and highest ground, with room for sculpting to have raised or lowered it; used to tell what is out of view. */
@@ -90,5 +109,6 @@ export class HeightField {
     this.base.free();
     this.noOffsets.free();
     this.sculptor?.free();
+    this.relief.dispose();
   }
 }

@@ -40,6 +40,8 @@ export class Sculptor {
     private readonly data: TerrainGrid,
     private readonly effective: HeightGrid,
     private readonly bindBase: (g: Device, unit: number) => void,
+    /** Told which box of samples a change touched (corners included), or null when every one may have changed. */
+    private readonly changed: (box: { x0: number; z0: number; x1: number; z1: number } | null) => void = () => {},
   ) {
     this.offsets = new Float32Array(data.grid.cols * data.grid.rows);
   }
@@ -91,6 +93,7 @@ export class Sculptor {
     const g = this.grid;
     for (let key = 0; key < Math.ceil(g.cols / 64) * Math.ceil(g.rows / 64); key++) this.refreshEffective(key);
     this.texture.invalidate();
+    this.changed(null);
   }
 
   private ensureScratch(g: Gl) {
@@ -159,6 +162,7 @@ export class Sculptor {
     gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, x0, z0, 0, 0, w, h);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     for (const key of tilesInBox(this.grid, x0, z0, x1, z1)) this.touched.add(key);
+    this.changed({ x0, z0, x1, z1 });
   }
 
   /** Read back the tiles the stroke touched. Returns what changed, or null when nothing did. */
@@ -206,6 +210,7 @@ export class Sculptor {
       const rgba = new Float32Array(r.w * r.h * 4);
       for (let i = 0; i < tiles[n].length; i++) rgba[i * 4] = tiles[n][i];
       gl.texSubImage2D(gl.TEXTURE_2D, 0, r.x, r.y, r.w, r.h, gl.RGBA, gl.FLOAT, rgba);
+      this.changed({ x0: r.x, z0: r.y, x1: r.x + r.w - 1, z1: r.y + r.h - 1 });
     });
   }
 

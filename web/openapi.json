@@ -2490,6 +2490,9 @@
           },
           "shadows": {
             "$ref": "#/components/schemas/Shadows"
+          },
+          "relief": {
+            "$ref": "#/components/schemas/ReliefLook"
           }
         },
         "additionalProperties": false,
@@ -2501,7 +2504,8 @@
           "grass",
           "tufts",
           "trees",
-          "shadows"
+          "shadows",
+          "relief"
         ],
         "title": "Look"
       },
@@ -2784,6 +2788,23 @@
           "regions"
         ],
         "title": "RegionsFile"
+      },
+      "ReliefLook": {
+        "properties": {
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "ge": 1,
+            "le": 6
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "smoothing"
+        ],
+        "title": "ReliefLook",
+        "description": "How the ground's slope is worked out for lighting."
       },
       "Report": {
         "properties": {

@@ -57,12 +57,14 @@ export class TerrainRenderer {
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
     this.world = { height: new HeightField(data), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
+    this.setLook(look);
   }
 
   /** Use a new look (the course was rebuilt, or its look edited): the sun, sky, surfaces, tufts and trees all follow it. */
   setLook(look: Look) {
     this.world.look = look;
     this.world.sun = sunOfLook(look);
+    if (look.relief) this.world.height.relief.setSmoothing(look.relief.smoothing); // missing when the server that sent the look is older than this page
   }
 
   setTheme(theme: TerrainTheme) {
@@ -133,6 +135,7 @@ export class TerrainRenderer {
   render3d(size: number[], v: View3d): HTMLCanvasElement {
     const g = context();
     const { gl, canvas } = g;
+    this.world.height.prepare(g); // the baked relief, first: it uses its own framebuffer and viewport
     const [low, high] = this.world.height.groundRange();
     const cull: Cull = { frustum: frustumOf(v.viewProj), y0: low * v.scale - 1, y1: high * v.scale + 1 };
     // the sun's shadow maps first, into their own framebuffer; the passes below read them

@@ -24,6 +24,9 @@ export const EDGE_TAPS_MAX = 12;
 export const EDGE_BLOCK = 4;
 export const EDGE_REACH = EDGE_TAPS_MAX / 2 + 1;
 
+/** The most samples across (each way) the relief bake averages: a spline reaching the look's most (relief.smoothing, 6 m, over 1 m samples) is 12. */
+export const RELIEF_TAPS_MAX = 12;
+
 /** The ground's own shadow: samples taken along the ray to the sun, and how far in metres it looks. */
 export const SELF_SHADOW_STEPS = 16;
 export const SELF_SHADOW_REACH = 80;

@@ -47,6 +47,16 @@ class LookTests(unittest.TestCase):
         del data["grass"]["smoothing"]
         self.assertEqual(Look.model_validate(data).grass.smoothing, default_look().grass.smoothing)
 
+    def test_the_default_relief_is_smoothed_over_a_couple_of_metres(self):
+        smoothing = default_look().relief.smoothing
+        self.assertGreaterEqual(smoothing, 1)
+        self.assertLessEqual(smoothing, 6)  # what the renderer's spline can reach
+
+    def test_a_look_without_relief_gets_the_default_one(self):
+        data = default_look().model_dump()
+        del data["relief"]
+        self.assertEqual(Look.model_validate(data).relief, default_look().relief)
+
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
         again = Look.model_validate_json(look.model_dump_json())

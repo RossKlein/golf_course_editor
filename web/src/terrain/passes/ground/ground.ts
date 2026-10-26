@@ -42,6 +42,7 @@ export function drawGround(g: Gl, world: World, v: GroundView) {
   if (!mesh) throw new Error("the 3D terrain program did not build; the console has the shader error");
   gl.useProgram(mesh.program);
   world.height.bind(g, mesh);
+  world.height.bindRelief(g, mesh);
   world.overlays.bind(g, mesh, { aerial: v.aerial, fill: v.fill, lines: v.lines });
   world.surfaces.bindClasses(g, mesh);
   world.surfaces.bindGround(g, mesh);

@@ -187,12 +187,13 @@ void main() {
 
   // Golf ground is gentle, so true lighting barely shows. Light it the way the map does, with the relief exaggerated,
   // and add the cue the eye uses for subtle contours: hollows a little darker, crests a little lighter. Both multiply
-  // the aerial, whose own light is left alone on flat ground. Wider steps on a coarser mesh stop distant ground sparkling.
-  float s = max(0.35, 0.5 * uSpacing);
-  vec2 g = gradientAt(p, s);
+  // the aerial, whose own light is left alone on flat ground. The slope and curvature are the baked, spline-smoothed relief,
+  // so they are smooth and the same at every distance (mipmaps average them far away).
+  vec3 relief = reliefAt(p, max(0.35, 0.5 * uSpacing));
+  vec2 g = relief.xy;
   vec3 lit = normalize(vec3(-g.x * uRelief, 1.0, -g.y * uRelief));
   float facing = clamp(dot(lit, uSunDir), 0.0, 1.0) - uSunDir.y; // 0 on the flat, up facing the sun, down facing away
-  float hollow = clamp(-curvatureAt(p, max(1.0, 0.75 * uSpacing)) * 2.0 * uRelief, -0.3, 0.3);
+  float hollow = clamp(-relief.z * 2.0 * uRelief, -0.3, 0.3);
   float light = clamp(1.0 + uShading * (0.6 * facing + hollow), 0.3, 1.7);
 
   vec3 albedo = uBare;
