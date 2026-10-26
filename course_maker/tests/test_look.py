@@ -17,6 +17,12 @@ class LookTests(unittest.TestCase):
         self.assertEqual(look.surfaces[spec.CLASSES["bunker"]].shade, 0.12)
         self.assertEqual([s.tuft > 0 for s in look.surfaces], [True, False, False, False, False, False, False, False, True])
 
+    def test_the_collar_is_plain_and_a_darker_green_than_the_green(self):
+        look = default_look()
+        collar, green = look.surfaces[spec.CLASSES["collar"]], look.surfaces[spec.CLASSES["green"]]
+        self.assertEqual(collar.stripe, 0)
+        self.assertLess(sum(collar.color), sum(green.color))
+
     def test_default_shadows_are_a_cool_darkening_that_fades_out(self):
         s = default_look().shadows
         self.assertGreater(s.strength, 0)

@@ -19,7 +19,7 @@ def default_look() -> Look:
             Surface(color=ROUGH, grain=1.0, tuft=1.0),  # rough
             Surface(color=(0.50, 0.86, 0.30), color2=(0.66, 0.95, 0.44), stripe=2.4, grain=0.55),  # fairway
             Surface(color=(0.60, 0.92, 0.38), grain=0.3),  # green: plain, no stripes
-            Surface(color=(0.52, 0.82, 0.30), color2=(0.60, 0.88, 0.36), stripe=0.9, grain=0.35),  # collar
+            Surface(color=(0.52, 0.82, 0.30), grain=0.35),  # collar: plain, a darker green than the green
             Surface(color=(0.64, 0.94, 0.42), grain=0.35),  # tee: plain
             Surface(color=(0.965, 0.93, 0.81), grain=0.4, shade=0.12, speckleDark=0.1, specklePale=0.07),  # bunker
             Surface(color=(0.27, 0.60, 0.86), grain=0.15),  # water
