@@ -36,6 +36,9 @@ export function setLookUniforms(gl: WebGL2RenderingContext, p: Program, look: Lo
   gl.uniform3fv(p.u.uTuftRoot, look.tufts.root);
   gl.uniform3fv(p.u.uTuftTip, look.tufts.tip);
   gl.uniform3f(p.u.uTreeLight, look.trees.ambient, look.trees.direct, look.trees.base);
-  gl.uniform4f(p.u.uShadowLook, look.shadows.strength, look.shadows.softness, look.shadows.distance, 0);
-  gl.uniform3fv(p.u.uShadowTint, look.shadows.tint);
+  const shadows = look.shadows as Look["shadows"] | undefined; // missing when the server that sent the look is older than this page
+  if (shadows) {
+    gl.uniform4f(p.u.uShadowLook, shadows.strength, shadows.softness, shadows.distance, 0);
+    gl.uniform3fv(p.u.uShadowTint, shadows.tint);
+  }
 }

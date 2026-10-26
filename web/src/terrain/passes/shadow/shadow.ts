@@ -3,6 +3,7 @@ import type { Vec3 } from "../../../gfx/math/mat4";
 import { DepthArray } from "../../../gfx/resource/depthArray";
 import type { Device } from "../../../gfx/device/device";
 import type { Program } from "../../../gfx/shader/program";
+import type { Look } from "../../../core/api/api";
 import type { Gl } from "../../context";
 import { MAX_SHADOW_SLICES, SHADOW_MAP, SHADOW_REACH, SHADOW_SLICES } from "../../limits";
 import { sunDirection } from "../../sun";
@@ -22,6 +23,8 @@ export type ShadowView = {
   quality: ShadowQuality;
 };
 
+type ShadowsLook = Look["shadows"];
+
 /** What the last frame's shadows cost: slices drawn and trees sent into them. */
 export type ShadowStats = { slices: number; trees: number };
 
@@ -36,6 +39,7 @@ export class ShadowPass {
   private readonly maps = new DepthArray();
   private readonly stand = new DepthArray(); // a 1 x 1 map to bind when there are no shadows, so the shader always has one
   private failed = false;
+  private warned = false;
   stats: ShadowStats = { slices: 0, trees: 0 };
 
   private off(): ShadowState {
@@ -80,9 +84,13 @@ export class ShadowPass {
    */
   render(g: Gl, world: World, trees: TreesPass | null, v: ShadowView, cull: Cull): ShadowState {
     this.stats = { slices: 0, trees: 0 };
-    const look = world.look.shadows;
+    const look = world.look.shadows as ShadowsLook | undefined; // missing when the server that sent the look is older than this page
+    if (!look && !this.warned) {
+      this.warned = true;
+      console.warn("this course's look has no shadows: the server is older than this page, so restart it. Shadows are off.");
+    }
     const sun = sunDirection(world.sun);
-    if (v.quality === "off" || this.failed || look.strength <= 0 || sun[1] <= 0.02) return this.off();
+    if (!look || v.quality === "off" || this.failed || look.strength <= 0 || sun[1] <= 0.02) return this.off();
     const count = SHADOW_SLICES[v.quality];
     let size: number;
     try {
