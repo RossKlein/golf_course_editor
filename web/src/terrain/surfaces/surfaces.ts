@@ -2,7 +2,7 @@ import type { Device } from "../../gfx/device/device";
 import { uploadImage, type Image } from "../../gfx/resource/image";
 import { LazyTexture } from "../../gfx/resource/texture";
 import type { Program } from "../../gfx/shader/program";
-import { SPECKLE_SIZE, speckleTexels } from "../scenery/scenery";
+import { SPECKLE_SIZE, speckleTexels } from "./speckle";
 
 /**
  * What the game's look needs to know about the ground: the class map (R = surface, G = owning hole), the direction of each

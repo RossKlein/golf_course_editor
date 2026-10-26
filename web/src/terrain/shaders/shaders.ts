@@ -10,7 +10,7 @@
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
-import { SPECKLE_SIZE } from "../scenery/scenery";
+import { SPECKLE_SIZE } from "../surfaces/speckle";
 import brushFrag from "../sculpt/brush.frag.glsl?raw";
 import flatFrag from "../passes/flat/flat.frag.glsl?raw";
 import fullscreenVert from "./fullscreen.vert.glsl?raw";

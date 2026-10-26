@@ -9,9 +9,11 @@ import { Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { HeightSession } from "../heights/session";
-import { scatterWoods, splitByKind, stripeDirections, treesFromBin } from "../terrain/scenery/scenery";
+import { scatterWoods, splitByKind, treesFromBin } from "../terrain/scenery/trees";
+import { stripeDirections } from "../terrain/surfaces/stripes";
+import { loadCourseFiles } from "../terrain/course/course";
 import { sunOfLook } from "../terrain/sun";
-import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
+import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { CLASS_COLORS, css, holeColor } from "./colours";
 import { rasterLayer } from "../map/layers";
@@ -34,15 +36,13 @@ type Pixels = { class: ImageData; bounds: ImageData };
 export async function loadBundleScene(path: string): Promise<{ scene: Scene; data: BundleData }> {
   let course = await api.course(path);
   // sculpting is an offset from the baked heights, so the base is what the GPU holds and the offsets go on top
-  const [heightPx, heightBase, classPx, boundsPx, treeBytes, report, aerial] = await Promise.all([
-    loadPixels(heightBaseUrl(path)),
+  const [files, heightBase, report, aerial] = await Promise.all([
+    loadCourseFiles(course, (file) => fileUrl(path, file), heightBaseUrl(path)),
     api.heightBase(path),
-    loadPixels(fileUrl(path, course.class.file)),
-    loadPixels(fileUrl(path, course.bounds.file)),
-    loadBytes(fileUrl(path, course.trees.file)),
     api.validate(path),
     api.aerial(path),
   ]);
+  const { height: heightPx, classes: classPx, bounds: boundsPx, trees: treeBytes } = files;
   const px: Pixels = { class: classPx, bounds: boundsPx };
   const data: BundleData = { path, course, report };
   const { cols, rows } = course.height;
