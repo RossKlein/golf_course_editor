@@ -60,6 +60,12 @@ export function TerrainControls({ editor, units, patch }: { editor: EditorState;
 /** Relief exaggeration. Drawing is on the GPU, so the slider is cheap; commits are debounced because each is saved. */
 export function ExaggerationSlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const [local, setLocal] = useState(value);
+  // the value can also change from elsewhere (the 3D view has this slider too); take it, or the stale local one would be written back
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setLocal(value);
+  }
   useEffect(() => {
     if (local === value) return;
     const t = setTimeout(() => onCommit(local), 120);
