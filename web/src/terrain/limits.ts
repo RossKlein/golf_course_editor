@@ -32,6 +32,11 @@ export const SKY_DIRS = 16;
 export const SKY_STEPS = 12;
 export const SKY_REACH = 48;
 
+/** The sun bake: texels to a height sample along each side, steps of the ray toward the sun, and how far it looks in metres. */
+export const SUN_TEXELS = 2;
+export const SUN_STEPS = 24;
+export const SUN_REACH = 120;
+
 /** The ground's own shadow: samples taken along the ray to the sun, and how far in metres it looks. */
 export const SELF_SHADOW_STEPS = 16;
 export const SELF_SHADOW_REACH = 80;

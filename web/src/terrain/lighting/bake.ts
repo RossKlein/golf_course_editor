@@ -132,10 +132,10 @@ export class Bake {
     }
   }
 
-  /** Bind it for a program that reads it. Without a baked texture the program is told to do without. */
-  bind(d: Device, p: Program) {
+  /** Bind it for a program that reads it. Without a baked texture (or when `enabled` is false) the program is told to do without. */
+  bind(d: Device, p: Program, enabled = true) {
     const { gl } = d;
-    const target = this.target && this.target.generation === d.generation && !this.failed ? this.target : null;
+    const target = enabled && this.target && this.target.generation === d.generation && !this.failed ? this.target : null;
     gl.uniform1f(p.u[this.spec.names.on], target ? 1 : 0);
     if (!target) return;
     gl.activeTexture(gl.TEXTURE0 + this.spec.unit);

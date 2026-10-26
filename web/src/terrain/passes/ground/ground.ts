@@ -26,6 +26,8 @@ export type GroundView = {
   tuftRange: number;
   /** How strongly the design's surfaces and outlines show, 0 to 1. */
   fill: number;
+  /** Light the ground from the baked lighting (sky, sun); false for flat, unshadowed light. */
+  baked: boolean;
   lines: number;
   contour: number;
   slope: boolean;
@@ -43,7 +45,7 @@ export function drawGround(g: Gl, world: World, v: GroundView) {
   gl.useProgram(mesh.program);
   world.height.bind(g, mesh);
   world.height.bindRelief(g, mesh);
-  world.lighting.bind(g, mesh);
+  world.lighting.bind(g, mesh, v.baked);
   world.overlays.bind(g, mesh, { aerial: v.aerial, fill: v.fill, lines: v.lines });
   world.surfaces.bindClasses(g, mesh);
   world.surfaces.bindGround(g, mesh);

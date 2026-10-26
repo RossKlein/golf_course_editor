@@ -22,7 +22,7 @@ import type { Cull, World } from "./world";
 export type { TerrainGrid };
 
 /** How to draw the 3D view: the ground, and the standing things drawn on it. */
-export type View3d = GroundView & {
+export type View3d = Omit<GroundView, "baked"> & {
   tufts: boolean;
   tuftDensity: number;
   trees: boolean;
@@ -58,7 +58,7 @@ export class TerrainRenderer {
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
     const height = new HeightField(data);
-    this.world = { height, lighting: new Lighting(height, this.trees, () => this.world.look), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
+    this.world = { height, lighting: new Lighting(height, this.trees, () => this.world.look, () => this.world.sun), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
     this.setLook(look);
   }
 
@@ -151,7 +151,7 @@ export class TerrainRenderer {
     gl.depthFunc(gl.LEQUAL);
     gl.clearColor(...this.world.look.sky, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    drawGround(g, this.world, v);
+    drawGround(g, this.world, { ...v, baked: v.shadows !== "off" });
 
     if (v.trees) this.trees.draw(g, this.world, { viewProj: v.viewProj, scale: v.scale }, cull);
     else this.trees.stats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.trees.count };

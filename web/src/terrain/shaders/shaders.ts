@@ -27,6 +27,7 @@ import overlays from "./overlays.glsl?raw";
 import canopyFrag from "../lighting/canopy.frag.glsl?raw";
 import canopyVert from "../lighting/canopy.vert.glsl?raw";
 import skyFrag from "../lighting/sky.frag.glsl?raw";
+import sunFrag from "../lighting/sun.frag.glsl?raw";
 import reliefFrag from "../relief/relief.frag.glsl?raw";
 import shadow from "./shadow.glsl?raw";
 import tree from "./tree.glsl?raw";
@@ -36,7 +37,7 @@ import treesFrag from "../passes/trees/trees.frag.glsl?raw";
 import treesVert from "../passes/trees/trees.vert.glsl?raw";
 import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
 import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
-import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, RELIEF_TAPS_MAX, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SKY_DIRS, SKY_STEPS, SURFACES, TUFT_TILE } from "../limits";
+import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, RELIEF_TAPS_MAX, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SKY_DIRS, SKY_STEPS, SUN_REACH, SUN_STEPS, SUN_TEXELS, SURFACES, TUFT_TILE } from "../limits";
 
 const chunks = { "head.glsl": head, "height.glsl": height, "lighting.glsl": lighting, "overlays.glsl": overlays, "look.glsl": look, "shadow.glsl": shadow, "tree.glsl": tree };
 
@@ -58,4 +59,5 @@ export const SHADERS = {
   relief: program(fullscreenVert, reliefFrag, { RELIEF_TAPS_MAX }),
   sky: program(fullscreenVert, skyFrag, { SKY_DIRS, SKY_STEPS }),
   canopy: program(canopyVert, canopyFrag),
+  sun: program(fullscreenVert, sunFrag, { SUN_TEXELS, SUN_STEPS, SUN_REACH }),
 };
