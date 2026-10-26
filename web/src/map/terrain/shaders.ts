@@ -243,7 +243,7 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
 
 // the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
 // surfaces meet the way mown grass does rather than along a ruler
-// `sand` comes back as how much of the point is bunker, 0 to 1, so the lighting can be eased off there
+// sand comes back as how much of the point is bunker, 0 to 1, so the lighting can be eased off there
 vec3 gameGround(vec2 p, out float sand) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
