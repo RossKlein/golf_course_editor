@@ -11,7 +11,7 @@ import type VectorSource from "ol/source/Vector";
 import { shiftKeyOnly } from "ol/events/condition";
 import type { Command } from "../../commands/keymap";
 import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, snapToRings, withoutRingVertex } from "../../core/geometry/geometry";
-import { mapRings, ringsOf } from "../../design/olRegions";
+import { mapRings, ringsOf } from "../../views/map2d/design/olRegions";
 import { designStore } from "../../model/design/store";
 import { fromMap, toMap, type Pt } from "../../core/geometry/coords";
 import { FreehandInteraction } from "../course/freehand";

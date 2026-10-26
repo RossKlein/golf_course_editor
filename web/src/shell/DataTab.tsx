@@ -1,7 +1,7 @@
 import type { BuildStatus } from "../core/api/api";
 import { CLASS_NAMES } from "../scene/bundleScene";
 import type { BundleData } from "../scene/bundleScene";
-import { OWNED } from "../design/olRegions";
+import { OWNED } from "../views/map2d/design/olRegions";
 import { ringArea } from "../core/geometry/geometry";
 import { designStore, removeBoundsAreas, reorderRegions, removeRegions, updateBoundsArea, updateRegion, useDesign } from "../model/design/store";
 import ReportView from "../report/ReportView";

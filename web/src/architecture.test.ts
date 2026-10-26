@@ -42,9 +42,6 @@ const RULES: [RegExp, string][] = [
   // ---- legacy: files that are not in their final place yet
   [/^view3d\/Terrain3D\.tsx$/, "views"],
   [/^view3d\//, "terrain"],
-  [/^design\/(ol|useDesignLayers)/, "views"],
-  [/^map\//, "views"],
-  [/^panel\//, "views"],
   [/^(files|report|tif)\//, "shell"],
 ];
 

@@ -4,11 +4,11 @@ import View from "ol/View";
 import { defaults as defaultInteractions } from "ol/interaction/defaults";
 import DragPan from "ol/interaction/DragPan";
 import MouseWheelZoom from "ol/interaction/MouseWheelZoom";
-import type { Viewport } from "../core/api/api";
-import { scaleBar, type Units } from "../core/units/units";
-import { fromMap } from "../core/geometry/coords";
-import { projection } from "../scene/projection";
-import type { LayerState, Params, Scene } from "../scene/scene";
+import type { Viewport } from "../../core/api/api";
+import { scaleBar, type Units } from "../../core/units/units";
+import { fromMap } from "../../core/geometry/coords";
+import { projection } from "../../scene/projection";
+import type { LayerState, Params, Scene } from "../../scene/scene";
 import { applyViewport, fitRect, sameViewport, viewportOf } from "./view";
 
 type Props = {

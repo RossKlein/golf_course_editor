@@ -1,0 +1,78 @@
+import type { TerrainSource } from "../../scene/scene";
+import type { Options } from "./options";
+
+/** What the renderer sent last frame, for the cost line under the grass sliders. */
+export type SceneryCounts = { tufts: number; tuftsAll: number; trees: number };
+
+type Props = {
+  terrain: TerrainSource;
+  opts: Options;
+  set: (patch: Partial<Options>) => void;
+  counts: SceneryCounts;
+  /** The relief exaggeration shared with the map's hillshade, and a way to change it. */
+  relief: number;
+  onRelief: (value: number) => void;
+  /** Whether the bundle's design can be drawn over the ground. */
+  hasDesign: boolean;
+};
+
+/** The sliders and switches over the 3D view. */
+export default function OptionsPanel({ terrain, opts, set, counts, relief, onRelief, hasDesign }: Props) {
+  return (
+    <div className="v3-panel">
+      {terrain.renderer.hasSurfaces && (
+        <label className="check" title="Draw the ground as the game will: mown stripes on the fairways, short greens, grain from the game's grass texture">
+          <input type="checkbox" checked={opts.game} onChange={(e) => set({ game: e.target.checked })} /> Game look
+        </label>
+      )}
+      {terrain.aerial && !opts.game && (
+        <label className="check"><input type="checkbox" checked={opts.aerial} onChange={(e) => set({ aerial: e.target.checked })} /> Aerial</label>
+      )}
+      {terrain.renderer.hasSurfaces && (
+        <label className="check" title="Standing grass in the rough near the camera">
+          <input type="checkbox" checked={opts.tufts} onChange={(e) => set({ tufts: e.target.checked })} /> Rough grass
+        </label>
+      )}
+      {terrain.renderer.hasSurfaces && opts.tufts && (
+        <>
+          <label title="How far from where you are looking the grass grows. Further costs more.">
+            Grass range {Math.round(opts.grassRange)} m
+            <input type="range" min={10} max={300} step={10} value={opts.grassRange} onChange={(e) => set({ grassRange: Number(e.target.value) })} />
+          </label>
+          <label title="How many tufts to the square metre, as a multiple of the default. More costs more.">
+            Grass density ×{opts.grassDensity}
+            <input type="range" min={0.25} max={5} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
+          </label>
+          <div className="hint" title="Grass instances sent to the GPU this frame: the tiles of the patch that are in view, out of the whole patch. Those not on rough or woods are dropped there.">
+            {counts.tufts.toLocaleString()} instances of {counts.tuftsAll.toLocaleString()}
+          </div>
+        </>
+      )}
+      <label className="check" title={terrain.treeInfo?.preview ? "This bundle has no trees yet, so these are scattered over the woods surface to show how it will look" : "The bundle's trees"}>
+        <input type="checkbox" checked={opts.trees} onChange={(e) => set({ trees: e.target.checked })} /> Trees{terrain.treeInfo?.preview ? " (preview)" : ""}
+      </label>
+      {hasDesign && (
+        <>
+          <label>
+            Surfaces {Math.round(opts.surfaces * 100)}%
+            <input type="range" min={0} max={1} step={0.05} value={opts.surfaces} onChange={(e) => set({ surfaces: Number(e.target.value) })} />
+          </label>
+          <label className="check"><input type="checkbox" checked={opts.outlines} onChange={(e) => set({ outlines: e.target.checked })} /> Outlines and routes</label>
+        </>
+      )}
+      <label title="How strongly the relief is shaded. Hollows go darker and crests lighter, which is what shows gentle contours.">
+        Shading {Math.round(opts.shading * 100)}%
+        <input type="range" min={0} max={1.5} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
+      </label>
+      <label title="Exaggerates the slopes for the shading only, as on the map. The ground itself keeps its shape.">
+        Relief ×{relief}
+        <input type="range" min={1} max={10} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
+      </label>
+      <label title="Stretches the ground itself upward.">
+        Height ×{opts.scale}
+        <input type="range" min={1} max={5} step={0.5} value={opts.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
+      </label>
+      <p className="muted">Drag to orbit, right-drag to pan, wheel to zoom. <kbd>3</kbd> returns to the 2D map.</p>
+    </div>
+  );
+}

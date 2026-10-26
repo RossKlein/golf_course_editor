@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import type { Command } from "../../commands/keymap";
 import { holeView } from "../../model/design/holes";
 import { addHole, designStore } from "../../model/design/store";
-import { flyToRect } from "../../map/view";
+import { flyToRect } from "../../views/map2d/view";
 
 /** A short message for the sub-bar that clears itself. */
 export function useNotice() {

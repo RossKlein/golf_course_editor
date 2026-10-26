@@ -4,9 +4,9 @@ import Point from "ol/geom/Point";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style";
-import { css, holeColor } from "../scene/bundleScene";
-import { toMap, type Pt } from "../core/geometry/coords";
-import { designStore, type Doc } from "../model/design/store";
+import { css, holeColor } from "../../../scene/bundleScene";
+import { toMap, type Pt } from "../../../core/geometry/coords";
+import { designStore, type Doc } from "../../../model/design/store";
 
 export type RouteView = { hole: number; hideOthers: boolean };
 

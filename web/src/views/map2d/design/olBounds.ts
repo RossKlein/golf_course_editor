@@ -4,10 +4,10 @@ import Polygon from "ol/geom/Polygon";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
-import { css, holeColor } from "../scene/bundleScene";
-import type { Pt } from "../core/geometry/coords";
+import { css, holeColor } from "../../../scene/bundleScene";
+import type { Pt } from "../../../core/geometry/coords";
 import { mapRings } from "./olRegions";
-import { designStore, type Doc } from "../model/design/store";
+import { designStore, type Doc } from "../../../model/design/store";
 
 export type BoundsView = { hole: number; showOthers: boolean };
 
