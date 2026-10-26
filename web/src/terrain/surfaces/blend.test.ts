@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blend, bspline, edgeWidth, surfaceWeights, type CellAt } from "./blend";
+import { blend, blendShare, bspline, edgeWidth, surfaceWeights, type CellAt } from "./blend";
 
 /** Class 1 for cells right of the line x = z (centres at index + 0.5), else class 0: a 45 degree staircase. */
 const diagonal: CellAt = (cx, cz) => (cx > cz ? 1 : 0);
@@ -101,6 +101,23 @@ describe("the line between two surfaces", () => {
     expect(share(0.6)).toBeCloseTo(1, 3);
     const wider = blend(surfaceWeights(vertical, 9.5 + 0.1 / cell, 5.5), edgeWidth(1.5, cell)).share;
     expect(wider).toBeLessThan(share(0.1)); // a wider blend is still mixed at the same distance
+  });
+
+  it("leaves a pure area pure however wide the blend", () => {
+    for (const width of [0.1, 0.9, 1, 1.5, 2.7, 10]) {
+      expect(blendShare(1, width)).toBeCloseTo(1, 12); // far from any other surface
+      expect(blendShare(0, width)).toBeCloseTo(0.5, 12); // on the line
+    }
+    expect(blend(new Map([[2, 1], [3, 0]]), edgeWidth(1.8, 0.5)).share).toBeCloseTo(1, 12);
+  });
+
+  it("stays between half and all at any width, and still rises with the weight difference", () => {
+    for (const d of [0, 0.2, 0.5, 0.8, 1]) {
+      const s = blendShare(d, 3);
+      expect(s).toBeGreaterThanOrEqual(0.5);
+      expect(s).toBeLessThanOrEqual(1);
+    }
+    expect(blendShare(0.3, 3)).toBeLessThan(blendShare(0.6, 3)); // and it still rises with d
   });
 
   it("does not jump where the runner-up changes from one surface to another", () => {

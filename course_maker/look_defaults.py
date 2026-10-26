@@ -26,7 +26,7 @@ def default_look() -> Look:
             Surface(color=(0.72, 0.66, 0.52), grain=0.4),  # path
             Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7),  # woods: rough mottled with soil
         ],
-        grass=Grass(tile="grass.png", tileMetres=3.0, wobble=0.9, speckleGrain=0.03, edge=1.8),
+        grass=Grass(tile="grass.png", tileMetres=3.0, wobble=0.9, speckleGrain=0.03, edge=1.0),
         shadows=Shadows(strength=0.8, tint=(0.5, 0.58, 0.78), softness=0.6, distance=200),
         tufts=Tufts(height=0.4, width=1.1, root=(0.16, 0.31, 0.10), tip=(0.46, 0.66, 0.24)),
         trees=Trees(

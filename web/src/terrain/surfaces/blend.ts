@@ -43,6 +43,16 @@ const smoothstep = (a: number, b: number, x: number) => {
  */
 export const edgeWidth = (metres: number, cellMetres: number) => (0.75 * metres) / cellMetres;
 
+/**
+ * How much of the heaviest surface to show, 0.5 to 1, from the weight difference `d` (0 on the line between two surfaces, 1
+ * far from any). A smoothstep across `width` either side of the line, rescaled so d = 1 is always all of it: a wide blend
+ * would otherwise leave a little of a surface that is not there in every pure area.
+ */
+export function blendShare(d: number, width: number): number {
+  const top = smoothstep(-width, width, 1);
+  return 0.5 + (0.5 * (smoothstep(-width, width, d) - 0.5)) / (top - 0.5);
+}
+
 export type Blend = {
   /** The heaviest surface and the runner-up (the same when only one is near). */
   a: number;
@@ -71,5 +81,5 @@ export function blend(weights: Map<number, number>, edge: number, footprint = 0)
   }
   if (b < 0) return { a, b: a, share: 1 };
   const width = Math.max(footprint * 0.75, edge);
-  return { a, b, share: width > 0 ? smoothstep(-width, width, wa - wb) : wa > wb ? 1 : 0.5 };
+  return { a, b, share: width > 0 ? blendShare(wa - wb, width) : wa > wb ? 1 : 0.5 };
 }

@@ -81,6 +81,14 @@ float edgeWidth(float metres, float cellMetres) {
   return 0.75 * metres / cellMetres;
 }
 
+// How much of the heaviest surface to show, 0.5 to 1, from the weight difference d (0 on the line between two surfaces, 1 far
+// from any). The blend is a smoothstep across width either side of the line, rescaled so d = 1 is always all of it: a wide blend
+// would otherwise leave a little of a surface that is not there in every pure area. blend.ts is the same
+float blendShare(float d, float width) {
+  float top = smoothstep(-width, width, 1.0);
+  return 0.5 + 0.5 * (smoothstep(-width, width, d) - 0.5) / (top - 0.5);
+}
+
 // the ground in the game's look. The class map is one surface per cell, so a slanted edge is a staircase of cells. Each
 // surface's weight is spread over the sixteen nearest cells with a B-spline, which turns the staircase into a smooth curve,
 // and the two heaviest surfaces are blended across the line where their weights are equal, as narrowly as a pixel (and the
@@ -118,7 +126,7 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   }
   float d = wa - wb;
   float width = max(fwidth(d) * 0.75, edgeWidth(uEdge, uClassInfo.x)); // in units of the weight difference
-  float share = width > 0.0 ? smoothstep(-width, width, d) : (d > 0.0 ? 1.0 : 0.5);
+  float share = width > 0.0 ? blendShare(d, width) : (d > 0.0 ? 1.0 : 0.5);
 
   // each surface takes its hole from the nearest cell of that surface, for the direction of its stripes
   vec4 ca = vec4(float(a), 0.0, 0.0, 0.0), cb = vec4(float(b), 0.0, 0.0, 0.0);
