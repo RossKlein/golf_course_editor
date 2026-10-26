@@ -1,30 +1,39 @@
-import type { Look } from "../../core/api/api";
-import type { Sun } from "../sun";
-import { sunDirection } from "../sun";
 import type { Device } from "../../gfx/device/device";
+import { frustumOf } from "../../gfx/math/frustum";
+import { DepthArray } from "../../gfx/resource/depthArray";
 import { compileProgram, type Program } from "../../gfx/shader/program";
 import type { Gl } from "../context";
 import type { HeightField } from "../heightfield/heightfield";
-import { SKY_REACH, SUN_REACH, SUN_TEXELS } from "../limits";
-import { SUN_WIDTH } from "./sunMath";
+import { SHADOW_REACH, SKY_REACH, SUN_REACH, SUN_TEXELS, SUN_TILE, SUN_TILE_MAP } from "../limits";
 import type { TreesPass } from "../passes/trees/trees";
 import { SHADERS } from "../shaders/shaders";
-import { Bake } from "./bake";
+import { sunDirection } from "../sun";
+import type { World } from "../world";
+import { Bake, type Box } from "./bake";
+import { SUN_WIDTH } from "./sunMath";
+import { tileLight } from "./tileLight";
+
+const TILE_UNIT = 13; // the texture unit a tile's shadow map is read from while it is resolved
 
 /**
  * The ground's lighting, baked: what does not change while a course is looked at, worked out once on the GPU when it is first
  * drawn and again for just the box a brush changes. See docs/baked-lighting-plan.md.
- *  - sun: how much of the sun reaches each half sample of ground past the terrain, with a penumbra as wide as the real sun makes
+ *  - sun: how much of the sun reaches each half sample of ground. A pass over the terrain marches a ray toward the sun, with a
+ *    penumbra as wide as the real sun makes; then the trees' shadows are multiplied in, a tile of the map at a time, each tile
+ *    with its own shadow map of fixed density (see tileLight.ts), so tree shadows are as crisp far away as near
  *  - sky: how much of the sky each height sample can see: from the terrain (a pass over every sample), then from the trees
  *    (a quad for each, hiding the share of the sky its crown covers, multiplied in)
  */
 export class Lighting {
   private readonly sky: Bake;
   private readonly sun: Bake;
+  private readonly depth = new DepthArray();
   private canopy: { generation: number; p: Program } | null = null;
+  private treeShade: { generation: number; p: Program } | null = null;
+  private depthFailed = false;
 
-  /** `look` gives the course's current look, which decides what the trees are. */
-  constructor(heights: HeightField, trees: TreesPass, look: () => Look, sun: () => Sun) {
+  /** `world` gives what the bakes depend on that is not the heights: the look and the sun. */
+  constructor(private readonly heights: HeightField, private readonly trees: TreesPass, private readonly world: () => World) {
     const { grid, resX, resZ } = heights.data;
     this.sky = new Bake({
       name: "sky",
@@ -51,7 +60,7 @@ export class Lighting {
         gl.uniform4f(p.u.uBox, box.x0, box.z0, box.x1 - box.x0 + 1, box.z1 - box.z0 + 1);
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR); // what is left of the sky times one minus what this crown hides
-        trees.drawCanopies(g, look(), p);
+        trees.drawCanopies(g, world().look, p);
         gl.disable(gl.BLEND);
       },
     });
@@ -67,15 +76,80 @@ export class Lighting {
       names: { map: "uSunMap", on: "uSunOn" },
       uniforms: (g, p) => {
         heights.bind(g, p);
-        g.gl.uniform3f(p.u.uSunDir, ...sunDirection(sun()));
-        g.gl.uniform2f(p.u.uSunParams, look().shadows?.softness ?? 0.3, SUN_WIDTH); // a look from an older server has no shadows
+        g.gl.uniform3f(p.u.uSunDir, ...sunDirection(world().sun));
+        g.gl.uniform2f(p.u.uSunParams, world().look.shadows?.softness ?? 0.3, SUN_WIDTH); // a look from an older server has no shadows
       },
+      after: (g, box, restore) => this.treeShadows(g, box, restore),
     });
     heights.watch((box) => {
       if (!box) return this.touchAll();
       this.sky.touch(box);
       this.sun.touch({ x0: box.x0 * SUN_TEXELS, z0: box.z0 * SUN_TEXELS, x1: (box.x1 + 1) * SUN_TEXELS - 1, z1: (box.z1 + 1) * SUN_TEXELS - 1 });
     });
+  }
+
+  /**
+   * Multiply the trees' shadows into the sun bake over `box` (texels of the sun bake), a tile at a time: a depth map of the
+   * trees from the sun fitted to the tile, then each texel of the tile in the box looked up in it.
+   */
+  private treeShadows(g: Gl, box: Box, restore: () => void) {
+    const { trees, heights } = this;
+    const world = this.world();
+    const casterTop = trees.tallest();
+    if (!trees.count || !casterTop || this.depthFailed) return;
+    const sun = sunDirection(world.sun);
+    const { gl } = g;
+    let size: number;
+    try {
+      size = this.depth.ensure(g, SUN_TILE_MAP, 1);
+    } catch (e) {
+      console.warn(e);
+      this.depthFailed = true;
+      return;
+    }
+    if (!this.treeShade || this.treeShade.generation !== g.generation) {
+      this.treeShade = { generation: g.generation, p: compileProgram(gl, SHADERS.treeShade.vertex, SHADERS.treeShade.fragment, "tree shadows baked") };
+    }
+    const p = this.treeShade.p;
+    const [yLo, yHi] = heights.groundRange();
+    const { origin, resX, resZ } = heights.data;
+    const T = SUN_TILE;
+    for (let tz = Math.floor(box.z0 / T); tz <= Math.floor(box.z1 / T); tz++) {
+      for (let tx = Math.floor(box.x0 / T); tx <= Math.floor(box.x1 / T); tx++) {
+        const t0 = { x: tx * T, z: tz * T };
+        // the tile in metres, with a little over, and the part of the box that is in it in texels
+        const rect = {
+          x0: origin.x + (t0.x / SUN_TEXELS - 0.5 - 1) * resX,
+          x1: origin.x + ((t0.x + T) / SUN_TEXELS - 0.5 + 1) * resX,
+          z0: origin.z + (t0.z / SUN_TEXELS - 0.5 - 1) * resZ,
+          z1: origin.z + ((t0.z + T) / SUN_TEXELS - 0.5 + 1) * resZ,
+        };
+        const light = tileLight(rect, yLo, yHi, casterTop, sun, SHADOW_REACH);
+        if (!light) return; // the sun is too low to light anything
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LESS);
+        gl.colorMask(false, false, false, false);
+        this.depth.bindForWrite(g, 0);
+        trees.drawDepth(g, world, light.viewProj, 1, { frustum: frustumOf(light.viewProj), y0: yLo, y1: yHi });
+        gl.colorMask(true, true, true, true);
+        gl.disable(gl.DEPTH_TEST);
+
+        restore();
+        const x0 = Math.max(box.x0, t0.x), x1 = Math.min(box.x1, t0.x + T - 1);
+        const z0 = Math.max(box.z0, t0.z), z1 = Math.min(box.z1, t0.z + T - 1);
+        gl.viewport(x0, z0, x1 - x0 + 1, z1 - z0 + 1);
+        gl.useProgram(p.program);
+        heights.bind(g, p);
+        this.depth.bindForRead(g, TILE_UNIT);
+        gl.uniform1i(p.u.uTileMap, TILE_UNIT);
+        gl.uniformMatrix4fv(p.u.uLight, false, light.viewProj);
+        gl.uniform2f(p.u.uMap, size, light.range);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ZERO, gl.SRC_COLOR); // what the terrain left lit, times what the trees leave
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.disable(gl.BLEND);
+      }
+    }
   }
 
   /** The trees or the look changed: everything the trees decide has to be baked again. */
@@ -99,5 +173,6 @@ export class Lighting {
   dispose() {
     this.sky.dispose();
     this.sun.dispose();
+    this.depth.free(null);
   }
 }

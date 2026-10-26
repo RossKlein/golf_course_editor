@@ -58,7 +58,7 @@ export class TerrainRenderer {
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
     const height = new HeightField(data);
-    this.world = { height, lighting: new Lighting(height, this.trees, () => this.world.look, () => this.world.sun), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
+    this.world = { height, lighting: new Lighting(height, this.trees, () => this.world), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
     this.setLook(look);
   }
 

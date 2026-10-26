@@ -226,10 +226,14 @@ void main() {
   vec3 col = albedo * light;
   // the sun's shadows: trees from the shadow map, and (at high quality) the ground's own from the height field
   vec3 world = vec3(p.x, ground * uScale, p.y);
-  float shadow = shadowMapAt(world, normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale)), true);
-  // the terrain's own shadow is baked; the maps above are for what is not baked yet (trees). Without the bake, the ground marches its own
-  if (uSunOn > 0.5) shadow = 1.0 - sunVisibilityAt(p) * (1.0 - shadow);
-  else if (uShadowMode.x > 0.5) shadow = 1.0 - (1.0 - shadow) * (1.0 - terrainShadow(p, ground));
+  // the sun's shadows on the ground, terrain and trees, are baked (see terrain/lighting). Without the bake it looks them up in the
+  // maps of the view and marches its own
+  float shadow;
+  if (uSunOn > 0.5) shadow = 1.0 - sunVisibilityAt(p);
+  else {
+    shadow = shadowMapAt(world, normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale)), true);
+    if (uShadowMode.x > 0.5) shadow = 1.0 - (1.0 - shadow) * (1.0 - terrainShadow(p, ground));
+  }
   col = applyLight(col, shadow, skyVisibilityAt(p));
   if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(light, 0.0, 1.0)), 0.7);
   if (uContour > 0.0) col *= 1.0 - contourDarkening(ground, uContour);

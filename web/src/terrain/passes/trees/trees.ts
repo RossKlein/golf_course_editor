@@ -55,6 +55,13 @@ export class TreesPass {
     return this.groups.reduce((n, g) => n + g.length / 4, 0);
   }
 
+  /** The height of the tallest tree, in metres. */
+  tallest(): number {
+    let t = 0;
+    for (const chunks of this.chunks) for (const c of chunks) t = Math.max(t, c.tallest);
+    return t;
+  }
+
   private make(g: Gl, look: Look) {
     const { gl } = g;
     this.free(g);

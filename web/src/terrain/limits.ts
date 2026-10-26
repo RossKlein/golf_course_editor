@@ -36,6 +36,9 @@ export const SKY_REACH = 48;
 export const SUN_TEXELS = 2;
 export const SUN_STEPS = 24;
 export const SUN_REACH = 120;
+/** Tree shadows are baked a tile at a time: texels across a tile of the sun bake, and texels across each tile's shadow map. */
+export const SUN_TILE = 512;
+export const SUN_TILE_MAP = 2048;
 
 /** The ground's own shadow: samples taken along the ray to the sun, and how far in metres it looks. */
 export const SELF_SHADOW_STEPS = 16;

@@ -28,6 +28,7 @@ import canopyFrag from "../lighting/canopy.frag.glsl?raw";
 import canopyVert from "../lighting/canopy.vert.glsl?raw";
 import skyFrag from "../lighting/sky.frag.glsl?raw";
 import sunFrag from "../lighting/sun.frag.glsl?raw";
+import treeShadeFrag from "../lighting/treeShade.frag.glsl?raw";
 import reliefFrag from "../relief/relief.frag.glsl?raw";
 import shadow from "./shadow.glsl?raw";
 import tree from "./tree.glsl?raw";
@@ -60,4 +61,5 @@ export const SHADERS = {
   sky: program(fullscreenVert, skyFrag, { SKY_DIRS, SKY_STEPS }),
   canopy: program(canopyVert, canopyFrag),
   sun: program(fullscreenVert, sunFrag, { SUN_TEXELS, SUN_STEPS, SUN_REACH }),
+  treeShade: program(fullscreenVert, treeShadeFrag, { SUN_TEXELS }),
 };
