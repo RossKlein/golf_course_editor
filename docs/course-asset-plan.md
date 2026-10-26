@@ -1,6 +1,9 @@
 # Golf course game assets: high-level plan
 
-Status: ideas only. Nothing here is decided. To be refined.
+Status: the original high-level plan, kept for its reasoning. Much of it is built: the pipeline and annotation tool exist
+(see `course-editor-plan.md` and `editor-technology.md`), and the frontend is being reorganised per
+`frontend-architecture.md`. The open questions at the bottom are still open, apart from the engine: the golf game's engine
+is the course builder's renderer.
 
 ## Goal
 

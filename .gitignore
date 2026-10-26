@@ -18,7 +18,3 @@ uploads/
 # Web app
 web/node_modules/
 web/dist/
-
-# Spike
-spike/*/node_modules/
-spike/*/out/

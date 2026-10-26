@@ -11,7 +11,10 @@ game's loader is the consumer.
   `course_stack.py`, `run_all.py`), their course list (`course_bounds.csv`), the Augusta source files in
   `sources/`, and `HANDOFF.md`. See `tif_generation/README.md`.
 - `augusta/`, `courses_test10/`: generated course stacks (data, gitignored). `bundles/`: baked bundles.
-- `plan.md`: the overall course-asset plan.
+- `docs/`: the plans and specs. Start with `frontend-architecture.md` (how the web app and its renderer are organised, and
+  the reorganisation under way), `course-editor-plan.md` (what the editor does) and `golf-course-format.md` (the bundle
+  format). `course-asset-plan.md` is the original high-level plan; `openlayers-spike-results.md` records why the map uses
+  OpenLayers.
 
 ## Setup (once)
 

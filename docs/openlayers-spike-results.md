@@ -1,5 +1,7 @@
 # OpenLayers spike: results
 
+The spike code is archived on the `archive/spike` branch (`spike/openlayers/`); this is its decision record.
+
 Run 2026-10-25 on the Augusta bundle. Throwaway code: Vite + React + OpenLayers 10.11 in this folder, a Python
 rasterizer in `py/`, and a test harness (`src/tests.ts`, run in the page with `window.spike.runAll()`).
 **26 of 26 checks pass.** Recommendation: **go with OpenLayers.**
