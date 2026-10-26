@@ -243,7 +243,8 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
 
 // the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
 // surfaces meet the way mown grass does rather than along a ruler
-vec3 gameGround(vec2 p) {
+// `sand` comes back as how much of the point is bunker, 0 to 1, so the lighting can be eased off there
+vec3 gameGround(vec2 p, out float sand) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
   vec2 wobble = (texture(uTile, p / (uTileMetres * 3.0) + 0.37).rg - 0.5) * 0.9 * uClassInfo.x;
@@ -254,6 +255,11 @@ vec3 gameGround(vec2 p) {
   vec3 s10 = surfaceColour(classCell(c0 + ivec2(1, 0)), p, grain, patchy);
   vec3 s01 = surfaceColour(classCell(c0 + ivec2(0, 1)), p, grain, patchy);
   vec3 s11 = surfaceColour(classCell(c0 + ivec2(1, 1)), p, grain, patchy);
+  float k00 = abs(classCell(c0).r - 5.0) < 0.5 ? 1.0 : 0.0;
+  float k10 = abs(classCell(c0 + ivec2(1, 0)).r - 5.0) < 0.5 ? 1.0 : 0.0;
+  float k01 = abs(classCell(c0 + ivec2(0, 1)).r - 5.0) < 0.5 ? 1.0 : 0.0;
+  float k11 = abs(classCell(c0 + ivec2(1, 1)).r - 5.0) < 0.5 ? 1.0 : 0.0;
+  sand = mix(mix(k00, k10, f.x), mix(k01, k11, f.x), f.y);
   return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
 }
 
@@ -274,7 +280,12 @@ void main() {
 
   vec3 albedo = vec3(0.42, 0.55, 0.30);
   vec2 aerialUv = (p - uAerialRect.xy) / uAerialRect.zw;
-  if (uGame > 0.5) albedo = gameGround(p);
+  if (uGame > 0.5) {
+    float sand;
+    albedo = gameGround(p, sand);
+    // a bunker's dip would otherwise darken it as a hollow; sand keeps its colour, with a trace of shape at the lip
+    light = mix(light, 1.0 + (light - 1.0) * 0.12, sand);
+  }
   else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
 
   vec2 drapeUv = (p - uDrapeRect.xy) / uDrapeRect.zw;
