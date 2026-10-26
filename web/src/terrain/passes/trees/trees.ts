@@ -7,13 +7,25 @@ import { setLookUniforms } from "../../look/look";
 import { chunkTrees, type TreeChunk } from "../../scenery/trees";
 import { treeMesh, type Mesh } from "../../scenery/treeMesh";
 import { SHADERS } from "../../shaders/shaders";
+import type { Crown } from "../../lighting/canopyMath";
+import { crownOfMesh } from "../../lighting/crown";
 import { sunDirection } from "../../sun";
 import type { Cull, World } from "../../world";
 
 // Low-poly trees, instanced from the look's models. The CPU holds only their positions, sorted into chunks of ground so a
 // chunk that is out of view is never drawn. The same trees are drawn again, depth only, into the sun's shadow maps.
 
-type Model = { vao: WebGLVertexArrayObject; vertices: number; instances: WebGLBuffer; count: number; radius: number };
+type Model = {
+  vao: WebGLVertexArrayObject;
+  vertices: number;
+  instances: WebGLBuffer;
+  count: number;
+  radius: number;
+  /** The instances alone, for drawing a quad for each tree. */
+  canopyVao: WebGLVertexArrayObject;
+  /** The crown of a tree one unit tall. */
+  crown: Crown;
+};
 
 export type TreesView = {
   viewProj: Float32Array;
@@ -69,7 +81,13 @@ export class TreesPass {
       gl.vertexAttribDivisor(3, 1);
       let radius = 0; // how far from its trunk a tree one unit tall reaches
       for (let i = 0; i < mesh.positions.length; i += 3) radius = Math.max(radius, Math.hypot(mesh.positions[i], mesh.positions[i + 2]));
-      models.push({ vao, vertices: mesh.positions.length / 3, instances, count: 0, radius });
+      const canopyVao = gl.createVertexArray()!;
+      gl.bindVertexArray(canopyVao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, instances);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(0, 1);
+      models.push({ vao, vertices: mesh.positions.length / 3, instances, count: 0, radius, canopyVao, crown: crownOfMesh(mesh.positions) });
     }
     gl.bindVertexArray(null);
     this.made = {
@@ -153,9 +171,26 @@ export class TreesPass {
     return stats;
   }
 
+  /**
+   * Draw one quad for every tree, with `p` (a program that reads the trees as its first attribute, and the crown of the kind as
+   * uCrown), for what a tree does to the ground around it rather than for how it looks. Nothing is culled.
+   */
+  drawCanopies(g: Gl, look: Look, p: Program) {
+    const { gl } = g;
+    const { models } = this.ready(g, look);
+    for (const m of models) {
+      if (!m.count) continue;
+      gl.bindVertexArray(m.canopyVao);
+      gl.uniform3f(p.u.uCrown, m.crown.radius, m.crown.bottom, m.crown.top);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, m.count);
+    }
+    gl.bindVertexArray(null);
+  }
+
   free(g: Gl | null) {
     if (g && this.made?.generation === g.generation) {
       for (const model of this.made.models) {
+        g.gl.deleteVertexArray(model.canopyVao);
         g.gl.deleteVertexArray(model.vao);
         g.gl.deleteBuffer(model.instances);
       }

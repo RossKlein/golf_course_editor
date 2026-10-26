@@ -58,7 +58,7 @@ export class TerrainRenderer {
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
     const height = new HeightField(data);
-    this.world = { height, lighting: new Lighting(height), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
+    this.world = { height, lighting: new Lighting(height, this.trees, () => this.world.look), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
     this.setLook(look);
   }
 
@@ -66,6 +66,7 @@ export class TerrainRenderer {
   setLook(look: Look) {
     this.world.look = look;
     this.world.sun = sunOfLook(look);
+    this.world.lighting.touchAll(); // the trees may be different
     if (look.relief) this.world.height.relief.setSmoothing(look.relief.smoothing); // missing when the server that sent the look is older than this page
   }
 
@@ -94,6 +95,7 @@ export class TerrainRenderer {
   /** Trees to draw, packed four to a tree (x, z, height, kind) and grouped by the look's model kinds. */
   setTrees(groups: Float32Array[]) {
     this.trees.setTrees(groups);
+    this.world.lighting.touchAll();
   }
 
   /** The imagery draped over the 3D view, covering `rect` (course metres, top-left corner and size). */

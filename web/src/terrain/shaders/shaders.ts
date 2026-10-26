@@ -9,7 +9,7 @@
 //  - tufts and trees: the standing things drawn on the ground, placed entirely in the vertex shader;
 //  - brush: one pass of the sculpting brush over a box of heights;
 //  - relief: bakes the smoothed slope and curvature into a texture, all of it or the part a brush changed;
-//  - sky: bakes how much sky each height sample can see (the lighting bakes are in lighting/).
+//  - sky and canopy: bake how much sky each height sample can see, from the ground and then from the trees (the lighting bakes are in lighting/).
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
@@ -24,6 +24,8 @@ import look from "./look.glsl?raw";
 import height from "./height.glsl?raw";
 import lighting from "./lighting.glsl?raw";
 import overlays from "./overlays.glsl?raw";
+import canopyFrag from "../lighting/canopy.frag.glsl?raw";
+import canopyVert from "../lighting/canopy.vert.glsl?raw";
 import skyFrag from "../lighting/sky.frag.glsl?raw";
 import reliefFrag from "../relief/relief.frag.glsl?raw";
 import shadow from "./shadow.glsl?raw";
@@ -55,4 +57,5 @@ export const SHADERS = {
   brush: program(fullscreenVert, brushFrag),
   relief: program(fullscreenVert, reliefFrag, { RELIEF_TAPS_MAX }),
   sky: program(fullscreenVert, skyFrag, { SKY_DIRS, SKY_STEPS }),
+  canopy: program(canopyVert, canopyFrag),
 };

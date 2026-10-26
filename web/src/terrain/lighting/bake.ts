@@ -29,6 +29,8 @@ export type BakeSpec = {
   names: { map: string; on: string };
   /** Sets the uniforms the bake pass needs (the program is in use). */
   uniforms: (g: Gl, p: Program) => void;
+  /** Draws more into the same texels, in the same framebuffer and viewport, after the pass (blending is off and may be switched on). */
+  after?: (g: Gl, box: Box) => void;
 };
 
 type Target = { generation: number; texture: WebGLTexture; framebuffer: WebGLFramebuffer };
@@ -121,6 +123,7 @@ export class Bake {
     gl.useProgram(p.program);
     this.spec.uniforms(g, p);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.spec.after?.(g, box);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     if (this.spec.mipmaps) {
       gl.activeTexture(gl.TEXTURE0 + this.spec.unit);
