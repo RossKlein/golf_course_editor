@@ -14,6 +14,7 @@ uniform float uShading;     // how strongly the shading shows, 1 for the map's l
 uniform vec3 uSpeckle;      // where speckle shows: the ground point looked at (x, z) and how far out, the same as the grass
 uniform float uSpeckleGrain; // metres across one grain of speckle
 uniform float uWobble;      // how far the grass texture wobbles the edges of surfaces, in class cells
+uniform float uEdge;        // how soft the line between two surfaces is: 0 is one pixel, 1 a wide blend
 uniform vec3 uBare;         // the ground's colour with no aerial and no game look (the editor's theme)
 
 uniform sampler2D uAerial;
@@ -68,9 +69,18 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
   return base * mix(vec3(1.0), grain, amount);
 }
 
-// the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
-// surfaces meet the way mown grass does rather than along a ruler. shade comes back as how much the relief shading applies
-// here and speckle as how much a dark and a pale grain change the colour, each blended across the surfaces' edges like the colour
+// cubic B-spline weights of the four cells around a point, t being its place between the middle two (blend.ts is the same maths)
+vec4 bspline(float t) {
+  float t2 = t * t, t3 = t2 * t;
+  return vec4(1.0 - 3.0 * t + 3.0 * t2 - t3, 4.0 - 6.0 * t2 + 3.0 * t3, 1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3, t3) / 6.0;
+}
+
+// the ground in the game's look. The class map is one surface per cell, so a slanted edge is a staircase of cells. Each
+// surface's weight is spread over the sixteen nearest cells with a B-spline, which turns the staircase into a smooth curve,
+// and the two heaviest surfaces are blended across the line where their weights are equal, as narrowly as a pixel (and the
+// look's edge) allows. The edge is wobbled by the grass texture so surfaces meet the way mown grass does rather than along
+// a ruler. shade comes back as how much the relief shading applies here and speckle as how much a dark and a pale grain
+// change the colour, each blended between the two surfaces like the colour
 vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
@@ -78,17 +88,50 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   vec2 q = (p + wobble) / uClassInfo.x - 0.5;
   ivec2 c0 = ivec2(floor(q));
   vec2 f = fract(q);
-  vec3 s00 = surfaceColour(classCell(c0), p, grain, patchy);
-  vec3 s10 = surfaceColour(classCell(c0 + ivec2(1, 0)), p, grain, patchy);
-  vec3 s01 = surfaceColour(classCell(c0 + ivec2(0, 1)), p, grain, patchy);
-  vec3 s11 = surfaceColour(classCell(c0 + ivec2(1, 1)), p, grain, patchy);
-  int k00 = clamp(int(classCell(c0).r + 0.5), 0, SURFACES - 1);
-  int k10 = clamp(int(classCell(c0 + ivec2(1, 0)).r + 0.5), 0, SURFACES - 1);
-  int k01 = clamp(int(classCell(c0 + ivec2(0, 1)).r + 0.5), 0, SURFACES - 1);
-  int k11 = clamp(int(classCell(c0 + ivec2(1, 1)).r + 0.5), 0, SURFACES - 1);
-  shade = mix(mix(surfaceShade(k00), surfaceShade(k10), f.x), mix(surfaceShade(k01), surfaceShade(k11), f.x), f.y);
-  speckle = mix(mix(surfaceSpeckle(k00), surfaceSpeckle(k10), f.x), mix(surfaceSpeckle(k01), surfaceSpeckle(k11), f.x), f.y);
-  return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
+  vec4 wx = bspline(f.x), wy = bspline(f.y);
+
+  float weight[SURFACES];
+  for (int k = 0; k < SURFACES; k++) weight[k] = 0.0;
+  vec2 cell[16];          // each nearby cell's surface and hole
+  float cellWeight[16];
+  for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < 4; i++) {
+      int n = j * 4 + i;
+      cell[n] = classCell(c0 + ivec2(i - 1, j - 1)).rg;
+      cellWeight[n] = wx[i] * wy[j];
+      weight[clamp(int(cell[n].x + 0.5), 0, SURFACES - 1)] += cellWeight[n];
+    }
+  }
+
+  // the heaviest surface a and the runner-up b
+  int a = 0, b = 0;
+  float wa = -1.0, wb = -1.0;
+  for (int k = 0; k < SURFACES; k++) {
+    if (weight[k] > wa) { wb = wa; b = a; wa = weight[k]; a = k; }
+    else if (weight[k] > wb) { wb = weight[k]; b = k; }
+  }
+  float d = wa - wb;
+  float width = max(fwidth(d) * 0.75, uEdge);
+  float share = width > 0.0 ? smoothstep(-width, width, d) : (d > 0.0 ? 1.0 : 0.5);
+
+  // each surface takes its hole from the nearest cell of that surface, for the direction of its stripes
+  vec4 ca = vec4(float(a), 0.0, 0.0, 0.0), cb = vec4(float(b), 0.0, 0.0, 0.0);
+  float ba = -1.0, bb = -1.0;
+  for (int n = 0; n < 16; n++) {
+    int k = clamp(int(cell[n].x + 0.5), 0, SURFACES - 1);
+    if (k == a && cellWeight[n] > ba) { ba = cellWeight[n]; ca.xy = cell[n]; }
+    if (k == b && cellWeight[n] > bb) { bb = cellWeight[n]; cb.xy = cell[n]; }
+  }
+  vec3 colour = surfaceColour(ca, p, grain, patchy);
+  shade = surfaceShade(a);
+  speckle = surfaceSpeckle(a);
+  if (share < 1.0) {
+    float other = 1.0 - share;
+    colour = mix(colour, surfaceColour(cb, p, grain, patchy), other);
+    shade = mix(shade, surfaceShade(b), other);
+    speckle = mix(speckle, surfaceSpeckle(b), other);
+  }
+  return colour;
 }
 
 // How much the ground shades itself at a point, 0 to 1: steps along the ray to the sun and compares its height with the

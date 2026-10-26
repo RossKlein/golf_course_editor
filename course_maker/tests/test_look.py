@@ -28,6 +28,16 @@ class LookTests(unittest.TestCase):
         del data["shadows"]
         self.assertEqual(Look.model_validate(data).shadows, default_look().shadows)
 
+    def test_surface_edges_are_soft_but_not_a_blur_by_default(self):
+        edge = default_look().grass.edge
+        self.assertGreater(edge, 0)
+        self.assertLess(edge, 0.6)
+
+    def test_a_look_without_an_edge_gets_the_default_one(self):
+        data = default_look().model_dump()
+        del data["grass"]["edge"]
+        self.assertEqual(Look.model_validate(data).grass.edge, default_look().grass.edge)
+
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
         again = Look.model_validate_json(look.model_dump_json())

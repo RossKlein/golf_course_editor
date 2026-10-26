@@ -2123,6 +2123,12 @@
             "title": "Specklegrain",
             "gt": 0,
             "le": 1
+          },
+          "edge": {
+            "type": "number",
+            "title": "Edge",
+            "ge": 0,
+            "le": 1
           }
         },
         "additionalProperties": false,
@@ -2131,7 +2137,8 @@
           "tile",
           "tileMetres",
           "wobble",
-          "speckleGrain"
+          "speckleGrain",
+          "edge"
         ],
         "title": "Grass"
       },

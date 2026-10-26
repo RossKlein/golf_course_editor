@@ -1,0 +1,69 @@
+// How the ground's surfaces meet, in the one place a test can reach: ground.frag.glsl does the same sums per pixel
+// (gameGround), with SURFACES classes and the same four-by-four neighbourhood.
+//
+// The class map is one surface per cell, with no partial coverage, so a slanted edge is a staircase of cells. Blending the
+// four nearest cells (bilinear) only softens each step. Instead each surface's weight is spread over the sixteen nearest cells
+// with a cubic B-spline, which turns the staircase into a smooth curve, and the two heaviest surfaces are then blended across
+// the line where their weights are equal, as narrowly as the pixel (and the look's `edge`) allows.
+
+/** Cubic B-spline weights of the four cells around a point, `t` (0..1) being its place between the middle two. They sum to 1. */
+export function bspline(t: number): [number, number, number, number] {
+  const t2 = t * t, t3 = t2 * t;
+  return [(1 - 3 * t + 3 * t2 - t3) / 6, (4 - 6 * t2 + 3 * t3) / 6, (1 + 3 * t + 3 * t2 - 3 * t3) / 6, t3 / 6];
+}
+
+/** The surface of a class-map cell (column, row). */
+export type CellAt = (cx: number, cz: number) => number;
+
+/**
+ * How much of each surface lies around a point `q`, given in cells with a cell's centre at its index plus a half (the
+ * shader's `q`, so subtract the half first). The weights add up to 1.
+ */
+export function surfaceWeights(cellAt: CellAt, qx: number, qz: number): Map<number, number> {
+  const x0 = Math.floor(qx), z0 = Math.floor(qz);
+  const wx = bspline(qx - x0), wz = bspline(qz - z0);
+  const out = new Map<number, number>();
+  for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 4; i++) {
+      const cls = cellAt(x0 + i - 1, z0 + j - 1);
+      out.set(cls, (out.get(cls) ?? 0) + wx[i] * wz[j]);
+    }
+  }
+  return out;
+}
+
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+export type Blend = {
+  /** The heaviest surface and the runner-up (the same when only one is near). */
+  a: number;
+  b: number;
+  /** How much of `a` there is, 0.5 to 1: the rest is `b`. */
+  share: number;
+};
+
+/**
+ * The two surfaces to show at a point and how much of each. The line between them is where their weights are equal; across
+ * it the blend is `max(footprint, edge)` wide, in units of the weight difference: `footprint` is how much that difference
+ * changes across a pixel (so an edge is never sharper than a pixel), `edge` is the look's softness.
+ */
+export function blend(weights: Map<number, number>, edge: number, footprint = 0): Blend {
+  let a = -1, b = -1, wa = -1, wb = -1;
+  for (const [cls, w] of weights) {
+    if (w > wa) {
+      b = a;
+      wb = wa;
+      a = cls;
+      wa = w;
+    } else if (w > wb) {
+      b = cls;
+      wb = w;
+    }
+  }
+  if (b < 0) return { a, b: a, share: 1 };
+  const width = Math.max(footprint * 0.75, edge);
+  return { a, b, share: width > 0 ? smoothstep(-width, width, wa - wb) : wa > wb ? 1 : 0.5 };
+}

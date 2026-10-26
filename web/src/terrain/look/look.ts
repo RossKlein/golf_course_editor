@@ -31,6 +31,7 @@ export function setLookUniforms(gl: WebGL2RenderingContext, p: Program, look: Lo
   gl.uniform1f(p.u.uSpeckleGrain, look.grass.speckleGrain);
   gl.uniform1f(p.u.uTileMetres, look.grass.tileMetres);
   gl.uniform1f(p.u.uWobble, look.grass.wobble);
+  if (look.grass.edge !== undefined) gl.uniform1f(p.u.uEdge, look.grass.edge); // missing when the server that sent the look is older than this page: a crisp edge
   gl.uniform1f(p.u.uTall, look.tufts.height);
   gl.uniform1f(p.u.uTuftWidth, look.tufts.width);
   gl.uniform3fv(p.u.uTuftRoot, look.tufts.root);

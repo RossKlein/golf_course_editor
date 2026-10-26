@@ -123,6 +123,8 @@ class Grass(Model):
     tileMetres: Annotated[Number, Field(gt=0, le=100)]  # ground one tile covers
     wobble: Annotated[Number, Field(ge=0, le=4)]  # how far surface edges are wobbled by the texture, in class cells
     speckleGrain: Annotated[Number, Field(gt=0, le=1)]  # metres across one grain of speckle
+    # how soft the line between two surfaces is: 0 is a crisp edge (one pixel), 1 a wide blend; a look written before this gets the default
+    edge: Annotated[Number, Field(ge=0, le=1)] = Field(default_factory=lambda: _default_look().grass.edge)
 
 
 class Tufts(Model):
