@@ -33,6 +33,7 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHo
       </div>
     );
   }
+  const toolHint = TOOLS.find((t) => t.id === editor.tool)?.hint;
   const holeLabel = holeCount ? `Hole ${editor.hole} of ${holeCount}` : "No holes yet";
   return (
     <div className="sub-bar">
@@ -79,6 +80,7 @@ export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHo
         </label>
       )}
       {notice && <span className="sub-notice" role="alert">{notice}</span>}
+      {!notice && toolHint && <span className="sub-hint tool-hint" title={toolHint}>{toolHint}</span>}
     </div>
   );
 }

@@ -11,6 +11,7 @@
     "types": "openapi-typescript openapi.json --default-non-nullable false -o src/api/schema.d.ts"
   },
   "dependencies": {
+    "@turf/difference": "^7.4.0",
     "@turf/kinks": "^7.4.0",
     "@turf/polygon-smooth": "^7.4.0",
     "@turf/simplify": "^7.4.0",

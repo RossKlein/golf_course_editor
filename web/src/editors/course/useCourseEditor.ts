@@ -35,7 +35,7 @@ export const CLASS_KEYS: { cls: number; key: string; label: string }[] = [
 ];
 
 export const TOOLS = [
-  { id: "select", label: "Select", key: "v", hint: "Click a region to select it; drag a vertex to move it, an edge to add one, Alt+click a vertex to remove it" },
+  { id: "select", label: "Select", key: "v", hint: "Click a region to select it. Drag a corner to move it, drag along an edge to add a point, Alt+click a corner to remove it. Right-click a region to delete it" },
   { id: "draw", label: "Polygon", key: "d", hint: "Click to add points; click the first point or press Enter to finish" },
   { id: "freehand", label: "Freehand", key: "Shift+D", hint: "Drag to draw, lift and keep going as often as you like. Enter finishes the outline, Backspace removes the last stroke, Esc cancels. Middle-drag pans." },
   { id: "route", label: "Route", key: "Shift+R", hint: "Click along the active hole from tee to green, replacing its route. Enter or double-click finishes, Backspace removes the last point, Esc cancels" },
@@ -186,6 +186,25 @@ export function useCourseEditor({ map, scene, active, editor, patch }: Props) {
         s.end();
       });
       add(modify);
+      // A right-click (no drag: a right-drag still pans) deletes the region under the pointer.
+      const vp = map.getViewport() as HTMLElement;
+      let down: { x: number; y: number } | null = null;
+      const onDown = (e: PointerEvent) => void (down = e.button === 2 ? { x: e.clientX, y: e.clientY } : null);
+      const onMenu = (e: MouseEvent) => {
+        const d = down;
+        down = null;
+        if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
+        const hit = map.forEachFeatureAtPixel(map.getEventPixel(e), (f) => f, { layerFilter: (l) => l === r.layer, hitTolerance: 4 });
+        const id = hit?.getId() as string | undefined;
+        if (!id) return;
+        const s = designStore.getState();
+        s.select(s.selected.filter((x) => x !== id));
+        removeRegions("Delete region", [id]);
+        say("Region deleted. Ctrl+Z brings it back.");
+      };
+      vp.addEventListener("pointerdown", onDown);
+      vp.addEventListener("contextmenu", onMenu);
+      interactions.push({ unsub: () => { vp.removeEventListener("pointerdown", onDown); vp.removeEventListener("contextmenu", onMenu); } } as never);
       const routes = routesRef.current;
       if (routes) {
         const editRoute = new Modify({ source: routes.source });
