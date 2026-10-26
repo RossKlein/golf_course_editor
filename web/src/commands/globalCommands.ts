@@ -11,6 +11,7 @@ export type GlobalActions = {
   pan: (fx: number, fy: number) => void;
   toggleLeft: () => void;
   toggleUnits: () => void;
+  toggle3d: () => void;
   cycleContours: () => void;
   toggleSlope: () => void;
   help: () => void;
@@ -34,6 +35,7 @@ export function globalCommands(a: GlobalActions): Command[] {
     { id: "view.panDown", label: "Pan down", scope: g, keys: ["ArrowDown"], group: "View", run: () => a.pan(0, 0.25) },
     { id: "view.left", label: "Show or hide the file panel", scope: g, keys: ["$mod+b"], group: "View", run: a.toggleLeft },
     { id: "view.units", label: "Switch between US and metric units", scope: g, keys: ["Shift+U"], group: "View", run: a.toggleUnits },
+    { id: "view.3d", label: "Switch between the 2D map and the 3D view", scope: g, keys: ["3"], group: "View", run: a.toggle3d },
     { id: "view.contours", label: "Cycle the contour spacing", scope: g, keys: ["Shift+C"], group: "View", run: a.cycleContours },
     { id: "view.slope", label: "Colour the terrain by slope", scope: g, keys: ["Shift+S"], group: "View", run: a.toggleSlope },
     { id: "help", label: "Keyboard shortcuts", scope: g, keys: ["Shift+Slash", "Slash", "F1"], group: "Help", run: a.help },

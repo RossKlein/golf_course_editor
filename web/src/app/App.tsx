@@ -18,6 +18,7 @@ import { useCourseEditor } from "../editors/course/useCourseEditor";
 import { useNotice } from "../editors/shared/holeNav";
 import FileList from "../files/FileList";
 import OlMap from "../map/OlMap";
+import { fromMap, toMap } from "../map/coords";
 import type { Scene } from "../map/scene";
 import { fitRect, panBy, zoomBy } from "../map/view";
 import { hashFor, useSelection } from "../selection/selection";
@@ -26,6 +27,8 @@ import RightPanel from "../shell/RightPanel";
 import SubBar from "../shell/SubBar";
 import { loadTifScene } from "../tif/tifScene";
 import { nextContour } from "../map/terrain/contours";
+import { cameraFor, visibleHeightOf, type Camera } from "../view3d/camera";
+import Terrain3D, { type Controls3d } from "../view3d/Terrain3D";
 import { setUnits, useFormatter, useUnits } from "../units/useUnits";
 
 type Loaded =
@@ -49,6 +52,9 @@ export default function App() {
   const [map, setMap] = useState<Map | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const left = usePanelRef();
+  const [view3d, setView3d] = useState(false);
+  const camera3d = useRef<Camera>(cameraFor(0, 0, 500));
+  const controls3d = useRef<Controls3d | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -113,6 +119,30 @@ export default function App() {
   );
 
   const canEdit = !!bundle && session.ready;
+
+  // the 3D view takes over from the 2D map, looking at the same place, and hands the place back when it closes
+  const canView3d = !!scene?.terrain;
+  const toggle3d = () => {
+    if (!map) return;
+    const mapView = map.getView();
+    if (view3d) {
+      const cam = camera3d.current;
+      const size = map.getSize();
+      mapView.setCenter(toMap([cam.x, cam.z]));
+      if (size?.[1]) mapView.setResolution(visibleHeightOf(cam) / size[1]);
+      setView3d(false);
+      return;
+    }
+    const centre = mapView.getCenter();
+    const res = mapView.getResolution();
+    const size = map.getSize();
+    if (!canView3d) return say("This scene has no elevation to show in 3D.");
+    if (!centre || !res || !size) return;
+    const [x, z] = fromMap(centre as [number, number]);
+    camera3d.current = cameraFor(x, z, res * size[1], camera3d.current);
+    setView3d(true);
+  };
+  useEffect(() => setView3d(false), [scene]);
   const { notice, say } = useNotice();
   const layers = useDesignLayers(map, loaded?.kind === "bundle", canEdit, editor);
   const course = useCourseEditor({ map, layers, active: canEdit && editor.editor === "course", editor, patch, say });
@@ -140,9 +170,10 @@ export default function App() {
       undo: () => designStore.getState().undo(),
       redo: () => designStore.getState().redo(),
       build: () => void session.buildNow(),
-      fit: () => map && scene && fitRect(map, scene.extent),
-      zoom: (f) => map && zoomBy(map, f),
-      pan: (fx, fy) => map && panBy(map, fx, fy),
+      fit: () => (view3d ? controls3d.current?.fit() : map && scene && fitRect(map, scene.extent)),
+      zoom: (f) => (view3d ? controls3d.current?.zoom(f) : map && zoomBy(map, f)),
+      pan: (fx, fy) => (view3d ? controls3d.current?.nudge(fx, -fy) : map && panBy(map, fx, fy)),
+      toggle3d,
       toggleLeft: () => patch({ leftCollapsed: !editor.leftCollapsed }),
       toggleUnits: () => setUnits(units === "us" ? "metric" : "us"),
       cycleContours: () => patch({ contourInterval: nextContour(editor.contourInterval, units) }),
@@ -154,7 +185,7 @@ export default function App() {
     ...bounds.commands,
   ];
   const scopes: Scope[] = ["global"];
-  if (canEdit && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
+  if (canEdit && !view3d && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
   useHotkeys(commands, scopes, !helpOpen);
 
   const upload = async (files: File[]) => {
@@ -198,8 +229,11 @@ export default function App() {
           save={session.save}
           build={session.build}
           loadError={session.loadError}
+          view3d={view3d}
+          canView3d={canView3d}
+          onView3d={toggle3d}
         />
-        <SubBar editor={editor} patch={patch} notice={notice} canEdit={canEdit} holeCount={holeCount} onHole={nav.goHole} onAddHole={nav.newHole} />
+        <SubBar editor={editor} patch={patch} notice={notice} canEdit={canEdit} holeCount={holeCount} onHole={nav.goHole} onAddHole={nav.newHole} view3d={view3d} />
         <Group orientation="horizontal" className="body">
           <Panel
             panelRef={left}
@@ -236,6 +270,18 @@ export default function App() {
                 onMap={setMap}
                 leftDragPans={course.leftDragPans && bounds.leftDragPans}
               />
+              {scene?.terrain && (
+                <Terrain3D
+                  terrain={scene.terrain}
+                  extent={scene.extent}
+                  active={view3d}
+                  cameraRef={camera3d}
+                  controlsRef={controls3d}
+                  contour={editor.contourInterval}
+                  slope={editor.slopeMap}
+                  hasDesign={loaded?.kind === "bundle"}
+                />
+              )}
               {!scene && !status && <div className="empty">Choose a bundle or GeoTIFF, or drop a .tif here.</div>}
               {status && <div className={status.error ? "status error" : "status"}>{status.text}</div>}
               {dropping && <div className="drop">Drop to copy into uploads/</div>}

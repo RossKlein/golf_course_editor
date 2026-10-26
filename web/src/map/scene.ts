@@ -1,5 +1,6 @@
 import type BaseLayer from "ol/layer/Base";
 import type { Formatter } from "../units/units";
+import type { TerrainRenderer } from "./terrain/renderer";
 import type { Rect } from "./coords";
 
 export type { Rect };
@@ -21,6 +22,15 @@ export type SceneLayer = {
   dispose?: () => void;
 };
 
+/** What the 3D view needs from a scene with elevation. */
+export type TerrainSource = {
+  renderer: TerrainRenderer;
+  /** Ground height in metres at a course point; null where there is no data. */
+  ground: (x: number, z: number) => number | null;
+  /** The imagery to drape over the ground, with the area it covers (course metres). */
+  aerial: { image: HTMLImageElement; rect: Rect } | null;
+};
+
 export type ReadoutLine = { text: string; color?: string };
 
 export type Scene = {
@@ -30,6 +40,8 @@ export type Scene = {
   subtitle: (f: Formatter) => string;
   /** The area to fit, in course metres. */
   extent: Rect;
+  /** Present when the scene has elevation, so it can be shown in 3D. */
+  terrain?: TerrainSource;
   layers: SceneLayer[];
   readout: (x: number, z: number, f: Formatter) => ReadoutLine[];
   /** Re-read what a build changed (class, ownership, bounds, holes). Bundles only. */

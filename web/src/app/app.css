@@ -88,6 +88,7 @@ main { height: 100%; }
 .editor-tab[data-state="active"] { color: var(--text); border-bottom-color: var(--accent); }
 .editor-tab:disabled { opacity: 0.4; cursor: default; }
 .bar-right { display: flex; align-items: center; gap: 6px; }
+.bar-right > button.on, .bar-right span > button.on { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .bar-status { margin-left: 8px; color: var(--muted); font-size: 12px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-status.warn { color: var(--warn); }
 .bar-status.bad { color: var(--bad); }
@@ -138,3 +139,11 @@ kbd { display: inline-block; padding: 0 5px; margin: 0 2px; font: 11px/18px ui-m
 .sub-bar .tool-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .group-label { padding: 0 6px 0 4px; color: var(--muted); font-size: 12px; align-self: center; }
 .muted-cell { color: var(--muted); }
+
+.view3d { position: absolute; inset: 0; z-index: 5; background: #9dc2e6; }
+.view3d[hidden] { display: none; }
+.view3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.v3-panel { position: absolute; top: 12px; left: 12px; display: grid; gap: 8px; width: 210px; padding: 10px 12px; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.v3-panel label { display: grid; gap: 4px; margin: 0; color: var(--text); }
+.v3-panel .check { display: flex; align-items: center; gap: 8px; }
+.v3-panel .muted { margin: 0; }

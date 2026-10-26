@@ -1,9 +1,9 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
 import { rasterLayer } from "../map/layers";
-import { terrainSupported } from "../map/terrain/renderer";
+import { TerrainRenderer, terrainSupported } from "../map/terrain/renderer";
 import { terrainLayer } from "../map/terrain/terrainLayer";
-import type { ReadoutLine, Scene, SceneLayer } from "../map/scene";
+import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
 import type { Formatter } from "../units/units";
 
 /** A GeoTIFF on the map, in metres from its top-left corner (x east, z south). */
@@ -24,10 +24,12 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     return { entry, redraw };
   };
 
+  let imagery: HTMLImageElement | null = null;
   if (view.rgb) {
-    const img = await loadImage(tifRgbUrl(path));
-    add("rgb", "Imagery", { image: () => img, rect, smooth: true }, 1);
+    imagery = await loadImage(tifRgbUrl(path));
+    add("rgb", "Imagery", { image: () => imagery, rect, smooth: true }, 1);
   }
+  let terrainSource: TerrainSource | undefined;
   const grid = view.elevation
     ? decodeHeights(await loadPixels(tifElevationUrl(path)), view.elevation.hMin, view.elevation.hMax)
     : null;
@@ -36,7 +38,11 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
     const opacity = view.rgb ? 0.55 : 1;
     if (terrainSupported(grid)) {
       // elevation samples are pixel centres
-      const terrain = terrainLayer({ data: { grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ }, style: () => style, multiply: !!view.rgb });
+      const renderer = new TerrainRenderer({ grid, origin: { x: view.resX / 2, z: view.resZ / 2 }, resX: view.resX, resZ: view.resZ });
+      const aerial = imagery ? { image: imagery, rect } : null;
+      renderer.setAerial(aerial?.image ?? null, aerial?.rect ?? null);
+      terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / view.resX - 0.5, z / view.resZ - 0.5), aerial };
+      const terrain = terrainLayer({ renderer, style: () => style, multiply: !!view.rgb });
       terrain.layer.setOpacity(opacity);
       layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
         onParams: (p) => {
@@ -81,7 +87,7 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
       kind: "tif",
       title: path.split("/").pop()!,
       subtitle: (fmt) => `${path} · ${view.width} x ${view.height} px, ${fmt.distance(rect.w, 0)} x ${fmt.distance(rect.h, 0)}`,
-      extent: rect, layers, readout,
+      extent: rect, layers, readout, terrain: terrainSource,
     },
   };
 }

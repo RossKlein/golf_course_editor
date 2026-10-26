@@ -1,0 +1,196 @@
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import { designStore } from "../design/store";
+import type { Rect } from "../map/coords";
+import type { TerrainSource } from "../map/scene";
+import { cameraFor, matricesOf, meshWindow, nudge, orbit, pan, zoom, type Camera } from "./camera";
+import { DRAPE_PIXELS, paintDrape } from "./drape";
+
+/** What the app can do to the 3D camera from outside (the keyboard). */
+export type Controls3d = {
+  zoom: (factor: number) => void;
+  /** Move by half the view: x to the right, y forward. */
+  nudge: (x: number, y: number) => void;
+  fit: () => void;
+};
+
+type Props = {
+  terrain: TerrainSource;
+  /** The whole course, for fitting. */
+  extent: Rect;
+  active: boolean;
+  /** The camera. The app sets it when opening the view and reads it when closing. */
+  cameraRef: MutableRefObject<Camera>;
+  controlsRef: MutableRefObject<Controls3d | null>;
+  contour: number;
+  slope: boolean;
+  /** Draw the bundle's design (surfaces, outlines, routes) over the ground. */
+  hasDesign: boolean;
+};
+
+type Options = { aerial: boolean; surfaces: number; outlines: boolean; scale: number };
+
+/**
+ * The terrain as a 3D landscape you can fly around: the same height data and the same sun as the map, draped with the
+ * aerial and, live, with the design's surfaces and outlines. It is a view, not an editor; editing stays on the 2D map.
+ */
+export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, hasDesign }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [opts, setOpts] = useState<Options>({ aerial: true, surfaces: 0.5, outlines: true, scale: 1 });
+  const latest = useRef({ terrain, extent, active, opts, contour, slope, hasDesign });
+  latest.current = { terrain, extent, active, opts, contour, slope, hasDesign };
+  const frame = useRef(0);
+  const drape = useRef<{ fill: HTMLCanvasElement; lines: HTMLCanvasElement; key: string } | null>(null);
+  const designVersion = useRef(0);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const { terrain, active, opts, contour, slope, hasDesign } = latest.current;
+    if (!canvas || !active || !canvas.clientWidth || !canvas.clientHeight) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const cam = cameraRef.current;
+    const ground = (x: number, z: number) => (terrain.ground(x, z) ?? 0) * opts.scale;
+    const { eye, viewProj } = matricesOf(cam, w / h, ground);
+    const mesh = meshWindow(cam);
+
+    // the design is painted for the square of ground the mesh covers, again when that moves or the design changes
+    const size = mesh.quads * mesh.spacing;
+    const rect = { x: mesh.x0, z: mesh.z0, w: size, h: size };
+    if (hasDesign) {
+      const key = `${mesh.x0},${mesh.z0},${mesh.spacing},${designVersion.current}`;
+      if (!drape.current) {
+        const make = () => Object.assign(document.createElement("canvas"), { width: DRAPE_PIXELS, height: DRAPE_PIXELS });
+        drape.current = { fill: make(), lines: make(), key: "" };
+      }
+      if (drape.current.key !== key) {
+        drape.current.key = key;
+        paintDrape(drape.current.fill.getContext("2d")!, drape.current.lines.getContext("2d")!, designStore.getState().doc, rect, DRAPE_PIXELS);
+        terrain.renderer.setDrape(drape.current.fill, drape.current.lines, rect);
+      }
+    }
+    try {
+      const out = terrain.renderer.render3d([w, h], {
+        viewProj, eye, mesh, scale: opts.scale, aerial: opts.aerial,
+        fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
+      });
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(out, 0, 0);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [cameraRef]);
+
+  const request = useCallback(() => {
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      draw();
+    });
+  }, [draw]);
+
+  // redraw when anything that shows changes
+  useEffect(request, [request, active, opts, contour, slope, hasDesign, terrain]);
+
+  // the design changing repaints the drape
+  useEffect(() => {
+    if (!hasDesign) return;
+    return designStore.subscribe(() => {
+      designVersion.current += 1;
+      if (latest.current.active) request();
+    });
+  }, [hasDesign, request]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const observer = new ResizeObserver(request);
+    observer.observe(canvas);
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cameraRef.current = zoom(cameraRef.current, Math.exp(-e.deltaY * 0.0015));
+      request();
+    };
+    canvas.addEventListener("wheel", wheel, { passive: false });
+    return () => {
+      observer.disconnect();
+      canvas.removeEventListener("wheel", wheel);
+      cancelAnimationFrame(frame.current);
+      frame.current = 0;
+    };
+  }, [cameraRef, request]);
+
+  useEffect(() => {
+    controlsRef.current = {
+      zoom: (f) => {
+        cameraRef.current = zoom(cameraRef.current, f);
+        request();
+      },
+      nudge: (x, y) => {
+        cameraRef.current = nudge(cameraRef.current, x, y);
+        request();
+      },
+      fit: () => {
+        const e = latest.current.extent;
+        cameraRef.current = cameraFor(e.x + e.w / 2, e.z + e.h / 2, Math.max(e.h, e.w * 0.6), cameraRef.current);
+        request();
+      },
+    };
+    return () => {
+      controlsRef.current = null;
+    };
+  }, [cameraRef, controlsRef, request]);
+
+  // free the GPU and the canvases when the scene goes
+  useEffect(
+    () => () => {
+      terrain.renderer.setDrape(null, null, null);
+      drape.current = null;
+    },
+    [terrain],
+  );
+
+  const drag = useRef<{ x: number; y: number; mode: "orbit" | "pan" } | null>(null);
+  const down = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, mode: e.button === 0 && !e.shiftKey && !e.ctrlKey ? "orbit" : "pan" };
+  };
+  const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    d.x = e.clientX;
+    d.y = e.clientY;
+    cameraRef.current = d.mode === "orbit" ? orbit(cameraRef.current, dx, dy) : pan(cameraRef.current, dx, dy, e.currentTarget.clientHeight);
+    request();
+  };
+  const up = () => (drag.current = null);
+
+  const set = (p: Partial<Options>) => setOpts((o) => ({ ...o, ...p }));
+  return (
+    <div className="view3d" hidden={!active}>
+      <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()} />
+      <div className="v3-panel">
+        {terrain.aerial && (
+          <label className="check"><input type="checkbox" checked={opts.aerial} onChange={(e) => set({ aerial: e.target.checked })} /> Aerial</label>
+        )}
+        {hasDesign && (
+          <>
+            <label>
+              Surfaces {Math.round(opts.surfaces * 100)}%
+              <input type="range" min={0} max={1} step={0.05} value={opts.surfaces} onChange={(e) => set({ surfaces: Number(e.target.value) })} />
+            </label>
+            <label className="check"><input type="checkbox" checked={opts.outlines} onChange={(e) => set({ outlines: e.target.checked })} /> Outlines and routes</label>
+          </>
+        )}
+        <label>
+          Height ×{opts.scale}
+          <input type="range" min={1} max={5} step={0.5} value={opts.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
+        </label>
+        <p className="muted">Drag to orbit, right-drag to pan, wheel to zoom. <kbd>3</kbd> returns to the 2D map.</p>
+      </div>
+    </div>
+  );
+}

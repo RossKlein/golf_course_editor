@@ -1,14 +1,13 @@
 // A CPU statement of what the terrain shader computes, for tests. Not used at runtime. If the shader's lighting
 // changes, change this and its tests with it.
 
-const SUN_AZIMUTH = (315 * Math.PI) / 180;
-const SUN_ALTITUDE = (45 * Math.PI) / 180;
+import { SUN, type Sun } from "./sun";
 
-/** Brightness 0..1 of ground rising `dx` per metre east and `dz` per metre south, lit from the north-west. */
-export function shadeOf(dx: number, dz: number, exaggeration: number): number {
+/** Brightness 0..1 of ground rising `dx` per metre east and `dz` per metre south, lit by the sun. */
+export function shadeOf(dx: number, dz: number, exaggeration: number, sun: Sun = SUN): number {
   const slope = Math.PI / 2 - Math.atan(Math.hypot(dx, dz) * exaggeration);
   const aspect = Math.atan2(-dx, dz);
-  const shade = Math.sin(SUN_ALTITUDE) * Math.sin(slope) + Math.cos(SUN_ALTITUDE) * Math.cos(slope) * Math.cos(SUN_AZIMUTH - aspect);
+  const shade = Math.sin(sun.altitude) * Math.sin(slope) + Math.cos(sun.altitude) * Math.cos(slope) * Math.cos(sun.azimuth - aspect);
   return Math.max(0, Math.min(1, shade));
 }
 

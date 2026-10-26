@@ -10,29 +10,18 @@ import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
+import { CLASS_COLORS, css, holeColor } from "./colours";
 import { rasterLayer } from "../map/layers";
-import { terrainSupported } from "../map/terrain/renderer";
+import { TerrainRenderer, terrainSupported } from "../map/terrain/renderer";
 import { terrainLayer } from "../map/terrain/terrainLayer";
-import type { ReadoutLine, Scene, SceneLayer } from "../map/scene";
+import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
 import type { Formatter } from "../units/units";
 
 // docs/golf-course-format.md: class map R = surface, G = owning hole; bounds = one in-bounds bit per hole.
 export const CLASS_NAMES = ["rough", "fairway", "green", "collar", "tee", "bunker", "water", "path", "woods"];
-export const CLASS_COLORS: [number, number, number][] = [
-  [106, 143, 58], [143, 209, 79], [31, 170, 89], [127, 199, 122], [224, 184, 74],
-  [241, 227, 160], [59, 130, 196], [154, 154, 154], [47, 90, 42],
-];
 const UNKNOWN: [number, number, number] = [255, 0, 255];
+export { CLASS_COLORS, css, holeColor };
 const TREE_RECORD = 12;
-
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-  const k = (n: number) => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
-}
-export const holeColor = (n: number) => hslToRgb((n * 47) % 360, 0.7, 0.55);
-export const css = ([r, g, b]: [number, number, number], a = 1) => `rgba(${r}, ${g}, ${b}, ${a})`;
 
 export type BundleData = { path: string; course: Course; report: Report };
 
@@ -65,19 +54,23 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     return { redraw, entry };
   };
 
+  let aerialSource: TerrainSource["aerial"] = null;
   if (aerial) {
     const img = await loadImage(tifRgbUrl(aerial.stack));
-    raster("aerial", "Aerial", {
-      image: () => img, smooth: true,
-      rect: { x: aerial.x0, z: aerial.z0, w: aerial.width * aerial.res, h: aerial.height * aerial.res },
-    }, { visible: true, opacity: 1 });
+    const rect = { x: aerial.x0, z: aerial.z0, w: aerial.width * aerial.res, h: aerial.height * aerial.res };
+    raster("aerial", "Aerial", { image: () => img, smooth: true, rect }, { visible: true, opacity: 1 });
+    aerialSource = { image: img, rect };
   }
 
   const res = course.height.res;
   let view = { exaggeration: 3, contour: 0, slope: false };
+  let terrainSource: TerrainSource | undefined;
   if (terrainSupported(grid)) {
     // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
-    const terrain = terrainLayer({ data: { grid, origin: { x: 0, z: 0 }, resX: res, resZ: res }, style: () => view, multiply: !!aerial });
+    const renderer = new TerrainRenderer({ grid, origin: { x: 0, z: 0 }, resX: res, resZ: res });
+    renderer.setAerial(aerialSource?.image ?? null, aerialSource?.rect ?? null);
+    terrainSource = { renderer, ground: (x, z) => sampleGrid(grid, x / res, z / res), aerial: aerialSource };
+    const terrain = terrainLayer({ renderer, style: () => view, multiply: !!aerial });
     terrain.layer.setOpacity(aerial ? 0.55 : 1);
     layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity: aerial ? 0.55 : 1, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
       onParams: (p) => {
@@ -248,7 +241,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
       kind: "bundle",
       title: course.name,
       subtitle: (f) => `${path} · ${f.distance(extent.w, 0)} x ${f.distance(extent.h, 0)}, ${course.holes.length} holes`,
-      extent, layers, readout, refresh,
+      extent, layers, readout, refresh, terrain: terrainSource,
     },
   };
 }

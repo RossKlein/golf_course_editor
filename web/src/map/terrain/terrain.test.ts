@@ -3,6 +3,7 @@ import { hillshadePixels, type HeightGrid } from "../../decode/decode";
 import { M_PER_FT } from "../../units/units";
 import { contourOptions, nearestContour, nextContour } from "./contours";
 import { contourIndex, packHeights, shadeOf } from "./reference";
+import { SUN, solarPosition, sunDirection } from "./sun";
 
 /** A grid of `cols` x `rows` heights from a function of (col, row). */
 function grid(cols: number, rows: number, h: (c: number, r: number) => number): HeightGrid {
@@ -13,12 +14,13 @@ function grid(cols: number, rows: number, h: (c: number, r: number) => number): 
 
 describe("terrain lighting", () => {
   it("flat ground is lit by the sun's height alone", () => {
-    expect(shadeOf(0, 0, 3)).toBeCloseTo(Math.sin(Math.PI / 4), 6);
+    expect(shadeOf(0, 0, 3)).toBeCloseTo(Math.sin(SUN.altitude), 6);
   });
 
-  it("faces toward the north-west are brighter than faces toward the south-east", () => {
-    // rising to the south-east means the surface faces north-west, towards the sun
-    expect(shadeOf(0.2, 0.2, 3)).toBeGreaterThan(shadeOf(-0.2, -0.2, 3));
+  it("faces toward the sun are brighter than faces away from it", () => {
+    // the sun is in the east, so ground that falls to the east faces it
+    expect(shadeOf(-0.2, 0, 3)).toBeGreaterThan(shadeOf(0, 0, 3));
+    expect(shadeOf(0.2, 0, 3)).toBeLessThan(shadeOf(0, 0, 3));
   });
 
   it("exaggeration steepens the shading", () => {
@@ -68,5 +70,35 @@ describe("height texture", () => {
   it("interleaves height and validity, zeroing missing data", () => {
     const packed = packHeights(new Float32Array([1.5, 7, 3]), new Uint8Array([1, 0, 1]));
     expect(Array.from(packed)).toEqual([1.5, 1, 0, 0, 3, 1]);
+  });
+});
+
+describe("the sun", () => {
+  const deg = (r: number) => (r * 180) / Math.PI;
+
+  it("is nearly due east and high at 11 am on a midsummer morning on the east coast", () => {
+    expect(deg(SUN.azimuth)).toBeGreaterThan(90);
+    expect(deg(SUN.azimuth)).toBeLessThan(110);
+    expect(deg(SUN.altitude)).toBeGreaterThan(52);
+    expect(deg(SUN.altitude)).toBeLessThan(62);
+  });
+
+  it("is due south and at its highest at solar noon", () => {
+    const noon = solarPosition(33.5, 23.44, 0);
+    expect(deg(noon.azimuth)).toBeCloseTo(180, 4);
+    expect(deg(noon.altitude)).toBeCloseTo(90 - 33.5 + 23.44, 4);
+  });
+
+  it("rises in the east in the morning and sets in the west in the evening", () => {
+    expect(solarPosition(33.5, 23.44, -90).azimuth).toBeLessThan(Math.PI);
+    expect(solarPosition(33.5, 23.44, 90).azimuth).toBeGreaterThan(Math.PI);
+  });
+
+  it("points east and up in course axes", () => {
+    const [x, y, z] = sunDirection();
+    expect(x).toBeGreaterThan(0.4); // east is +x
+    expect(y).toBeGreaterThan(0.7);
+    expect(z).toBeLessThan(0.2); // slightly south of east would be +z
+    expect(Math.hypot(x, y, z)).toBeCloseTo(1, 9);
   });
 });

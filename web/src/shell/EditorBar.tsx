@@ -1,5 +1,5 @@
 import { Tabs } from "radix-ui";
-import { Redo2, Undo2, CircleHelp, Hammer } from "lucide-react";
+import { Redo2, Undo2, CircleHelp, Hammer, Box, Map as MapIcon } from "lucide-react";
 import type { BuildStatus } from "../api/api";
 import type { DesignSave } from "../design/useDesignSession";
 import { EDITORS } from "../editors/registry";
@@ -18,6 +18,10 @@ type Props = {
   save: DesignSave;
   build: BuildStatus | null;
   loadError: string | null;
+  /** The 3D view is showing instead of the 2D map. */
+  view3d: boolean;
+  canView3d: boolean;
+  onView3d: () => void;
 };
 
 function status(save: DesignSave, build: BuildStatus | null, loadError: string | null) {
@@ -32,7 +36,7 @@ function status(save: DesignSave, build: BuildStatus | null, loadError: string |
 }
 
 /** The top bar: which editor is open, undo/redo, and one line saying where saving and building stand. */
-export default function EditorBar({ editor, onEditor, canUndo, canRedo, onUndo, onRedo, onHelp, onBuild, editable, save, build, loadError }: Props) {
+export default function EditorBar({ editor, onEditor, canUndo, canRedo, onUndo, onRedo, onHelp, onBuild, editable, save, build, loadError, view3d, canView3d, onView3d }: Props) {
   const st = status(save, build, loadError);
   return (
     <header className="editor-bar">
@@ -63,6 +67,13 @@ export default function EditorBar({ editor, onEditor, canUndo, canRedo, onUndo, 
             </Hint>
             <span className={`bar-status ${st.tone}`} role="status">{st.text}</span>
           </>
+        )}
+        {canView3d && (
+          <Hint label={view3d ? "Back to the 2D map" : "Look at the terrain in 3D"} keys={["3"]}>
+            <button type="button" className={view3d ? "on" : undefined} aria-pressed={view3d} onClick={onView3d}>
+              {view3d ? <MapIcon size={14} /> : <Box size={14} />} {view3d ? "2D" : "3D"}
+            </button>
+          </Hint>
         )}
         <Hint label="Keyboard shortcuts" keys={["Shift+Slash"]}>
           <button type="button" className="icon" onClick={onHelp} aria-label="Keyboard shortcuts"><CircleHelp size={16} /></button>

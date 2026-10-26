@@ -15,6 +15,8 @@ type Props = {
   /** Make a hole active and bring it into view. */
   onHole: (n: number) => void;
   onAddHole: () => void;
+  /** The 3D view is showing, so the editor's tools are idle. */
+  view3d: boolean;
 };
 
 type Tool = { id: string; label: string; key: string; hint: string };
@@ -70,8 +72,15 @@ function Simplify({ editor, patch }: { editor: EditorState; patch: Props["patch"
 }
 
 /** The open editor's options: tools, what it draws with, the active hole, snapping and what to show. */
-export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole }: Props) {
+export default function SubBar({ editor, patch, notice, canEdit, holeCount, onHole, onAddHole, view3d }: Props) {
   const meta = editorMeta(editor.editor);
+  if (view3d) {
+    return (
+      <div className="sub-bar">
+        <span className="sub-hint">3D view: drag to orbit, right-drag to pan, wheel to zoom. Press <kbd>3</kbd> to go back to the 2D map and keep editing.</span>
+      </div>
+    );
+  }
   if (editor.editor === "view") {
     return (
       <div className="sub-bar">
