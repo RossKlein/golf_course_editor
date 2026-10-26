@@ -1,12 +1,12 @@
 import type { HeightGrid } from "../../decode/decode";
-import type { BrushKind } from "../../heights/brush";
-import { readTile, tileRect, tilesInBox, writeTile } from "../../heights/tiles";
+import type { BrushKind } from "./brush";
+import { readTile, tileRect, tilesInBox, writeTile } from "./tiles";
 import { compileProgram, type Program } from "../../gfx/shader/program";
 import type { Device } from "../../gfx/device/device";
 import { LazyTexture } from "../../gfx/resource/texture";
-import { context, currentContext, type Gl } from "./gl";
-import type { TerrainGrid } from "./renderer";
-import { SHADERS } from "./shaders";
+import { context, currentContext, type Gl } from "../context";
+import type { TerrainGrid } from "../terrain";
+import { SHADERS } from "../shaders/shaders";
 
 /** The largest square a single stamp can cover, in samples. */
 const SCRATCH = 512;

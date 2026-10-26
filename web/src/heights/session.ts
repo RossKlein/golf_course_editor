@@ -1,8 +1,8 @@
 import { api } from "../api/api";
 import type { HeightGrid } from "../decode/decode";
 import { designStore } from "../design/store";
-import type { Sculptor, Stamp } from "../map/terrain/sculptor";
-import { decodeDelta, encodeDelta } from "./tiles";
+import type { Sculptor, Stamp } from "../terrain/sculpt/sculptor";
+import { decodeDelta, encodeDelta } from "../terrain/sculpt/tiles";
 
 const SAVE_DELAY = 500;
 

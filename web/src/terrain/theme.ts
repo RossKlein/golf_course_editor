@@ -1,4 +1,4 @@
-import type { Program } from "../../gfx/shader/program";
+import type { Program } from "../gfx/shader/program";
 
 // How the editor draws its own aids over the terrain: not part of a course's look and never in a bundle. It reaches the
 // shaders as uniforms like the look does. (It moves to model/theme in the reorganisation, with this type staying here.)

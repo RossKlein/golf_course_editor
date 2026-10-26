@@ -3,7 +3,7 @@ import { SHADERS } from "./shaders";
 
 // The sources are checked as far as they can be without a GPU: no colours written in them, everything resolved, and the
 // braces balanced. Compiling them is checkShaders() in the console.
-const files = import.meta.glob<string>("./shaders/*.glsl", { query: "?raw", import: "default", eager: true });
+const files = import.meta.glob<string>("../**/*.glsl", { query: "?raw", import: "default", eager: true });
 
 describe("no colours in shaders", () => {
   // A colour, a size in metres or a rule about a surface is the course's look, loaded from the bundle (see look.glsl and
@@ -11,7 +11,7 @@ describe("no colours in shaders", () => {
   const COLOUR = /vec[34]\(\s*-?\d*\.\d+\s*,\s*-?\d*\.\d+\s*,\s*-?\d*\.\d+/;
 
   for (const [path, text] of Object.entries(files)) {
-    it(`${path.replace("./shaders/", "")} has none`, () => {
+    it(`${path.split("/").pop()} has none`, () => {
       const offenders = text.split("\n").filter((line) => COLOUR.test(line) && !line.includes("allow-literal"));
       expect(offenders).toEqual([]);
     });

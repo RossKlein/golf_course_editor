@@ -1,4 +1,4 @@
-import { lookAt, multiply, perspective, type Mat4, type Vec3 } from "../gfx/math/mat4";
+import { lookAt, multiply, perspective, type Mat4, type Vec3 } from "../../gfx/math/mat4";
 
 /**
  * An orbit camera looking at a point on the ground. Course axes: x east, y up, z south.

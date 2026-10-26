@@ -1,6 +1,6 @@
 import type { Look, Surface } from "../../api/api";
 import type { Program } from "../../gfx/shader/program";
-import { SURFACES } from "./limits";
+import { SURFACES } from "../limits";
 
 // The course's look reaches the shaders as uniforms, so no colour or size is written in a shader. Surfaces are a table, one
 // row of four vec4s each (the shader's accessors are in shaders/look.glsl); everything else is a few named uniforms.

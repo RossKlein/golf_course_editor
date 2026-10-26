@@ -1,5 +1,5 @@
 import type { Look, Surface } from "../../api/api";
-import { solarPosition } from "./sun";
+import { solarPosition } from "../sun";
 
 // A look for tests (the real default is the server's, in course_maker/look_defaults.py): nine surfaces, three tree models and
 // a sun at 11 am on the US east coast in midsummer.

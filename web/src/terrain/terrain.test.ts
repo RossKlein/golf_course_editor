@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { hillshadePixels, type HeightGrid } from "../../decode/decode";
-import { M_PER_FT } from "../../units/units";
-import { contourOptions, nearestContour, nextContour } from "./contours";
-import { contourIndex, packHeights, shadeOf } from "./reference";
-import { testSun as SUN } from "./look.fixture";
+import { hillshadePixels, type HeightGrid } from "../decode/decode";
+import { M_PER_FT } from "../units/units";
+import { contourOptions, nearestContour, nextContour } from "./passes/flat/contours";
+import { contourIndex, packHeights, shadeOf } from "./passes/flat/reference";
+import { testSun as SUN } from "./look/look.fixture";
 import { solarPosition, sunDirection, sunOfLook } from "./sun";
-import { testLook } from "./look.fixture";
+import { testLook } from "./look/look.fixture";
 
 /** A grid of `cols` x `rows` heights from a function of (col, row). */
 function grid(cols: number, rows: number, h: (c: number, r: number) => number): HeightGrid {

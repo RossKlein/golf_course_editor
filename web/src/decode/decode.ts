@@ -1,4 +1,4 @@
-import type { Sun } from "../map/terrain/sun";
+import type { Sun } from "../terrain/sun";
 
 // Pixel decoding shared by the bundle and GeoTIFF views. PNGs are decoded with no color conversion, exactly as
 // the game's loader will (docs/golf-course-format.md): 16-bit heights live in R (high byte) and G (low byte).

@@ -4,7 +4,7 @@ import { CLASS_COLORS, css } from "../bundle/bundleScene";
 import { BOUNDS_TOOLS, FEATURE_MODES } from "../editors/bounds/useBoundsEditor";
 import { CLASS_KEYS, TOOLS } from "../editors/course/useCourseEditor";
 import { editorMeta } from "../editors/registry";
-import { BRUSHES, MAX_RADIUS, MIN_RADIUS } from "../heights/brush";
+import { BRUSHES, MAX_RADIUS, MIN_RADIUS } from "../terrain/sculpt/brush";
 import type { Formatter } from "../units/units";
 import { Hint } from "../ui/Hint";
 

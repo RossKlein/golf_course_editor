@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testLook } from "./look.fixture";
-import { SURFACES } from "./limits";
+import { SURFACES } from "../limits";
 import { FLOATS_PER_SURFACE, packSurfaces } from "./look";
 
 describe("the look as the shader's table", () => {

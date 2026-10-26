@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TUFT_TILE } from "../map/terrain/limits";
-import { TUFT_RANGE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
-import { frustumOf } from "../gfx/math/frustum";
-import { lookAt, multiply, perspective } from "../gfx/math/mat4";
+import { TUFT_TILE } from "../limits";
+import { TUFT_RANGE, tuftGrid, tuftTiles } from "../passes/tufts/tufts";
+import { frustumOf } from "../../gfx/math/frustum";
+import { lookAt, multiply, perspective } from "../../gfx/math/mat4";
 import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, type ClassImage } from "./scenery";
-import { testLook } from "../map/terrain/look.fixture";
+import { testLook } from "../look/look.fixture";
 
 /** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
 function classes(w: number, h: number, fn: (c: number, r: number) => number): ClassImage {

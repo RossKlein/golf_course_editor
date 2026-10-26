@@ -1,7 +1,7 @@
 // The things that make the 3D view look like the game rather than a map: trees built from a few flat-shaded primitives, as
 // the game builds its own, where trees go in a wood, and which way the mowing stripes run on each hole.
 
-import type { TreeKind } from "../api/api";
+import type { TreeKind } from "../../api/api";
 
 export const WOODS_CLASS = 8;
 export const MAX_HOLES = 24;

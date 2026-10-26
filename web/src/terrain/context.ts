@@ -1,6 +1,6 @@
-import { currentDevice, device, type Device } from "../../gfx/device/device";
-import { compileProgram, tryProgram, type Program } from "../../gfx/shader/program";
-import { SHADERS } from "./shaders";
+import { currentDevice, device, type Device } from "../gfx/device/device";
+import { compileProgram, tryProgram, type Program } from "../gfx/shader/program";
+import { SHADERS } from "./shaders/shaders";
 
 /** The device plus the programs the terrain views always use. */
 export type Gl = Device & {

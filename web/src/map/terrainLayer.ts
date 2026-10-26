@@ -1,5 +1,5 @@
-import { viewLayer } from "../layers";
-import type { TerrainRenderer, TerrainStyle } from "./renderer";
+import { viewLayer } from "./layers";
+import type { TerrainRenderer, TerrainStyle } from "../terrain/terrain";
 
 /**
  * Shaded terrain as a map layer, drawn by the GPU for exactly what is on screen. `style` is read at every render, so

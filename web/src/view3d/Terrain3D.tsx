@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject, type P
 import { designStore } from "../design/store";
 import type { Rect } from "../map/coords";
 import type { TerrainSource } from "../map/scene";
-import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "./camera";
-import { TUFT_RANGE } from "../map/terrain/sceneryGpu";
+import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "../terrain/camera/camera";
+import { TUFT_RANGE } from "../terrain/passes/tufts/tufts";
 import { DRAPE_PIXELS, paintDrape } from "./drape";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */

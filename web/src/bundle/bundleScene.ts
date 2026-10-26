@@ -9,14 +9,14 @@ import { Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { HeightSession } from "../heights/session";
-import { scatterWoods, splitByKind, stripeDirections, treesFromBin } from "../view3d/scenery";
-import { sunOfLook } from "../map/terrain/sun";
+import { scatterWoods, splitByKind, stripeDirections, treesFromBin } from "../terrain/scenery/scenery";
+import { sunOfLook } from "../terrain/sun";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { CLASS_COLORS, css, holeColor } from "./colours";
 import { rasterLayer } from "../map/layers";
-import { TerrainRenderer, terrainSupported } from "../map/terrain/renderer";
-import { terrainLayer } from "../map/terrain/terrainLayer";
+import { TerrainRenderer, terrainSupported } from "../terrain/terrain";
+import { terrainLayer } from "../map/terrainLayer";
 import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
 import type { Formatter } from "../units/units";
 

@@ -1,9 +1,9 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
-import { sunOfLook } from "../map/terrain/sun";
+import { sunOfLook } from "../terrain/sun";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
 import { rasterLayer } from "../map/layers";
-import { TerrainRenderer, terrainSupported } from "../map/terrain/renderer";
-import { terrainLayer } from "../map/terrain/terrainLayer";
+import { TerrainRenderer, terrainSupported } from "../terrain/terrain";
+import { terrainLayer } from "../map/terrainLayer";
 import type { ReadoutLine, Scene, SceneLayer, TerrainSource } from "../map/scene";
 import type { Formatter } from "../units/units";
 

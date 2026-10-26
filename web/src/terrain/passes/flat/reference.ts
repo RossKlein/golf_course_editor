@@ -1,7 +1,7 @@
 // A CPU statement of what the terrain shader computes, for tests. Not used at runtime. If the shader's lighting
 // changes, change this and its tests with it.
 
-import type { Sun } from "./sun";
+import type { Sun } from "../../sun";
 
 /** Brightness 0..1 of ground rising `dx` per metre east and `dz` per metre south, lit by the sun. */
 export function shadeOf(dx: number, dz: number, exaggeration: number, sun: Sun): number {

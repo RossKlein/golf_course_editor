@@ -7,7 +7,7 @@ import { Stroke, Style } from "ol/style";
 import { useEffect, useRef } from "react";
 import type { EditorState } from "../../api/api";
 import type { Command } from "../../commands/keymap";
-import { BRUSHES, MAX_RADIUS, MIN_RADIUS, perStamp, resized, stampPoints, type Brush, type BrushKind } from "../../heights/brush";
+import { BRUSHES, MAX_RADIUS, MIN_RADIUS, perStamp, resized, stampPoints, type Brush, type BrushKind } from "../../terrain/sculpt/brush";
 import type { TerrainSource } from "../../map/scene";
 import { fromMap, toMap, type Pt } from "../../map/coords";
 

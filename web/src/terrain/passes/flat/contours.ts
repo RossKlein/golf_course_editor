@@ -1,4 +1,4 @@
-import { M_PER_FT, type Units } from "../../units/units";
+import { M_PER_FT, type Units } from "../../../units/units";
 
 /** Contour spacings on offer, in metres: round numbers in the display unit, off first. */
 export function contourOptions(units: Units): number[] {

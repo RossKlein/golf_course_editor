@@ -10,21 +10,21 @@
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
-import { SPECKLE_SIZE } from "../../view3d/scenery";
-import brushFrag from "./shaders/brush.frag.glsl?raw";
-import flatFrag from "./shaders/flat.frag.glsl?raw";
-import fullscreenVert from "./shaders/fullscreen.vert.glsl?raw";
-import groundFrag from "./shaders/ground.frag.glsl?raw";
-import groundVert from "./shaders/ground.vert.glsl?raw";
-import head from "./shaders/head.glsl?raw";
-import look from "./shaders/look.glsl?raw";
-import height from "./shaders/height.glsl?raw";
-import overlays from "./shaders/overlays.glsl?raw";
-import treesFrag from "./shaders/trees.frag.glsl?raw";
-import treesVert from "./shaders/trees.vert.glsl?raw";
-import tuftsFrag from "./shaders/tufts.frag.glsl?raw";
-import tuftsVert from "./shaders/tufts.vert.glsl?raw";
-import { SURFACES, TUFT_TILE } from "./limits";
+import { SPECKLE_SIZE } from "../scenery/scenery";
+import brushFrag from "../sculpt/brush.frag.glsl?raw";
+import flatFrag from "../passes/flat/flat.frag.glsl?raw";
+import fullscreenVert from "./fullscreen.vert.glsl?raw";
+import groundFrag from "../passes/ground/ground.frag.glsl?raw";
+import groundVert from "../passes/ground/ground.vert.glsl?raw";
+import head from "./head.glsl?raw";
+import look from "./look.glsl?raw";
+import height from "./height.glsl?raw";
+import overlays from "./overlays.glsl?raw";
+import treesFrag from "../passes/trees/trees.frag.glsl?raw";
+import treesVert from "../passes/trees/trees.vert.glsl?raw";
+import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
+import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
+import { SURFACES, TUFT_TILE } from "../limits";
 
 const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look };
 

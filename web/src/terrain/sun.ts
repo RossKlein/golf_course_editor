@@ -1,6 +1,6 @@
 // The light every terrain view uses: the look's sun, so the 2D relief and the 3D view agree.
 
-import type { Look } from "../../api/api";
+import type { Look } from "../api/api";
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 

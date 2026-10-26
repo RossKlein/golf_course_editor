@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cameraFor, drapeWindow, eyeOf, meshLevels, RINGS, RING_STEP, FOV, matricesOf, meshWindow, MAX_DISTANCE, nudge, orbit, pan, visibleHeightOf, zoom, type Camera } from "./camera";
-import { lookAt, multiply, perspective, transform } from "../gfx/math/mat4";
+import { lookAt, multiply, perspective, transform } from "../../gfx/math/mat4";
 
 const flat = () => 0;
 const cam = (over: Partial<Camera> = {}): Camera => ({ x: 100, z: 200, yaw: 0, pitch: Math.PI / 4, distance: 100, ...over });

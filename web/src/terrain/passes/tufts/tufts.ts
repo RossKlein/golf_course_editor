@@ -1,11 +1,11 @@
-import { boxVisible, frustumOf, type Frustum } from "../../gfx/math/frustum";
-import type { Look } from "../../api/api";
-import { chunkTrees, treeMesh, type Mesh, type TreeChunk } from "../../view3d/scenery";
-import { compileProgram, tryProgram, type Program } from "../../gfx/shader/program";
-import { currentContext, type Gl } from "./gl";
-import { TUFT_TILE } from "./limits";
-import { setLookUniforms } from "./look";
-import { SHADERS } from "./shaders";
+import { boxVisible, frustumOf, type Frustum } from "../../../gfx/math/frustum";
+import type { Look } from "../../../api/api";
+import { chunkTrees, treeMesh, type Mesh, type TreeChunk } from "../../scenery/scenery";
+import { compileProgram, tryProgram, type Program } from "../../../gfx/shader/program";
+import { currentContext, type Gl } from "../../context";
+import { TUFT_TILE } from "../../limits";
+import { setLookUniforms } from "../../look/look";
+import { SHADERS } from "../../shaders/shaders";
 
 // The standing things on the ground, drawn on top of the terrain: tufts of grass in the rough and low-poly trees.
 // Neither has any data on the CPU beyond the trees' positions. A tuft's place, size and whether it exists at all are worked
