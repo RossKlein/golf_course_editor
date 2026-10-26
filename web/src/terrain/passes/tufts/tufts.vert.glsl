@@ -2,6 +2,7 @@
 #include "height.glsl"
 #include "look.glsl"
 #include "shadow.glsl"
+#include "lighting.glsl"
 
 const int TILE = TUFT_TILE;
 uniform sampler2D uClassMap;
@@ -58,5 +59,6 @@ void main() {
   gl_Position = uViewProj * vec4(world, 1.0);
   vUv = corner;
   vSeed = seed;
-  vShadow = shadowMapAt(base, vec3(0, 1, 0), false); // the ground's shadow at the root
+  // the ground's shadow at the root: the baked one where there is one, so the grass is shaded as the ground under it is
+  vShadow = uSunOn > 0.5 ? 1.0 - sunVisibilityAt(base.xz) : shadowMapAt(base, vec3(0, 1, 0), false);
 }

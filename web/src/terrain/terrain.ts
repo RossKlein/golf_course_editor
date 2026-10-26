@@ -155,7 +155,7 @@ export class TerrainRenderer {
 
     if (v.trees) this.trees.draw(g, this.world, { viewProj: v.viewProj, scale: v.scale }, cull);
     else this.trees.stats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.trees.count };
-    if (v.tufts && this.world.surfaces.has) this.tufts.draw(g, this.world, { viewProj: v.viewProj, eye: v.eye, target: v.target, scale: v.scale, range: v.tuftRange, density: v.tuftDensity }, cull);
+    if (v.tufts && this.world.surfaces.has) this.tufts.draw(g, this.world, { viewProj: v.viewProj, eye: v.eye, target: v.target, scale: v.scale, range: v.tuftRange, density: v.tuftDensity, baked: v.shadows !== "off" }, cull);
     else this.tufts.stats = { tiles: 0, tilesAll: 0, tufts: 0, tuftsAll: 0 };
     return canvas;
   }

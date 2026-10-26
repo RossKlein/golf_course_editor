@@ -461,6 +461,12 @@ its derivative give a smooth slope, baked once by `terrain/relief/` (and again f
 and what the ball touches stay on the raw heights. This is the first baked-lighting step; baking the sun's shadows and ambient
 occlusion the same way is the natural next one.
 
+**Afterwards: baked lighting.** *(visual)*
+The ground's sky occlusion and sun shadows (terrain and trees) are baked into textures by `terrain/lighting/` and looked up by
+the ground and the grass, with light `(1 - A) * sun + A * sky` where `A` is the look's shadow colour, so open lit ground is its
+colour exactly. Tree shadows are baked a tile at a time at a fixed density, the three-map look made independent of the view.
+See `docs/baked-lighting-plan.md` for the plan, what each step found, and what was left out.
+
 ### After the plan
 
 These become cheap once the steps are done, and are not part of them:

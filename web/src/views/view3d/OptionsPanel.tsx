@@ -65,7 +65,7 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           <label className="check"><input type="checkbox" checked={opts.outlines} onChange={(e) => set({ outlines: e.target.checked })} /> Outlines and routes</label>
         </>
       )}
-      <label title="The sun's shadows. Low: trees shade the ground in one map. High: three maps with soft edges, and hills shade the ground too. Higher costs more.">
+      <label title="The sun's shadows. Off: flat light. Low and High: the ground, grass and its occlusion by trees and hills are baked once, so they look the same and cost almost nothing per frame. The setting changes how trees shade each other: one map (Low) or three with soft edges (High).">
         Shadows
         <select value={opts.shadows} onChange={(e) => set({ shadows: e.target.value as Options["shadows"] })}>
           {SHADOW_QUALITIES.map((q) => <option key={q} value={q}>{q === "off" ? "Off" : q === "low" ? "Low" : "High"}</option>)}

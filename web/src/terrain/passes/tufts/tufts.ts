@@ -54,6 +54,8 @@ export type TuftView = {
   /** How far from the target tufts grow, in metres, and how many (1 is the default density). */
   range: number;
   density: number;
+  /** Shade the grass from the baked lighting where there is one (false when shadows are off). */
+  baked: boolean;
 };
 
 /** What the last draw sent, out of what there is: tuft slots, as tiles in view out of all of them. */
@@ -93,6 +95,7 @@ export class TuftsPass {
     gl.uniform1f(t.u.uScale, v.scale);
     setLookUniforms(gl, t, world.look);
     world.shadow.bind(g, t);
+    world.lighting.bind(g, t, v.baked);
     gl.bindVertexArray(quad);
     const tiles = tuftTiles(v.target, v.range, v.density, cull.frustum, cull.y0, cull.y1 + 1);
     this.stats = {
