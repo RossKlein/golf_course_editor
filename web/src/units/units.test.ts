@@ -40,6 +40,21 @@ describe("formatter", () => {
   });
 });
 
+describe("area", () => {
+  it("uses square feet and acres in US units", () => {
+    const f = makeFormatter("us");
+    expect(f.area(9.290304)).toBe("100 sq ft");
+    expect(f.area(4046.8564224)).toBe("1.00 acres");
+    expect(f.area(20234.282112)).toBe("5.00 acres");
+  });
+
+  it("uses square metres and hectares in metric", () => {
+    const f = makeFormatter("metric");
+    expect(f.area(450.4)).toBe("450 m²");
+    expect(f.area(25_000)).toBe("2.50 ha");
+  });
+});
+
 describe("parseLength", () => {
   it("reads a bare number in the display unit for the kind", () => {
     expect(parseLength("100", "us", "distance")).toBeCloseTo(91.44, 9);

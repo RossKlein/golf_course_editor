@@ -164,6 +164,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bundle/design": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Design Get */
+        get: operations["design_get_api_bundle_design_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Design Put Layout */
+        put: operations["design_put_layout_api_bundle_design_layout_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Design Put Regions */
+        put: operations["design_put_regions_api_bundle_design_regions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Design Backups */
+        get: operations["design_backups_api_bundle_design_backups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Build Status */
+        get: operations["build_status_api_bundle_build_get"];
+        put?: never;
+        /**
+         * Build Now
+         * @description Build immediately and wait for it (the editor normally just saves and lets the debounced build run).
+         */
+        post: operations["build_now_api_bundle_build_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{rel}": {
         parameters: {
             query?: never;
@@ -223,6 +312,11 @@ export interface components {
             /** Height */
             height: number;
         };
+        /** BackupList */
+        BackupList: {
+            /** Backups */
+            backups: string[];
+        };
         /** BakeRequest */
         BakeRequest: {
             /** Stack */
@@ -247,6 +341,52 @@ export interface components {
             /** Bundle */
             bundle: string;
             report: components["schemas"]["Report"];
+        };
+        /**
+         * BuildStatus
+         * @description Where the build for a bundle stands. `id` increases with every finished build; the viewer reloads on change.
+         */
+        BuildStatus: {
+            /**
+             * Id
+             * @default 0
+             */
+            id: number;
+            /**
+             * State
+             * @default idle
+             * @enum {string}
+             */
+            state: "idle" | "building" | "done" | "failed";
+            /** Started */
+            started: number | null;
+            /** Finished */
+            finished: number | null;
+            report: components["schemas"]["Report"] | null;
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /** Error */
+            error: string | null;
+            /**
+             * Ms
+             * @default {}
+             */
+            ms: {
+                [key: string]: number;
+            };
+            /**
+             * Regions
+             * @default 0
+             */
+            regions: number;
+            /**
+             * Holes
+             * @default 0
+             */
+            holes: number;
         };
         /** BundleEntry */
         BundleEntry: {
@@ -288,6 +428,60 @@ export interface components {
             /** Holes */
             holes: components["schemas"]["Hole"][];
         };
+        /**
+         * DesignDoc
+         * @description Everything the editor edits.
+         */
+        DesignDoc: {
+            layout: components["schemas"]["Layout-Output"];
+            regions: components["schemas"]["RegionsFile-Output"];
+        };
+        /**
+         * DesignHole
+         * @description A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes.
+         */
+        "DesignHole-Input": {
+            /** Number */
+            number: number;
+            /**
+             * Par
+             * @default 4
+             */
+            par?: number;
+            /** Name */
+            name?: string | null;
+            /**
+             * Route
+             * @default []
+             */
+            route?: [
+                number,
+                number
+            ][];
+        };
+        /**
+         * DesignHole
+         * @description A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes.
+         */
+        "DesignHole-Output": {
+            /** Number */
+            number: number;
+            /**
+             * Par
+             * @default 4
+             */
+            par: number;
+            /** Name */
+            name: string | null;
+            /**
+             * Route
+             * @default []
+             */
+            route: [
+                number,
+                number
+            ][];
+        };
         /** EditorResponse */
         EditorResponse: {
             state: components["schemas"]["EditorState-Output"];
@@ -326,6 +520,42 @@ export interface components {
              * @default 1
              */
             hole?: number;
+            /**
+             * Editor
+             * @default view
+             */
+            editor?: string;
+            /**
+             * Tool
+             * @default select
+             */
+            tool?: string;
+            /**
+             * Activeclass
+             * @default 1
+             */
+            activeClass?: number;
+            /**
+             * Snap
+             * @default true
+             */
+            snap?: boolean;
+            /**
+             * Smoothing
+             * @default 1.5
+             */
+            smoothing?: number;
+            /**
+             * Leftcollapsed
+             * @default false
+             */
+            leftCollapsed?: boolean;
+            /**
+             * Righttab
+             * @default view
+             * @enum {string}
+             */
+            rightTab?: "view" | "data";
         };
         /**
          * EditorState
@@ -356,6 +586,42 @@ export interface components {
              * @default 1
              */
             hole: number;
+            /**
+             * Editor
+             * @default view
+             */
+            editor: string;
+            /**
+             * Tool
+             * @default select
+             */
+            tool: string;
+            /**
+             * Activeclass
+             * @default 1
+             */
+            activeClass: number;
+            /**
+             * Snap
+             * @default true
+             */
+            snap: boolean;
+            /**
+             * Smoothing
+             * @default 1.5
+             */
+            smoothing: number;
+            /**
+             * Leftcollapsed
+             * @default false
+             */
+            leftCollapsed: boolean;
+            /**
+             * Righttab
+             * @default view
+             * @enum {string}
+             */
+            rightTab: "view" | "data";
         };
         /**
          * ElevationLayer
@@ -438,6 +704,36 @@ export interface components {
             /** Opacity */
             opacity: number;
         };
+        /**
+         * Layout
+         * @description Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote.
+         */
+        "Layout-Input": {
+            /** Name */
+            name?: string | null;
+            /** Attribution */
+            attribution?: string | null;
+            /**
+             * Holes
+             * @default []
+             */
+            holes?: components["schemas"]["DesignHole-Input"][];
+        };
+        /**
+         * Layout
+         * @description Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote.
+         */
+        "Layout-Output": {
+            /** Name */
+            name: string | null;
+            /** Attribution */
+            attribution: string | null;
+            /**
+             * Holes
+             * @default []
+             */
+            holes: components["schemas"]["DesignHole-Output"][];
+        };
         /** Patch */
         Patch: {
             /** File */
@@ -457,6 +753,76 @@ export interface components {
             width: number;
             /** Height */
             height: number;
+        };
+        /**
+         * Region
+         * @description A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones.
+         */
+        "Region-Input": {
+            /** Id */
+            id: string;
+            /** Class */
+            class: number;
+            /** Hole */
+            hole?: number | null;
+            /** Outer */
+            outer: [
+                number,
+                number
+            ][];
+            /**
+             * Inner
+             * @default []
+             */
+            inner?: [
+                number,
+                number
+            ][][];
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * Region
+         * @description A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones.
+         */
+        "Region-Output": {
+            /** Id */
+            id: string;
+            /** Class */
+            class: number;
+            /** Hole */
+            hole: number | null;
+            /** Outer */
+            outer: [
+                number,
+                number
+            ][];
+            /**
+             * Inner
+             * @default []
+             */
+            inner: [
+                number,
+                number
+            ][][];
+            /** Note */
+            note: string | null;
+        };
+        /** RegionsFile */
+        "RegionsFile-Input": {
+            /**
+             * Regions
+             * @default []
+             */
+            regions?: components["schemas"]["Region-Input"][];
+        };
+        /** RegionsFile */
+        "RegionsFile-Output": {
+            /**
+             * Regions
+             * @default []
+             */
+            regions: components["schemas"]["Region-Output"][];
         };
         /**
          * Report
@@ -861,6 +1227,196 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_get_api_bundle_design_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignDoc"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_put_layout_api_bundle_design_layout_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Layout-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_put_regions_api_bundle_design_regions_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionsFile-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_backups_api_bundle_design_backups_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_status_api_bundle_build_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_now_api_bundle_build_post: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildStatus"];
+                };
             };
             /** @description Validation Error */
             422: {

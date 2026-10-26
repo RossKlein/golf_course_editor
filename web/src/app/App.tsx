@@ -1,31 +1,33 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import type Map from "ol/Map";
+import { Tooltip } from "radix-ui";
+import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { api, type EditorState, type Index, type TifView, type Viewport } from "../api/api";
-import BundlePanel from "../bundle/BundlePanel";
 import { loadBundleScene, type BundleData } from "../bundle/bundleScene";
+import { globalCommands } from "../commands/globalCommands";
+import HelpDialog from "../commands/HelpDialog";
+import type { Scope } from "../commands/keymap";
+import { useHotkeys } from "../commands/useHotkeys";
+import { designStore, useDesign } from "../design/store";
+import { useDesignSession } from "../design/useDesignSession";
 import { defaultEditorState, mergeSaved } from "../editor/editorState";
-import { useEditorPersistence, type SaveStatus } from "../editor/useEditorPersistence";
+import { useEditorPersistence } from "../editor/useEditorPersistence";
+import { useCourseEditor } from "../editors/course/useCourseEditor";
 import FileList from "../files/FileList";
-import MapView from "../map/MapView";
+import OlMap from "../map/OlMap";
 import type { Scene } from "../map/scene";
-import LayerControls, { ExaggerationSlider } from "../panel/LayerControls";
+import { fitRect, panBy, zoomBy } from "../map/view";
 import { hashFor, useSelection } from "../selection/selection";
-import TifPanel from "../tif/TifPanel";
+import EditorBar from "../shell/EditorBar";
+import RightPanel from "../shell/RightPanel";
+import SubBar from "../shell/SubBar";
 import { loadTifScene } from "../tif/tifScene";
-import { useFormatter, useUnits } from "../units/useUnits";
+import { setUnits, useFormatter, useUnits } from "../units/useUnits";
 
 type Loaded =
   | { kind: "tif"; scene: Scene; view: TifView; editor: EditorState }
   | { kind: "bundle"; scene: Scene; data: BundleData; editor: EditorState };
 type Status = { text: string; error?: boolean } | null;
-
-function saveText(s: SaveStatus): { text: string; error: boolean } | null {
-  switch (s.kind) {
-    case "saving": return { text: "Saving…", error: false };
-    case "saved": return { text: "Saved to .course_maker/editor.json", error: false };
-    case "error": return { text: `Couldn't save: ${s.message}`, error: true };
-    default: return null;
-  }
-}
 
 export default function App() {
   const selection = useSelection();
@@ -40,6 +42,9 @@ export default function App() {
   const viewport = useRef<Viewport | null>(null); // the live map view; changes too often for React state
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [dropping, setDropping] = useState(false);
+  const [map, setMap] = useState<Map | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const left = usePanelRef();
 
   const refresh = useCallback(async () => {
     try {
@@ -60,11 +65,11 @@ export default function App() {
     }
     let cancelled = false;
     setStatus({ text: `Loading ${path}…` });
-    const job: Promise<Loaded> =
+    const job: Promise<Loaded & { resetNotice?: boolean }> =
       kind === "tif"
-        ? loadTifScene(path).then((r) => ({ kind: "tif", ...r, editor: mergeSaved(r.scene, null, 0) }))
+        ? loadTifScene(path).then((r) => ({ kind: "tif" as const, ...r, editor: mergeSaved(r.scene, null, 0) }))
         : Promise.all([loadBundleScene(path), api.editor(path)]).then(([r, saved]) => ({
-            kind: "bundle",
+            kind: "bundle" as const,
             scene: r.scene,
             data: r.data,
             editor: mergeSaved(r.scene, saved.status === "default" ? null : saved.state, r.data.course.holes.length),
@@ -77,11 +82,7 @@ export default function App() {
         setLoaded(next);
         setEditor(next.editor);
         setHover(null);
-        setStatus(
-          "resetNotice" in next && next.resetNotice
-            ? { text: "The saved editor state was unreadable, so it was reset (kept as editor.json.bad)." }
-            : null,
-        );
+        setStatus(next.resetNotice ? { text: "The saved editor state was unreadable, so it was reset (kept as editor.json.bad)." } : null);
       })
       .catch((e: Error) => !cancelled && setStatus({ text: e.message, error: true }));
     return () => {
@@ -89,9 +90,16 @@ export default function App() {
     };
   }, [kind, path]);
 
+  const scene = loaded?.scene ?? null;
   const bundle = loaded?.kind === "bundle" ? loaded.data.path : null;
-  const { status: saveStatus, viewChanged } = useEditorPersistence(bundle, editor, viewport);
+  const { viewChanged } = useEditorPersistence(bundle, editor, viewport);
+  const session = useDesignSession(bundle, scene);
 
+  const patch = useCallback((p: Partial<EditorState>) => setEditor((s) => ({ ...s, ...p })), []);
+  const setLayer = useCallback(
+    (id: string, p: Partial<EditorState["layers"][string]>) => setEditor((s) => ({ ...s, layers: { ...s.layers, [id]: { ...s.layers[id], ...p } } })),
+    [],
+  );
   const onViewChange = useCallback(
     (v: Viewport) => {
       viewport.current = v;
@@ -99,13 +107,40 @@ export default function App() {
     },
     [viewChanged],
   );
-  const setLayer = useCallback(
-    (id: string, patch: Partial<EditorState["layers"][string]>) =>
-      setEditor((s) => ({ ...s, layers: { ...s.layers, [id]: { ...s.layers[id], ...patch } } })),
-    [],
-  );
-  const setExaggeration = useCallback((exaggeration: number) => setEditor((s) => ({ ...s, exaggeration })), []);
-  const setHole = useCallback((hole: number) => setEditor((s) => ({ ...s, hole })), []);
+
+  const canEdit = !!bundle && session.ready;
+  const course = useCourseEditor({ map, scene, active: canEdit && editor.editor === "course", editor, patch });
+  const canUndo = useDesign((s) => s.past.length > 0);
+  const canRedo = useDesign((s) => s.future.length > 0);
+
+  // the file panel collapses to nothing; the saved state and the panel stay in step
+  useEffect(() => {
+    const p = left.current;
+    if (!p) return;
+    if (editor.leftCollapsed && !p.isCollapsed()) p.collapse();
+    else if (!editor.leftCollapsed && p.isCollapsed()) p.expand();
+  }, [editor.leftCollapsed, left]);
+
+  // commands and keys
+  const commands = [
+    ...globalCommands({
+      canEdit,
+      undo: () => designStore.getState().undo(),
+      redo: () => designStore.getState().redo(),
+      build: () => void session.buildNow(),
+      fit: () => map && scene && fitRect(map, scene.extent),
+      zoom: (f) => map && zoomBy(map, f),
+      pan: (fx, fy) => map && panBy(map, fx, fy),
+      toggleLeft: () => patch({ leftCollapsed: !editor.leftCollapsed }),
+      toggleUnits: () => setUnits(units === "us" ? "metric" : "us"),
+      help: () => setHelpOpen(true),
+      goto: (id) => patch({ editor: id }),
+    }),
+    ...course.commands,
+  ];
+  const scopes: Scope[] = ["global"];
+  if (canEdit && editor.editor !== "view") scopes.push(`editor:${editor.editor}`, `tool:${editor.editor}/${editor.tool}`);
+  useHotkeys(commands, scopes, !helpOpen);
 
   const upload = async (files: File[]) => {
     for (const file of files) {
@@ -124,69 +159,96 @@ export default function App() {
       }
     }
   };
-
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDropping(false);
     void upload(Array.from(e.dataTransfer.files));
   };
 
-  const scene = loaded?.scene ?? null;
   const readout = scene && hover ? scene.readout(hover.x, hover.z, fmt) : null;
-  const saved = saveText(saveStatus);
 
   return (
-    <div className={scene ? "app" : "app no-panel"}>
-      <FileList index={index} error={indexError} selection={selection} onRescan={refresh} onUpload={upload} />
-      <main
-        onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes("Files")) return;
-          e.preventDefault();
-          setDropping(true);
-        }}
-        onDragLeave={() => setDropping(false)}
-        onDrop={onDrop}
-      >
-        <MapView
-          scene={scene}
-          layerState={editor.layers}
-          params={{ exaggeration: editor.exaggeration, hole: editor.hole }}
-          units={units}
-          initialViewport={loaded?.editor.viewport ?? null}
-          onViewChange={onViewChange}
-          onHover={setHover}
+    <Tooltip.Provider>
+      <div className="shell">
+        <EditorBar
+          editor={editor.editor}
+          onEditor={(id) => patch({ editor: id })}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={() => designStore.getState().undo()}
+          onRedo={() => designStore.getState().redo()}
+          onHelp={() => setHelpOpen(true)}
+          onBuild={() => void session.buildNow()}
+          editable={!!bundle}
+          save={session.save}
+          build={session.build}
+          loadError={session.loadError}
         />
-        {!scene && !status && <div className="empty">Choose a bundle or GeoTIFF, or drop a .tif here.</div>}
-        {status && <div className={status.error ? "status error" : "status"}>{status.text}</div>}
-        {dropping && <div className="drop">Drop to copy into uploads/</div>}
-      </main>
-      {loaded && (
-        <aside className="panel">
-          <h1>{loaded.scene.title}</h1>
-          <p className="muted">{loaded.scene.subtitle(fmt)}</p>
-          <LayerControls layers={loaded.scene.layers} state={editor.layers} onChange={setLayer} />
-          {loaded.scene.layers.some((l) => l.id === "hillshade") && (
-            <ExaggerationSlider value={editor.exaggeration} onCommit={setExaggeration} />
-          )}
-          <pre className="readout">
-            {readout
-              ? readout.map((line, i) => (
-                  <div key={i}>
-                    {line.color && <span className="swatch" style={{ background: line.color }} />}
-                    {line.text}
-                  </div>
-                ))
-              : "Move over the map."}
-          </pre>
-          <p className="muted">Drag to pan, wheel to zoom, F to fit.</p>
-          {saved && <p className={saved.error ? "error save" : "muted save"}>{saved.text}</p>}
-          {loaded.kind === "tif" ? (
-            <TifPanel key={loaded.view.path} view={loaded.view} onBaked={() => void refresh()} />
-          ) : (
-            <BundlePanel data={loaded.data} hole={editor.hole} onHole={setHole} />
-          )}
-        </aside>
-      )}
-    </div>
+        <SubBar editor={editor} patch={patch} notice={course.notice} canEdit={canEdit} holeCount={loaded?.kind === "bundle" ? loaded.data.course.holes.length : 0} />
+        <Group orientation="horizontal" className="body">
+          <Panel
+            panelRef={left}
+            collapsible
+            collapsedSize={0}
+            minSize={200}
+            defaultSize={260}
+            onResize={() => {
+              const c = left.current?.isCollapsed() ?? false;
+              setEditor((s) => (s.leftCollapsed === c ? s : { ...s, leftCollapsed: c }));
+            }}
+          >
+            <FileList index={index} error={indexError} selection={selection} onRescan={refresh} onUpload={upload} />
+          </Panel>
+          <Separator className="sep" />
+          <Panel minSize={300}>
+            <main
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes("Files")) return;
+                e.preventDefault();
+                setDropping(true);
+              }}
+              onDragLeave={() => setDropping(false)}
+              onDrop={onDrop}
+            >
+              <OlMap
+                scene={scene}
+                layerState={editor.layers}
+                params={{ exaggeration: editor.exaggeration, hole: editor.hole }}
+                units={units}
+                initialViewport={loaded?.editor.viewport ?? null}
+                onViewChange={onViewChange}
+                onHover={setHover}
+                onMap={setMap}
+                leftDragPans={course.leftDragPans}
+              />
+              {!scene && !status && <div className="empty">Choose a bundle or GeoTIFF, or drop a .tif here.</div>}
+              {status && <div className={status.error ? "status error" : "status"}>{status.text}</div>}
+              {dropping && <div className="drop">Drop to copy into uploads/</div>}
+            </main>
+          </Panel>
+          <Separator className="sep" />
+          <Panel minSize={260} defaultSize={340}>
+            {loaded && scene ? (
+              <RightPanel
+                scene={scene}
+                tif={loaded.kind === "tif" ? loaded.view : null}
+                bundle={loaded.kind === "bundle" ? loaded.data : null}
+                build={session.build}
+                editor={editor}
+                patch={patch}
+                layerState={editor.layers}
+                onLayer={setLayer}
+                readout={readout}
+                fmt={fmt}
+                onBaked={() => void refresh()}
+              />
+            ) : (
+              <aside className="panel" />
+            )}
+          </Panel>
+        </Group>
+        <HelpDialog commands={commands} open={helpOpen} onOpenChange={setHelpOpen} />
+      </div>
+    </Tooltip.Provider>
   );
 }

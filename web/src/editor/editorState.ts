@@ -9,6 +9,13 @@ export const defaultEditorState = (): EditorState => ({
   layers: {},
   exaggeration: 3,
   hole: 1,
+  editor: "view",
+  tool: "select",
+  activeClass: 1,
+  snap: true,
+  smoothing: 1.5,
+  leftCollapsed: false,
+  rightTab: "view",
 });
 
 /**
@@ -26,10 +33,9 @@ export function mergeSaved(scene: Scene, saved: EditorState | null, holeCount: n
   }
   const base = saved ?? defaultEditorState();
   return {
+    ...base,
     version: 1,
-    viewport: base.viewport,
     layers,
-    exaggeration: base.exaggeration,
     hole: Math.min(Math.max(1, base.hole), Math.max(1, holeCount)),
   };
 }
@@ -39,7 +45,7 @@ export function serialise(state: EditorState, viewport: Viewport | null): string
   const layers: EditorState["layers"] = {};
   for (const id of Object.keys(state.layers).sort()) layers[id] = state.layers[id];
   const v = viewport && { x: viewport.x, z: viewport.z, scale: viewport.scale };
-  return JSON.stringify({ version: 1, viewport: v, layers, exaggeration: state.exaggeration, hole: state.hole });
+  return JSON.stringify({ ...state, version: 1, viewport: v, layers });
 }
 
 /** The state as it is saved: the editor state with the live viewport (which lives outside React state). */

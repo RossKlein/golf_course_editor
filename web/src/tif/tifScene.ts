@@ -1,6 +1,7 @@
 import { api, tifElevationUrl, tifRgbUrl, type TifView } from "../api/api";
 import { buildHillshade, decodeHeights, loadImage, loadPixels, memoLast, sampleGrid } from "../decode/decode";
-import type { Layer, ReadoutLine, Scene } from "../map/scene";
+import { rasterLayer } from "../map/layers";
+import type { ReadoutLine, Scene, SceneLayer } from "../map/scene";
 import type { Formatter } from "../units/units";
 
 /** A GeoTIFF on the map, in metres from its top-left corner (x east, z south). */
@@ -12,22 +13,32 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
   if (!w || !h) throw new Error(`${path} has neither RGB bands nor an elevation band to display`);
   const rect = { x: 0, z: 0, w: w * view.resX, h: h * view.resZ };
 
-  const layers: Layer[] = [];
+  const layers: SceneLayer[] = [];
+  const add = (id: string, label: string, opts: Parameters<typeof rasterLayer>[0], opacity: number) => {
+    const { layer, redraw } = rasterLayer(opts);
+    layer.setOpacity(opacity);
+    const entry: SceneLayer = { id, label, visible: true, opacity, adjustable: true, olLayer: layer };
+    layers.push(entry);
+    return { entry, redraw };
+  };
+
   if (view.rgb) {
-    layers.push({
-      id: "rgb", label: "Imagery", visible: true, opacity: 1,
-      raster: { image: await loadImage(tifRgbUrl(path)), rect, smooth: true },
-    });
+    const img = await loadImage(tifRgbUrl(path));
+    add("rgb", "Imagery", { image: () => img, rect, smooth: true }, 1);
   }
   const grid = view.elevation
     ? decodeHeights(await loadPixels(tifElevationUrl(path)), view.elevation.hMin, view.elevation.hMax)
     : null;
   if (grid) {
     const shade = memoLast((exaggeration: number) => buildHillshade(grid, view.resX, view.resZ, exaggeration));
-    layers.push({
-      id: "hillshade", label: "Hillshade", visible: true, opacity: view.rgb ? 0.55 : 1,
-      raster: { image: (p) => shade(p.exaggeration), rect, smooth: true, blend: "multiply" },
-    });
+    let exaggeration = 3;
+    const hs = add("hillshade", "Hillshade", { image: () => shade(exaggeration), rect, smooth: true, multiply: !!view.rgb }, view.rgb ? 0.55 : 1);
+    hs.entry.onParams = (p) => {
+      if (p.exaggeration !== exaggeration) {
+        exaggeration = p.exaggeration;
+        hs.redraw();
+      }
+    };
   }
 
   const readout = (x: number, z: number, fmt: Formatter): ReadoutLine[] => {
@@ -50,6 +61,12 @@ export async function loadTifScene(path: string): Promise<{ scene: Scene; view: 
 
   return {
     view,
-    scene: { key: `tif:${path}`, title: path.split("/").pop()!, subtitle: (fmt) => `${path} · ${view.width} x ${view.height} px, ${fmt.distance(rect.w, 0)} x ${fmt.distance(rect.h, 0)}`, extent: rect, layers, readout },
+    scene: {
+      key: `tif:${path}`,
+      kind: "tif",
+      title: path.split("/").pop()!,
+      subtitle: (fmt) => `${path} · ${view.width} x ${view.height} px, ${fmt.distance(rect.w, 0)} x ${fmt.distance(rect.h, 0)}`,
+      extent: rect, layers, readout,
+    },
   };
 }

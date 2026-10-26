@@ -18,6 +18,11 @@ export type EditorState = Schemas["EditorState-Output"];
 export type EditorResponse = Schemas["EditorResponse"];
 export type Viewport = Schemas["Viewport"];
 export type LayerPref = Schemas["LayerPref"];
+export type Region = Schemas["Region-Output"];
+export type Layout = Schemas["Layout-Output"];
+export type DesignHole = Schemas["DesignHole-Output"];
+export type DesignDoc = Schemas["DesignDoc"];
+export type BuildStatus = Schemas["BuildStatus"];
 
 export class ApiError extends Error {
   constructor(
@@ -44,6 +49,20 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 const q = encodeURIComponent;
+
+async function put(url: string, body: unknown, keepalive = false) {
+  const res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive });
+  if (!res.ok) {
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const j = await res.json();
+      message = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail).slice(0, 300);
+    } catch {
+      // keep the status text
+    }
+    throw new ApiError(message, res.status);
+  }
+}
 
 /** A bundle file, served exactly as the game will download it. */
 export const fileUrl = (bundle: string, file: string) =>
@@ -77,6 +96,11 @@ export const api = {
     });
     if (!res.ok) throw new ApiError(`${res.status} ${await res.text()}`, res.status);
   },
+  design: (bundle: string) => request<DesignDoc>(`/api/bundle/design?path=${q(bundle)}`),
+  saveRegions: (bundle: string, regions: Region[], keepalive = false) => put(`/api/bundle/design/regions?path=${q(bundle)}`, { regions }, keepalive),
+  saveLayout: (bundle: string, layout: Layout, keepalive = false) => put(`/api/bundle/design/layout?path=${q(bundle)}`, layout, keepalive),
+  buildStatus: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`),
+  buildNow: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`, { method: "POST" }),
   bake: (req: BakeRequest) =>
     request<BakeResult>("/api/bake", {
       method: "POST",

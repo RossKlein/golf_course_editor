@@ -201,7 +201,14 @@ class EditorState(Model):
     viewport: Viewport | None = None  # None means "fit the course"
     layers: Annotated[dict[Annotated[str, Field(max_length=64)], LayerPref], Field(max_length=64)] = {}
     exaggeration: Annotated[Number, Field(ge=1, le=10)] = 3.0
-    hole: Annotated[Int, Field(ge=1, le=spec.MAX_HOLES)] = 1  # hole shown on the out-of-bounds layer
+    hole: Annotated[Int, Field(ge=1, le=spec.MAX_HOLES)] = 1  # the active hole: shown on the out-of-bounds layer, given to new regions
+    editor: Annotated[str, Field(max_length=32)] = "view"  # which editor is open
+    tool: Annotated[str, Field(max_length=32)] = "select"
+    activeClass: Annotated[Int, Field(ge=0, le=max(spec.CLASSES.values()))] = spec.FAIRWAY  # the surface new regions get
+    snap: bool = True
+    smoothing: Annotated[Number, Field(ge=0.1, le=10)] = 1.5  # freehand simplify tolerance, metres
+    leftCollapsed: bool = False
+    rightTab: Literal["view", "data"] = "view"
 
 
 class EditorResponse(Model):

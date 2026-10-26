@@ -1,41 +1,37 @@
+import type BaseLayer from "ol/layer/Base";
 import type { Formatter } from "../units/units";
+import type { Rect } from "./coords";
 
-// What the map draws. World coordinates are metres: x east, z south (the map draws z downwards).
+export type { Rect };
 
-export type Rect = { x: number; z: number; w: number; h: number };
-
-/** View settings some layer images depend on. */
+/** View settings some layers depend on. */
 export type Params = { exaggeration: number; hole: number };
 
-export type RasterLayer = {
-  image: CanvasImageSource | ((params: Params) => CanvasImageSource | null);
-  rect: Rect;
-  smooth: boolean;
-  /** "multiply" shades whatever is drawn beneath it (hillshade over imagery). */
-  blend?: "multiply";
-};
-
-export type Layer = {
+export type SceneLayer = {
   id: string;
   label: string;
   visible: boolean;
   opacity: number;
-  raster?: RasterLayer;
-  /** Vector overlay drawn in world units; px is one device pixel in metres. */
-  draw?: (ctx: CanvasRenderingContext2D, px: number) => void;
+  /** Raster layers get an opacity slider; vector overlays only a visibility toggle. */
+  adjustable: boolean;
+  olLayer: BaseLayer;
+  /** Called when exaggeration or the selected hole change, so the layer can rebuild its image. */
+  onParams?: (params: Params) => void;
 };
 
 export type ReadoutLine = { text: string; color?: string };
 
-/** Values are metres everywhere; scenes format them for display through the formatter they are given. */
-
 export type Scene = {
   key: string;
+  kind: "tif" | "bundle";
   title: string;
   subtitle: (f: Formatter) => string;
+  /** The area to fit, in course metres. */
   extent: Rect;
-  layers: Layer[];
+  layers: SceneLayer[];
   readout: (x: number, z: number, f: Formatter) => ReadoutLine[];
+  /** Re-read what a build changed (class, ownership, bounds, holes). Bundles only. */
+  refresh?: () => Promise<void>;
 };
 
 export type LayerState = Record<string, { visible: boolean; opacity: number }>;

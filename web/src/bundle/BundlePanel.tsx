@@ -1,10 +1,9 @@
-import ReportView from "../report/ReportView";
 import type { BundleData } from "./bundleScene";
 
 type Props = { data: BundleData; hole: number; onHole: (hole: number) => void };
 
 export default function BundlePanel({ data, hole, onHole }: Props) {
-  const { course, report } = data;
+  const { course } = data;
   return (
     <>
       <label>
@@ -20,8 +19,6 @@ export default function BundlePanel({ data, hole, onHole }: Props) {
         </select>
       </label>
       <p className="muted">{course.attribution}</p>
-      <h2>Validation</h2>
-      <ReportView report={report} />
     </>
   );
 }

@@ -373,6 +373,245 @@
         }
       }
     },
+    "/api/bundle/design": {
+      "get": {
+        "summary": "Design Get",
+        "operationId": "design_get_api_bundle_design_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDoc"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/layout": {
+      "put": {
+        "summary": "Design Put Layout",
+        "operationId": "design_put_layout_api_bundle_design_layout_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Layout-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/regions": {
+      "put": {
+        "summary": "Design Put Regions",
+        "operationId": "design_put_regions_api_bundle_design_regions_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionsFile-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/backups": {
+      "get": {
+        "summary": "Design Backups",
+        "operationId": "design_backups_api_bundle_design_backups_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/build": {
+      "get": {
+        "summary": "Build Status",
+        "operationId": "build_status_api_bundle_build_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Build Now",
+        "description": "Build immediately and wait for it (the editor normally just saves and lets the debounced build run).",
+        "operationId": "build_now_api_bundle_build_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/files/{rel}": {
       "get": {
         "summary": "Bundle File",
@@ -492,6 +731,23 @@
         "title": "AerialMeta",
         "description": "Where a bundle's aerial image sits in course metres (x east, z south) and its pixel size."
       },
+      "BackupList": {
+        "properties": {
+          "backups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Backups"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backups"
+        ],
+        "title": "BackupList"
+      },
       "BakeRequest": {
         "properties": {
           "stack": {
@@ -545,6 +801,111 @@
           "report"
         ],
         "title": "BakeResult"
+      },
+      "BuildStatus": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "default": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "building",
+              "done",
+              "failed"
+            ],
+            "title": "State",
+            "default": "idle"
+          },
+          "started": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started"
+          },
+          "finished": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Report"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Ms",
+            "default": {}
+          },
+          "regions": {
+            "type": "integer",
+            "title": "Regions",
+            "default": 0
+          },
+          "holes": {
+            "type": "integer",
+            "title": "Holes",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "started",
+          "finished",
+          "report",
+          "notes",
+          "error",
+          "ms",
+          "regions",
+          "holes"
+        ],
+        "title": "BuildStatus",
+        "description": "Where the build for a bundle stands. `id` increases with every finished build; the viewer reloads on change."
       },
       "BundleEntry": {
         "properties": {
@@ -654,6 +1015,137 @@
         ],
         "title": "Course"
       },
+      "DesignDoc": {
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/Layout-Output"
+          },
+          "regions": {
+            "$ref": "#/components/schemas/RegionsFile-Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layout",
+          "regions"
+        ],
+        "title": "DesignDoc",
+        "description": "Everything the editor edits."
+      },
+      "DesignHole-Input": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Number"
+          },
+          "par": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Par",
+            "default": 4
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "route": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Route",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "number"
+        ],
+        "title": "DesignHole",
+        "description": "A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes."
+      },
+      "DesignHole-Output": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Number"
+          },
+          "par": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Par",
+            "default": 4
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "route": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Route",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "number",
+          "par",
+          "name",
+          "route"
+        ],
+        "title": "DesignHole",
+        "description": "A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes."
+      },
       "EditorResponse": {
         "properties": {
           "state": {
@@ -720,6 +1212,51 @@
             "minimum": 1.0,
             "title": "Hole",
             "default": 1
+          },
+          "editor": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Editor",
+            "default": "view"
+          },
+          "tool": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Tool",
+            "default": "select"
+          },
+          "activeClass": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 0.0,
+            "title": "Activeclass",
+            "default": 1
+          },
+          "snap": {
+            "type": "boolean",
+            "title": "Snap",
+            "default": true
+          },
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "default": 1.5,
+            "ge": 0.1,
+            "le": 10
+          },
+          "leftCollapsed": {
+            "type": "boolean",
+            "title": "Leftcollapsed",
+            "default": false
+          },
+          "rightTab": {
+            "type": "string",
+            "enum": [
+              "view",
+              "data"
+            ],
+            "title": "Righttab",
+            "default": "view"
           }
         },
         "additionalProperties": false,
@@ -770,6 +1307,51 @@
             "minimum": 1.0,
             "title": "Hole",
             "default": 1
+          },
+          "editor": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Editor",
+            "default": "view"
+          },
+          "tool": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Tool",
+            "default": "select"
+          },
+          "activeClass": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 0.0,
+            "title": "Activeclass",
+            "default": 1
+          },
+          "snap": {
+            "type": "boolean",
+            "title": "Snap",
+            "default": true
+          },
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "default": 1.5,
+            "ge": 0.1,
+            "le": 10
+          },
+          "leftCollapsed": {
+            "type": "boolean",
+            "title": "Leftcollapsed",
+            "default": false
+          },
+          "rightTab": {
+            "type": "string",
+            "enum": [
+              "view",
+              "data"
+            ],
+            "title": "Righttab",
+            "default": "view"
           }
         },
         "additionalProperties": false,
@@ -779,7 +1361,14 @@
           "viewport",
           "layers",
           "exaggeration",
-          "hole"
+          "hole",
+          "editor",
+          "tool",
+          "activeClass",
+          "snap",
+          "smoothing",
+          "leftCollapsed",
+          "rightTab"
         ],
         "title": "EditorState",
         "description": "`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."
@@ -1007,6 +1596,93 @@
         ],
         "title": "LayerPref"
       },
+      "Layout-Input": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/DesignHole-Input"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Holes",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Layout",
+        "description": "Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote."
+      },
+      "Layout-Output": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/DesignHole-Output"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Holes",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "attribution",
+          "holes"
+        ],
+        "title": "Layout",
+        "description": "Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote."
+      },
       "Patch": {
         "properties": {
           "file": {
@@ -1062,6 +1738,230 @@
           "height"
         ],
         "title": "RasterLayer"
+      },
+      "Region-Input": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Id"
+          },
+          "class": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 0.0,
+            "title": "Class"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 99.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "outer": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 4,
+            "title": "Outer"
+          },
+          "inner": {
+            "items": {
+              "items": {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array",
+              "maxItems": 20000,
+              "minItems": 4
+            },
+            "type": "array",
+            "title": "Inner",
+            "default": []
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "outer"
+        ],
+        "title": "Region",
+        "description": "A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones."
+      },
+      "Region-Output": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Id"
+          },
+          "class": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 0.0,
+            "title": "Class"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 99.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "outer": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 4,
+            "title": "Outer"
+          },
+          "inner": {
+            "items": {
+              "items": {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array",
+              "maxItems": 20000,
+              "minItems": 4
+            },
+            "type": "array",
+            "title": "Inner",
+            "default": []
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "hole",
+          "outer",
+          "inner",
+          "note"
+        ],
+        "title": "Region",
+        "description": "A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones."
+      },
+      "RegionsFile-Input": {
+        "properties": {
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/Region-Input"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Regions",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RegionsFile"
+      },
+      "RegionsFile-Output": {
+        "properties": {
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/Region-Output"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Regions",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "regions"
+        ],
+        "title": "RegionsFile"
       },
       "Report": {
         "properties": {

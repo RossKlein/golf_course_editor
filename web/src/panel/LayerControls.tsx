@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import type { Layer, LayerState } from "../map/scene";
+import type { LayerState, SceneLayer } from "../map/scene";
 
 type Props = {
-  layers: Layer[];
+  layers: SceneLayer[];
   state: LayerState;
   onChange: (id: string, patch: Partial<LayerState[string]>) => void;
 };
@@ -15,12 +15,12 @@ export default function LayerControls({ layers, state, onChange }: Props) {
         const s = state[l.id];
         if (!s) return null;
         return (
-          <div key={l.id} className={l.raster ? "layer" : "layer toggle"}>
+          <div key={l.id} className={l.adjustable ? "layer" : "layer toggle"}>
             <label>
               <input type="checkbox" checked={s.visible} onChange={(e) => onChange(l.id, { visible: e.target.checked })} />
               {l.label}
             </label>
-            {l.raster && (
+            {l.adjustable && (
               <input
                 type="range" min={0} max={1} step={0.05} value={s.opacity}
                 onChange={(e) => onChange(l.id, { opacity: Number(e.target.value) })}

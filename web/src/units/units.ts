@@ -7,6 +7,7 @@ export type Kind = "distance" | "height";
 
 export const M_PER_FT = 0.3048; // the international foot, exact
 export const M_PER_YD = 0.9144; // 3 ft, exact
+export const SQM_PER_ACRE = 4046.8564224; // exact: 43,560 sq ft
 
 export type Formatter = {
   units: Units;
@@ -14,6 +15,8 @@ export type Formatter = {
   distance: (metres: number, digits?: number) => string;
   /** Elevations, heights, depths and short distances: feet (US) or metres. */
   height: (metres: number, digits?: number) => string;
+  /** Areas: square feet (acres from one up) in US units, square metres (hectares from one up) in metric. */
+  area: (squareMetres: number) => string;
 };
 
 export const unitName = (units: Units, kind: Kind) => (units === "metric" ? "m" : kind === "distance" ? "yd" : "ft");
@@ -33,7 +36,12 @@ const DEFAULT_DIGITS: Record<Units, Record<Kind, number>> = {
 export function makeFormatter(units: Units): Formatter {
   const show = (kind: Kind) => (metres: number, digits = DEFAULT_DIGITS[units][kind]) =>
     `${fromMetres(metres, units, kind).toFixed(digits)} ${unitName(units, kind)}`;
-  return { units, distance: show("distance"), height: show("height") };
+  const area = (m2: number) => {
+    if (units === "metric") return m2 >= 10_000 ? `${(m2 / 10_000).toFixed(2)} ha` : `${m2.toFixed(0)} m²`;
+    const acres = m2 / SQM_PER_ACRE;
+    return acres >= 1 ? `${acres.toFixed(2)} acres` : `${Math.round(m2 / (M_PER_FT * M_PER_FT)).toLocaleString("en-US")} sq ft`;
+  };
+  return { units, distance: show("distance"), height: show("height"), area };
 }
 
 /** Read a typed length. A unit suffix (m, yd, ft, in) wins; otherwise the value is in the display unit. */

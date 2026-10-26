@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { EditorState } from "../api/api";
-import type { Layer, Scene } from "../map/scene";
+import type { Scene, SceneLayer } from "../map/scene";
 import { defaultEditorState, mergeSaved, serialise, viewFromViewport, viewportFromView } from "./editorState";
 
-const layer = (id: string, visible: boolean, opacity = 1): Layer => ({ id, label: id, visible, opacity });
-const scene = (...layers: Layer[]): Scene => ({
-  key: "bundle:x", title: "x", subtitle: () => "", extent: { x: 0, z: 0, w: 10, h: 10 }, layers, readout: () => [],
+const layer = (id: string, visible: boolean, opacity = 1): SceneLayer => ({ id, label: id, visible, opacity, adjustable: true, olLayer: null as never });
+const scene = (...layers: SceneLayer[]): Scene => ({
+  key: "bundle:x", kind: "bundle", title: "x", subtitle: () => "", extent: { x: 0, z: 0, w: 10, h: 10 }, layers, readout: () => [],
 });
 const saved = (patch: Partial<EditorState>): EditorState => ({ ...defaultEditorState(), ...patch });
 
