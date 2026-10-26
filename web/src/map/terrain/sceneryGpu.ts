@@ -1,4 +1,5 @@
-import { treeMesh, TREE_KINDS, type Mesh } from "../../view3d/scenery";
+import { boxVisible, frustumOf, type Frustum } from "../../view3d/frustum";
+import { chunkTrees, treeMesh, TREE_KINDS, type Mesh, type TreeChunk } from "../../view3d/scenery";
 import { compileProgram, tryProgram, type Gl, type Program } from "./gl";
 import { HEAD, HEIGHT } from "./shaders";
 
@@ -8,14 +9,19 @@ import { HEAD, HEIGHT } from "./shaders";
 
 const HEIGHT_UNIFORMS = ["uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes"];
 
+/** Tufts are drawn in square tiles of this many across, so a tile that is out of view is never sent to the GPU. */
+export const TUFT_TILE = 32;
+
 const TUFT_VERTEX =
   HEAD +
   HEIGHT +
   `
+const int TILE = ${TUFT_TILE};
 uniform sampler2D uClassMap;
 uniform vec3 uClassInfo;
 uniform mat4 uViewProj;
 uniform vec3 uEye;
+uniform ivec2 uTile;      // the first tuft of the tile being drawn, in tufts from the patch's corner
 uniform vec2 uCentre;     // the middle of the patch of tufts, a whole number of cells so tufts stay put as the camera moves
 uniform float uCell;      // metres between tufts
 uniform int uN;           // tufts across the patch
@@ -30,8 +36,15 @@ const vec2 CORNER[6] = vec2[6](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), v
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
+void hide() {
+  gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture
+  vUv = vec2(0.0);
+  vSeed = 0.0;
+}
+
 void main() {
-  ivec2 cell = ivec2(gl_InstanceID % uN, gl_InstanceID / uN);
+  ivec2 cell = uTile + ivec2(gl_InstanceID % TILE, gl_InstanceID / TILE);
+  if (cell.x >= uN || cell.y >= uN) { hide(); return; } // the last tiles overhang the patch
   vec2 idx = floor(uCentre / uCell + 0.5) + vec2(cell) - float(uN) * 0.5;
   vec2 pos = (idx + vec2(hash(idx), hash(idx + 17.3))) * uCell;
 
@@ -41,12 +54,7 @@ void main() {
   vec2 ground = heightAt(pos);
   float dist = distance(pos, uCentre);
   bool grows = (cls < 0.5 || (cls > 7.5 && cls < 8.5)) && ground.y > 0.5 && dist < uRadius;
-  if (!grows) {
-    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture
-    vUv = vec2(0.0);
-    vSeed = 0.0;
-    return;
-  }
+  if (!grows) { hide(); return; }
 
   float seed = hash(idx + 3.1);
   float fade = 1.0 - smoothstep(0.6 * uRadius, uRadius, dist);
@@ -129,8 +137,8 @@ void main() { outColor = vec4(vColor, 1.0); }`;
 /** The tufts' defaults: how far from the camera's target they grow, and the spacing that gives "density 1". */
 export const TUFT_RANGE = 45;
 const TUFT_CELL = 0.5;
-/** Most tufts across the patch, which caps the work however far or dense the sliders go. */
-const MAX_ACROSS = 1024;
+/** Most tufts across the patch, a bound on the work however far or dense the sliders go (only the tiles in view are drawn). */
+const MAX_ACROSS = 3072;
 
 /** The grid of tufts for a range (metres) and a density (1 is the default, 2 is twice as many to the square metre). */
 export function tuftGrid(range: number, density: number): { cell: number; across: number } {
@@ -138,7 +146,29 @@ export function tuftGrid(range: number, density: number): { cell: number; across
   return { cell, across: Math.ceil((2 * range) / cell) };
 }
 
-type Model = { vao: WebGLVertexArrayObject; vertices: number; instances: WebGLBuffer; count: number };
+/**
+ * The tiles of the tuft patch worth drawing: those within `range` of the patch's centre and in view. Each is the first
+ * tuft of the tile, in tufts from the patch's corner. `y0`..`y1` bound the ground's height, tufts' height included.
+ */
+export function tuftTiles(target: readonly [number, number], range: number, density: number, f: Frustum, y0: number, y1: number): [number, number][] {
+  const { cell, across } = tuftGrid(range, density);
+  const cx = Math.round(target[0] / cell), cz = Math.round(target[1] / cell);
+  const cornerX = cx - across / 2, cornerZ = cz - across / 2; // in tufts, as in the shader
+  const out: [number, number][] = [];
+  const margin = 1; // metres: a tuft sits up to a cell from its grid point and is as wide as it is tall
+  for (let ty = 0; ty < across; ty += TUFT_TILE) {
+    for (let tx = 0; tx < across; tx += TUFT_TILE) {
+      const x0 = (cornerX + tx) * cell - margin, x1 = (cornerX + tx + TUFT_TILE + 1) * cell + margin;
+      const z0 = (cornerZ + ty) * cell - margin, z1 = (cornerZ + ty + TUFT_TILE + 1) * cell + margin;
+      const near = Math.hypot(Math.max(x0 - cx * cell, 0, cx * cell - x1), Math.max(z0 - cz * cell, 0, cz * cell - z1));
+      if (near > range) continue;
+      if (boxVisible(f, x0, y0, z0, x1, y1, z1)) out.push([tx, ty]);
+    }
+  }
+  return out;
+}
+
+type Model = { vao: WebGLVertexArrayObject; vertices: number; instances: WebGLBuffer; count: number; radius: number };
 
 export type SceneryParams = {
   viewProj: Float32Array;
@@ -146,6 +176,8 @@ export type SceneryParams = {
   target: [number, number];
   sunDir: [number, number, number];
   scale: number;
+  /** The lowest and highest ground in the course, in metres before the vertical exaggeration, which bounds what could be in view. */
+  ground: [number, number];
   tufts: boolean;
   /** How far from the target tufts grow, in metres, and how many (1 is the default density). */
   tuftRange: number;
@@ -163,11 +195,16 @@ export class SceneryGpu {
     quad: WebGLVertexArrayObject;
   } | null = null;
   private groups: Float32Array[] = Array.from({ length: TREE_KINDS }, () => new Float32Array(0));
+  private chunks: TreeChunk[][] = Array.from({ length: TREE_KINDS }, () => []);
   private dirty = true;
+  /** What the last draw sent, out of what there is: for checking that culling works. */
+  stats = { tuftTiles: 0, tuftTilesAll: 0, treeChunks: 0, treeChunksAll: 0, tufts: 0, tuftsAll: 0, trees: 0, treesAll: 0 };
 
   /** The trees, packed four to a tree (x, z, height, kind) and grouped by model kind. */
   setTrees(groups: Float32Array[]) {
-    this.groups = groups;
+    const chunked = groups.map((g) => chunkTrees(g));
+    this.groups = chunked.map((c) => c.sorted);
+    this.chunks = chunked.map((c) => c.chunks);
     this.dirty = true;
   }
 
@@ -198,7 +235,9 @@ export class SceneryGpu {
       gl.enableVertexAttribArray(3);
       gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(3, 1);
-      models.push({ vao, vertices: mesh.positions.length / 3, instances, count: 0 });
+      let radius = 0; // how far from its trunk a tree one unit tall reaches
+      for (let i = 0; i < mesh.positions.length; i += 3) radius = Math.max(radius, Math.hypot(mesh.positions[i], mesh.positions[i + 2]));
+      models.push({ vao, vertices: mesh.positions.length / 3, instances, count: 0, radius });
     }
     gl.bindVertexArray(null);
     const quad = gl.createVertexArray()!; // the tufts need no attributes at all
@@ -206,7 +245,7 @@ export class SceneryGpu {
       generation: g.generation,
       quad,
       models,
-      tufts: tryProgram(() => compileProgram(gl, TUFT_VERTEX, TUFT_FRAGMENT, [...HEIGHT_UNIFORMS, "uClassMap", "uClassInfo", "uViewProj", "uEye", "uCentre", "uCell", "uN", "uRadius", "uTall", "uScale"], "grass tufts")),
+      tufts: tryProgram(() => compileProgram(gl, TUFT_VERTEX, TUFT_FRAGMENT, [...HEIGHT_UNIFORMS, "uClassMap", "uClassInfo", "uViewProj", "uEye", "uTile", "uCentre", "uCell", "uN", "uRadius", "uTall", "uScale"], "grass tufts")),
       trees: tryProgram(() => compileProgram(gl, TREE_VERTEX, TREE_FRAGMENT, [...HEIGHT_UNIFORMS, "uViewProj", "uSunDir", "uScale"], "trees")),
     };
     this.dirty = true;
@@ -229,6 +268,10 @@ export class SceneryGpu {
       });
     }
 
+    const frustum = frustumOf(p.viewProj);
+    const y0 = p.ground[0] * p.scale - 1, y1 = p.ground[1] * p.scale + 1;
+    this.stats = { tuftTiles: 0, tuftTilesAll: 0, treeChunks: 0, treeChunksAll: 0, tufts: 0, tuftsAll: 0, trees: 0, treesAll: this.treeCount };
+
     if (p.trees && m.trees) {
       const t = m.trees;
       gl.useProgram(t.program);
@@ -236,11 +279,23 @@ export class SceneryGpu {
       gl.uniformMatrix4fv(t.u.uViewProj, false, p.viewProj);
       gl.uniform3f(t.u.uSunDir, ...p.sunDir);
       gl.uniform1f(t.u.uScale, p.scale);
-      for (const model of m.models) {
-        if (!model.count) continue;
+      this.stats.treeChunks = this.stats.treeChunksAll = this.stats.trees = 0;
+      this.stats.treesAll = this.treeCount;
+      m.models.forEach((model, k) => {
+        if (!model.count) return;
         gl.bindVertexArray(model.vao);
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, model.vertices, model.count);
-      }
+        gl.bindBuffer(gl.ARRAY_BUFFER, model.instances);
+        for (const c of this.chunks[k]) {
+          this.stats.treeChunksAll++;
+          // a tree reaches `radius` times its height from its trunk, up to 15% more when it is spread
+          const r = model.radius * c.tallest * 1.15;
+          if (!boxVisible(frustum, c.x0 - r, y0, c.z0 - r, c.x1 + r, y1 + c.tallest, c.z1 + r)) continue;
+          this.stats.treeChunks++;
+          this.stats.trees += c.count;
+          gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, c.first * 16); // the run of this chunk's trees
+          gl.drawArraysInstanced(gl.TRIANGLES, 0, model.vertices, c.count);
+        }
+      });
     }
 
     if (p.tufts && m.tufts) {
@@ -258,7 +313,15 @@ export class SceneryGpu {
       gl.uniform1f(t.u.uTall, 0.4);
       gl.uniform1f(t.u.uScale, p.scale);
       gl.bindVertexArray(m.quad);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, across * across);
+      const tiles = tuftTiles(p.target, p.tuftRange, p.tuftDensity, frustum, y0, y1 + 1);
+      this.stats.tuftTiles = tiles.length;
+      this.stats.tuftTilesAll = Math.ceil(across / TUFT_TILE) ** 2;
+      this.stats.tufts = tiles.length * TUFT_TILE * TUFT_TILE; // sent to the GPU; those off the rough are dropped there
+      this.stats.tuftsAll = across * across;
+      for (const [tx, ty] of tiles) {
+        gl.uniform2i(t.u.uTile, tx, ty);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, TUFT_TILE * TUFT_TILE);
+      }
     }
     gl.bindVertexArray(null);
   }

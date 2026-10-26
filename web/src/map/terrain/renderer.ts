@@ -141,9 +141,30 @@ export class TerrainRenderer {
     this.tileTexture.invalidate();
   }
 
+  /** The lowest and highest ground, with room for sculpting to have raised or lowered it; used to tell what is out of view. */
+  private groundSpan: [number, number] | null = null;
+  private groundRange(): [number, number] {
+    if (!this.groundSpan) {
+      let lo = Infinity, hi = -Infinity;
+      const { values, valid } = this.data.grid;
+      for (let i = 0; i < values.length; i++) {
+        if (!valid[i]) continue;
+        if (values[i] < lo) lo = values[i];
+        if (values[i] > hi) hi = values[i];
+      }
+      this.groundSpan = lo <= hi ? [lo - 50, hi + 50] : [-50, 50];
+    }
+    return this.groundSpan;
+  }
+
   /** Trees to draw, packed four to a tree (x, z, height, kind) and grouped by model kind. */
   setTrees(groups: Float32Array[]) {
     this.scenery.setTrees(groups);
+  }
+
+  /** What the last 3D draw sent to the GPU out of what there is: tuft slots and trees. */
+  get sceneryStats() {
+    return this.scenery.stats;
   }
 
   get treeCount() {
@@ -334,7 +355,7 @@ export class TerrainRenderer {
     if (v.tufts || v.trees) {
       this.scenery.draw(
         g,
-        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, tufts: v.tufts && !!this.classes, tuftRange: v.tuftRange, tuftDensity: v.tuftDensity, trees: v.trees },
+        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, ground: this.groundRange(), tufts: v.tufts && !!this.classes, tuftRange: v.tuftRange, tuftDensity: v.tuftDensity, trees: v.trees },
         (p) => this.bindHeight(g, p),
         (p) => this.bindClasses(g, p),
       );

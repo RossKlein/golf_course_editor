@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TUFT_RANGE, tuftGrid } from "../map/terrain/sceneryGpu";
-import { hash2, scatterWoods, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
+import { TUFT_RANGE, TUFT_TILE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
+import { frustumOf } from "./frustum";
+import { lookAt, multiply, perspective } from "./mat4";
+import { chunkTrees, hash2, scatterWoods, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
 
 /** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
 function classes(w: number, h: number, fn: (c: number, r: number) => number): ClassImage {
@@ -72,6 +74,38 @@ describe("trees.bin", () => {
   });
 });
 
+describe("tree chunks", () => {
+  const trees = new Float32Array([5, 5, 10, 0, 250, 5, 12, 1, 15, 20, 14, 0, 255, 90, 9, 2, 5, -30, 11, 1]);
+
+  it("keeps every tree, grouped so each chunk is a run", () => {
+    const { sorted, chunks } = chunkTrees(trees, 100);
+    expect(sorted.length).toBe(trees.length);
+    expect(chunks.reduce((n, c) => n + c.count, 0)).toBe(5);
+    expect(chunks.map((c) => c.count).sort()).toEqual([1, 2, 2]);
+    const seen = [];
+    for (let i = 0; i < sorted.length; i += 4) seen.push(`${sorted[i]},${sorted[i + 1]}`);
+    expect(seen.sort()).toEqual(["15,20", "250,5", "255,90", "5,-30", "5,5"].sort());
+  });
+
+  it("bounds each chunk's trees and notes the tallest", () => {
+    const { sorted, chunks } = chunkTrees(trees, 100);
+    for (const c of chunks) {
+      for (let k = c.first; k < c.first + c.count; k++) {
+        expect(sorted[k * 4]).toBeGreaterThanOrEqual(c.x0);
+        expect(sorted[k * 4]).toBeLessThanOrEqual(c.x1);
+        expect(sorted[k * 4 + 1]).toBeGreaterThanOrEqual(c.z0);
+        expect(sorted[k * 4 + 1]).toBeLessThanOrEqual(c.z1);
+        expect(sorted[k * 4 + 2]).toBeLessThanOrEqual(c.tallest);
+      }
+    }
+    expect(Math.max(...chunks.map((c) => c.tallest))).toBe(14);
+  });
+
+  it("no trees, no chunks", () => {
+    expect(chunkTrees(new Float32Array(0)).chunks).toEqual([]);
+  });
+});
+
 describe("mowing stripes", () => {
   it("run along the line of play, so the across direction is perpendicular to it", () => {
     const [x, z] = stripeAcross([[0, 0], [10, 0]]);
@@ -137,6 +171,36 @@ describe("tree meshes", () => {
   });
 });
 
+describe("grass tuft tiles", () => {
+  // a camera 20 m up looking north along z at a target 30 m ahead
+  const target: [number, number] = [0, -30];
+  const view = lookAt([0, 20, 0], [0, 0, -30]);
+  const f = frustumOf(multiply(perspective((45 * Math.PI) / 180, 1.6, 1, 5000), view));
+
+  it("draws far fewer tiles than the patch holds, and none behind the camera", () => {
+    const all = Math.ceil(tuftGrid(90, 1).across / TUFT_TILE) ** 2;
+    const tiles = tuftTiles(target, 90, 1, f, 0, 5);
+    expect(tiles.length).toBeGreaterThan(0);
+    expect(tiles.length).toBeLessThan(all * 0.6);
+    const { cell, across } = tuftGrid(90, 1);
+    const cornerZ = Math.round(target[1] / cell) - across / 2;
+    for (const [, ty] of tiles) expect((cornerZ + ty + TUFT_TILE + 1) * cell).toBeLessThan(25); // nothing wholly behind the eye
+  });
+
+  it("skips tiles outside the circle of the range", () => {
+    const wide = frustumOf(multiply(perspective(Math.PI * 0.9, 1, 0.1, 5000), lookAt([0, 500, 0], [0, 0, -1]))); // sees it all from above
+    const { across } = tuftGrid(60, 1);
+    const all = Math.ceil(across / TUFT_TILE) ** 2;
+    const tiles = tuftTiles([0, 0], 60, 1, wide, 0, 5);
+    expect(tiles.length).toBeLessThan(all);
+    expect(tiles.length).toBeGreaterThan(all * 0.6);
+  });
+
+  it("draws nothing when the patch is out of sight", () => {
+    expect(tuftTiles([5000, 5000], 90, 1, f, 0, 5)).toEqual([]);
+  });
+});
+
 describe("grass tuft grid", () => {
   it("the default is a tuft every half metre across 90 m", () => {
     expect(tuftGrid(TUFT_RANGE, 1)).toEqual({ cell: 0.5, across: 180 });
@@ -153,8 +217,14 @@ describe("grass tuft grid", () => {
   });
 
   it("is capped, so the sliders cannot ask for an unbounded number of tufts", () => {
-    const g = tuftGrid(150, 3);
-    expect(g.across).toBeLessThanOrEqual(1025);
-    expect(g.cell).toBeGreaterThan(0.25);
+    const g = tuftGrid(300, 20);
+    expect(g.across).toBeLessThanOrEqual(3073);
+    expect(g.cell).toBeGreaterThan(0.19);
+  });
+
+  it("the slider limits, 300 m at five times the density, are honoured and not capped", () => {
+    const g = tuftGrid(300, 5);
+    expect(g.cell).toBeCloseTo(0.5 / Math.sqrt(5), 3);
+    expect(g.across).toBeLessThan(3072);
   });
 });

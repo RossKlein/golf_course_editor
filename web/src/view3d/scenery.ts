@@ -58,6 +58,44 @@ export function splitByKind(trees: Float32Array): Float32Array[] {
   return groups.map((g) => new Float32Array(g));
 }
 
+/** A square of ground's trees, as a run of the sorted array: `first` and `count` are in trees, the bounds are in metres. */
+export type TreeChunk = { first: number; count: number; x0: number; z0: number; x1: number; z1: number; tallest: number };
+
+/** Metres across a chunk of trees: small enough to rule out most of the course from one view, large enough to be few draws. */
+export const CHUNK_METRES = 100;
+
+/**
+ * Trees sorted into squares of ground, so a draw can skip the squares that are out of view. `sorted` has the same packed
+ * trees as the input, ordered chunk by chunk; `chunks` say where each run is and how much ground (and height) it covers.
+ */
+export function chunkTrees(trees: Float32Array, size = CHUNK_METRES): { sorted: Float32Array; chunks: TreeChunk[] } {
+  const n = trees.length / 4;
+  const keyOf = (i: number) => `${Math.floor(trees[i * 4] / size)},${Math.floor(trees[i * 4 + 1] / size)}`;
+  const buckets = new Map<string, number[]>();
+  for (let i = 0; i < n; i++) {
+    const key = keyOf(i);
+    const list = buckets.get(key);
+    if (list) list.push(i);
+    else buckets.set(key, [i]);
+  }
+  const sorted = new Float32Array(trees.length);
+  const chunks: TreeChunk[] = [];
+  let first = 0;
+  for (const list of buckets.values()) {
+    const c: TreeChunk = { first, count: list.length, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, tallest: 0 };
+    for (const i of list) {
+      const x = trees[i * 4], z = trees[i * 4 + 1], h = trees[i * 4 + 2];
+      c.x0 = Math.min(c.x0, x); c.x1 = Math.max(c.x1, x);
+      c.z0 = Math.min(c.z0, z); c.z1 = Math.max(c.z1, z);
+      c.tallest = Math.max(c.tallest, h);
+      sorted.set(trees.subarray(i * 4, i * 4 + 4), first * 4);
+      first++;
+    }
+    chunks.push(c);
+  }
+  return { sorted, chunks };
+}
+
 /**
  * The direction across a hole's mowing stripes, as a unit (x, z): perpendicular to the line from tee to green, because
  * stripes run along the line of play. A hole without a route gets stripes across x.

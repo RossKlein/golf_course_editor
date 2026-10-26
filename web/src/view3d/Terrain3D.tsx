@@ -40,6 +40,7 @@ type Options = { aerial: boolean; game: boolean; tufts: boolean; grassRange: num
 export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [opts, setOpts] = useState<Options>(() => ({ aerial: true, game: terrain.renderer.hasSurfaces, tufts: true, grassRange: TUFT_RANGE, grassDensity: 1, trees: true, surfaces: terrain.renderer.hasSurfaces ? 0 : 0.5, outlines: true, scale: 1, shading: 1 }));
+  const [counts, setCounts] = useState({ tufts: 0, tuftsAll: 0, trees: 0 });
   const latest = useRef({ terrain, extent, active, opts, contour, slope, relief, hasDesign });
   latest.current = { terrain, extent, active, opts, contour, slope, relief, hasDesign };
   const frame = useRef(0);
@@ -83,6 +84,8 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
       });
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(out, 0, 0);
+      const s = terrain.renderer.sceneryStats;
+      setCounts((c) => (c.tufts === s.tufts && c.tuftsAll === s.tuftsAll && c.trees === s.trees ? c : { tufts: s.tufts, tuftsAll: s.tuftsAll, trees: s.trees }));
     } catch (e) {
       console.error(e);
     }
@@ -194,12 +197,15 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
           <>
             <label title="How far from where you are looking the grass grows. Further costs more.">
               Grass range {Math.round(opts.grassRange)} m
-              <input type="range" min={10} max={150} step={5} value={opts.grassRange} onChange={(e) => set({ grassRange: Number(e.target.value) })} />
+              <input type="range" min={10} max={300} step={10} value={opts.grassRange} onChange={(e) => set({ grassRange: Number(e.target.value) })} />
             </label>
             <label title="How many tufts to the square metre, as a multiple of the default. More costs more.">
               Grass density ×{opts.grassDensity}
-              <input type="range" min={0.25} max={3} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
+              <input type="range" min={0.25} max={5} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
             </label>
+            <div className="hint" title="Grass instances sent to the GPU this frame: the tiles of the patch that are in view, out of the whole patch. Those not on rough or woods are dropped there.">
+              {counts.tufts.toLocaleString()} instances of {counts.tuftsAll.toLocaleString()}
+            </div>
           </>
         )}
         <label className="check" title={terrain.treeInfo?.preview ? "This bundle has no trees yet, so these are scattered over the woods surface to show how it will look" : "The bundle's trees"}>
