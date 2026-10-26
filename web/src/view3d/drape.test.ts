@@ -68,6 +68,6 @@ describe("painting the design for the 3D view", () => {
   it("keeps lines readable at any zoom: thin when the canvas is fine, never thinner than a minimum", () => {
     const l = recorder();
     paintDrape(recorder().ctx as never, l.ctx as never, doc(), { x: -5, z: -5, w: 20, h: 20 }, 2048);
-    expect(l.calls.some((c) => c.startsWith("stroke rgba(255, 255, 255, 0.95) 0.120"))).toBe(true);
+    expect(l.calls.some((c) => c.startsWith("stroke rgba(255, 255, 255, 0.95) 0.040"))).toBe(true);
   });
 });

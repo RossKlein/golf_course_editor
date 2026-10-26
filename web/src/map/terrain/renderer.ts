@@ -25,11 +25,13 @@ export type TerrainGrid = {
 /** How to draw the 3D view. */
 export type View3d = {
   viewProj: Mat4;
-  eye: Vec3;
   /** The mesh: a square of `quads` squares of `spacing` metres, with its corner at (x0, z0). */
   mesh: { spacing: number; quads: number; x0: number; z0: number };
   /** Vertical exaggeration of the geometry. */
   scale: number;
+  /** Exaggeration of the relief shading (as the map's), and how strongly it shows. */
+  relief: number;
+  shading: number;
   aerial: boolean;
   /** How strongly the design's surfaces and outlines show, 0 to 1. */
   fill: number;
@@ -52,7 +54,7 @@ type Gl = {
 
 const FLAT_UNIFORMS = ["uHeight", "uGrid", "uOrigin", "uRes", "uMapOrigin", "uMapPerPixel", "uExaggeration", "uContour", "uSlope", "uSun"];
 const MESH_UNIFORMS = [
-  "uHeight", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uEye", "uSunDir", "uContour", "uSlope", "uSky",
+  "uHeight", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uSunDir", "uContour", "uSlope", "uRelief", "uShading",
   "uAerial", "uAerialRect", "uUseAerial", "uFill", "uLines", "uDrapeRect", "uFillAlpha", "uLineAlpha",
 ];
 const SKY: Vec3 = [0.62, 0.76, 0.9];
@@ -158,8 +160,8 @@ export class TerrainRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   });
   private readonly aerialTexture = new LazyTexture((g) => this.uploadImage(g, this.aerialImage, true));
-  private readonly fillTexture = new LazyTexture((g) => this.uploadImage(g, this.fillImage, false));
-  private readonly linesTexture = new LazyTexture((g) => this.uploadImage(g, this.linesImage, false));
+  private readonly fillTexture = new LazyTexture((g) => this.uploadImage(g, this.fillImage, true));
+  private readonly linesTexture = new LazyTexture((g) => this.uploadImage(g, this.linesImage, true));
   private aerialImage: Image | null = null;
   private aerialRect: Rect | null = null;
   private fillImage: Image | null = null;
@@ -286,9 +288,9 @@ export class TerrainRenderer {
     gl.uniform1f(mesh.u.uLineAlpha, this.linesImage ? v.lines : 0);
 
     gl.uniformMatrix4fv(mesh.u.uViewProj, false, v.viewProj);
-    gl.uniform3f(mesh.u.uEye, ...v.eye);
     gl.uniform3f(mesh.u.uSunDir, ...sunDirection());
-    gl.uniform3f(mesh.u.uSky, ...SKY);
+    gl.uniform1f(mesh.u.uRelief, v.relief);
+    gl.uniform1f(mesh.u.uShading, v.shading);
     gl.uniform2f(mesh.u.uWindow, v.mesh.x0, v.mesh.z0);
     gl.uniform1f(mesh.u.uSpacing, v.mesh.spacing);
     gl.uniform1i(mesh.u.uQuads, v.mesh.quads);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraFor, eyeOf, FOV, matricesOf, meshWindow, MAX_DISTANCE, nudge, orbit, pan, visibleHeightOf, zoom, type Camera } from "./camera";
+import { cameraFor, drapeWindow, eyeOf, FOV, matricesOf, meshWindow, MAX_DISTANCE, nudge, orbit, pan, visibleHeightOf, zoom, type Camera } from "./camera";
 import { lookAt, multiply, perspective, transform } from "./mat4";
 
 const flat = () => 0;
@@ -128,5 +128,30 @@ describe("mesh window", () => {
 
   it("holds still while the target moves a little", () => {
     expect(meshWindow(cam({ x: 100 })).x0).toBe(meshWindow(cam({ x: 105 })).x0);
+  });
+});
+
+describe("drape window", () => {
+  it("is a power-of-two square about four times the camera distance, around the target", () => {
+    const w = drapeWindow(cam({ distance: 100, x: 1000, z: 2000 }));
+    expect(w.w).toBe(512);
+    expect(w.h).toBe(512);
+    expect(w.x).toBeLessThanOrEqual(1000 - 512 * 0.4);
+    expect(w.x + w.w).toBeGreaterThanOrEqual(1000 + 512 * 0.4);
+  });
+
+  it("stays at least a texel per couple of pixels at any distance", () => {
+    for (const distance of [5, 30, 150, 900, 5000]) {
+      const w = drapeWindow(cam({ distance }));
+      const metresPerTexel = w.w / 4096;
+      const metresPerScreenPixel = (2 * distance * Math.tan(FOV / 2)) / 1000;
+      expect(metresPerTexel / metresPerScreenPixel).toBeLessThan(2.6);
+    }
+  });
+
+  it("holds still while the target moves a little and moves in steps after that", () => {
+    const a = drapeWindow(cam({ x: 1000 }));
+    expect(drapeWindow(cam({ x: 1003 })).x).toBe(a.x);
+    expect(drapeWindow(cam({ x: 1100 })).x).not.toBe(a.x);
   });
 });

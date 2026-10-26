@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject, type P
 import { designStore } from "../design/store";
 import type { Rect } from "../map/coords";
 import type { TerrainSource } from "../map/scene";
-import { cameraFor, matricesOf, meshWindow, nudge, orbit, pan, zoom, type Camera } from "./camera";
+import { cameraFor, drapeWindow, matricesOf, meshWindow, nudge, orbit, pan, zoom, type Camera } from "./camera";
 import { DRAPE_PIXELS, paintDrape } from "./drape";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */
@@ -23,28 +23,31 @@ type Props = {
   controlsRef: MutableRefObject<Controls3d | null>;
   contour: number;
   slope: boolean;
+  /** The relief exaggeration shared with the map's hillshade, and a way to change it. */
+  relief: number;
+  onRelief: (value: number) => void;
   /** Draw the bundle's design (surfaces, outlines, routes) over the ground. */
   hasDesign: boolean;
 };
 
-type Options = { aerial: boolean; surfaces: number; outlines: boolean; scale: number };
+type Options = { aerial: boolean; surfaces: number; outlines: boolean; scale: number; shading: number };
 
 /**
  * The terrain as a 3D landscape you can fly around: the same height data and the same sun as the map, draped with the
  * aerial and, live, with the design's surfaces and outlines. It is a view, not an editor; editing stays on the 2D map.
  */
-export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, hasDesign }: Props) {
+export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [opts, setOpts] = useState<Options>({ aerial: true, surfaces: 0.5, outlines: true, scale: 1 });
-  const latest = useRef({ terrain, extent, active, opts, contour, slope, hasDesign });
-  latest.current = { terrain, extent, active, opts, contour, slope, hasDesign };
+  const [opts, setOpts] = useState<Options>({ aerial: true, surfaces: 0.5, outlines: true, scale: 1, shading: 1 });
+  const latest = useRef({ terrain, extent, active, opts, contour, slope, relief, hasDesign });
+  latest.current = { terrain, extent, active, opts, contour, slope, relief, hasDesign };
   const frame = useRef(0);
   const drape = useRef<{ fill: HTMLCanvasElement; lines: HTMLCanvasElement; key: string } | null>(null);
   const designVersion = useRef(0);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const { terrain, active, opts, contour, slope, hasDesign } = latest.current;
+    const { terrain, active, opts, contour, slope, relief, hasDesign } = latest.current;
     if (!canvas || !active || !canvas.clientWidth || !canvas.clientHeight) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
@@ -54,14 +57,14 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     const cam = cameraRef.current;
     const ground = (x: number, z: number) => (terrain.ground(x, z) ?? 0) * opts.scale;
-    const { eye, viewProj } = matricesOf(cam, w / h, ground);
+    const { viewProj } = matricesOf(cam, w / h, ground);
     const mesh = meshWindow(cam);
 
-    // the design is painted for the square of ground the mesh covers, again when that moves or the design changes
-    const size = mesh.quads * mesh.spacing;
-    const rect = { x: mesh.x0, z: mesh.z0, w: size, h: size };
+    // the design is painted for a square of ground sized to the camera, so it stays sharp close up; repainted when that
+    // square moves or the design changes
+    const rect = drapeWindow(cam);
     if (hasDesign) {
-      const key = `${mesh.x0},${mesh.z0},${mesh.spacing},${designVersion.current}`;
+      const key = `${rect.x},${rect.z},${rect.w},${designVersion.current}`;
       if (!drape.current) {
         const make = () => Object.assign(document.createElement("canvas"), { width: DRAPE_PIXELS, height: DRAPE_PIXELS });
         drape.current = { fill: make(), lines: make(), key: "" };
@@ -74,7 +77,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, eye, mesh, scale: opts.scale, aerial: opts.aerial,
+        viewProj, mesh, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial,
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       const ctx = canvas.getContext("2d")!;
@@ -93,7 +96,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
   }, [draw]);
 
   // redraw when anything that shows changes
-  useEffect(request, [request, active, opts, contour, slope, hasDesign, terrain]);
+  useEffect(request, [request, active, opts, contour, slope, relief, hasDesign, terrain]);
 
   // the design changing repaints the drape
   useEffect(() => {
@@ -185,7 +188,15 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
             <label className="check"><input type="checkbox" checked={opts.outlines} onChange={(e) => set({ outlines: e.target.checked })} /> Outlines and routes</label>
           </>
         )}
-        <label>
+        <label title="How strongly the relief is shaded. Hollows go darker and crests lighter, which is what shows gentle contours.">
+          Shading {Math.round(opts.shading * 100)}%
+          <input type="range" min={0} max={1.5} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
+        </label>
+        <label title="Exaggerates the slopes for the shading only, as on the map. The ground itself keeps its shape.">
+          Relief ×{relief}
+          <input type="range" min={1} max={10} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
+        </label>
+        <label title="Stretches the ground itself upward.">
           Height ×{opts.scale}
           <input type="range" min={1} max={5} step={0.5} value={opts.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
         </label>

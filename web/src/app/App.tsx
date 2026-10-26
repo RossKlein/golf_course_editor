@@ -279,6 +279,8 @@ export default function App() {
                   controlsRef={controls3d}
                   contour={editor.contourInterval}
                   slope={editor.slopeMap}
+                  relief={editor.exaggeration}
+                  onRelief={(exaggeration) => patch({ exaggeration })}
                   hasDesign={loaded?.kind === "bundle"}
                 />
               )}

@@ -94,6 +94,22 @@ export function matricesOf(cam: Camera, aspect: number, ground: Ground): Matrice
  * camera distance allows, so a close view is detailed and a far one still reaches the horizon. The corner snaps to a
  * whole number of 32 squares so the mesh does not crawl as the camera moves.
  */
+/**
+ * The square of ground the design is painted onto: a power-of-two size, about four times the camera distance, so the
+ * paint stays close to one texel per screen pixel whether you are looking at a green or the whole course. It snaps to
+ * an eighth of its size so it is repainted only after a real move.
+ */
+export function drapeWindow(cam: Camera, minSize = 16, maxSize = 16384): { x: number; z: number; w: number; h: number } {
+  const size = Math.min(maxSize, Math.max(minSize, 2 ** Math.ceil(Math.log2(cam.distance * 4))));
+  const quantum = size / 8;
+  return {
+    x: Math.floor((cam.x - size / 2) / quantum) * quantum,
+    z: Math.floor((cam.z - size / 2) / quantum) * quantum,
+    w: size,
+    h: size,
+  };
+}
+
 export const MESH_QUADS = 512;
 const SPACINGS = [0.5, 1, 2, 4, 8, 16, 32];
 

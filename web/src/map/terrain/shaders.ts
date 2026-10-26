@@ -38,6 +38,13 @@ bool onGrid(vec2 p) {
   return f.x >= -0.5 && f.y >= -0.5 && f.x <= float(uGrid.x) - 0.5 && f.y <= float(uGrid.y) - 0.5 && heightAt(p).y > 0.5;
 }
 
+// how much the ground curves: positive in a hollow, negative on a crest, per metre; 0 beside missing data
+float curvatureAt(vec2 p, float s) {
+  vec2 c = heightAt(p), e = heightAt(p + vec2(s, 0.0)), w = heightAt(p - vec2(s, 0.0)), n = heightAt(p - vec2(0.0, s)), t = heightAt(p + vec2(0.0, s));
+  if (min(min(c.y, e.y), min(min(w.y, n.y), t.y)) < 0.5) return 0.0;
+  return (e.x + w.x + n.x + t.x - 4.0 * c.x) / (s * s);
+}
+
 // rise over run to the east and to the south, from central differences s metres either side
 vec2 gradientAt(vec2 p, float s) {
   float here = heightAt(p).x;
@@ -153,13 +160,12 @@ export const FRAGMENT_3D =
   HEIGHT +
   OVERLAYS +
   `
-uniform vec3 uEye;
 uniform vec3 uSunDir;       // towards the sun: x east, y up, z south
-uniform float uScale;
 uniform float uSpacing;
 uniform float uContour;
 uniform float uSlope;
-uniform vec3 uSky;
+uniform float uRelief;      // exaggeration of the relief shading, as for the map
+uniform float uShading;     // how strongly the shading shows, 1 for the map's look
 
 uniform sampler2D uAerial;
 uniform vec4 uAerialRect;   // course metres: x, z of the image's top-left corner, width, height
@@ -182,11 +188,15 @@ void main() {
   if (!onGrid(p)) discard;
   float ground = heightAt(p).x;
 
-  // per-pixel normal from the same surface the game uses; wider steps for coarser mesh so distant ground does not sparkle
+  // Golf ground is gentle, so true lighting barely shows. Light it the way the map does, with the relief exaggerated,
+  // and add the cue the eye uses for subtle contours: hollows a little darker, crests a little lighter. Both multiply
+  // the aerial, whose own light is left alone on flat ground. Wider steps on a coarser mesh stop distant ground sparkling.
   float s = max(0.35, 0.5 * uSpacing);
   vec2 g = gradientAt(p, s);
-  vec3 n = normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale));
-  float light = 0.30 * (0.5 + 0.5 * n.y) + 0.85 * max(dot(n, uSunDir), 0.0);
+  vec3 lit = normalize(vec3(-g.x * uRelief, 1.0, -g.y * uRelief));
+  float facing = clamp(dot(lit, uSunDir), 0.0, 1.0) - uSunDir.y; // 0 on the flat, up facing the sun, down facing away
+  float hollow = clamp(-curvatureAt(p, max(1.0, 0.75 * uSpacing)) * 2.0 * uRelief, -0.3, 0.3);
+  float light = clamp(1.0 + uShading * (0.6 * facing + hollow), 0.3, 1.7);
 
   vec3 albedo = vec3(0.42, 0.55, 0.30);
   vec2 aerialUv = (p - uAerialRect.xy) / uAerialRect.zw;
@@ -199,7 +209,7 @@ void main() {
     albedo = albedo * (1.0 - fill.a * uFillAlpha) + fill.rgb * uFillAlpha;
   }
 
-  vec3 col = albedo * clamp(light, 0.0, 1.2);
+  vec3 col = albedo * light;
   if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(light, 0.0, 1.0)), 0.7);
   if (uContour > 0.0) col *= 1.0 - contourDarkening(ground, uContour);
 
@@ -208,6 +218,5 @@ void main() {
     col = col * (1.0 - lines.a * uLineAlpha) + lines.rgb * uLineAlpha;
   }
 
-  float dist = distance(uEye, vec3(p.x, ground * uScale, p.y));
-  outColor = vec4(mix(uSky, col, exp(-dist * 0.00015)), 1.0);
+  outColor = vec4(col, 1.0);
 }`;

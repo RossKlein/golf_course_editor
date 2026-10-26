@@ -9,7 +9,7 @@ type Ctx = Pick<
 > & { fillStyle: unknown; strokeStyle: unknown; lineWidth: number; lineJoin: unknown; globalCompositeOperation: unknown };
 
 /** Pixels across the square canvases the design is painted into. */
-export const DRAPE_PIXELS = 2048;
+export const DRAPE_PIXELS = 4096;
 
 const inRect = (ring: Ring, r: Rect) => {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -61,7 +61,7 @@ export function paintDrape(fill: Ctx, lines: Ctx, doc: Doc, win: Rect, pixels: n
     (lines.fill as (rule: CanvasFillRule) => void)("evenodd");
     lines.restore();
     lines.strokeStyle = "rgba(255, 255, 255, 0.95)";
-    lines.lineWidth = hairline(1.5, 0.12);
+    lines.lineWidth = hairline(1.5, 0.04);
     trace(lines, rings);
     lines.stroke();
   }
@@ -70,7 +70,7 @@ export function paintDrape(fill: Ctx, lines: Ctx, doc: Doc, win: Rect, pixels: n
     const route = hole.route as Ring;
     if (route.length < 2 || !inRect(route, win)) continue;
     lines.strokeStyle = css(holeColor(hole.number));
-    lines.lineWidth = hairline(2.5, 0.3);
+    lines.lineWidth = hairline(2.5, 0.1);
     lines.beginPath();
     route.forEach(([x, z], i) => (i ? lines.lineTo(x, z) : lines.moveTo(x, z)));
     lines.stroke();
