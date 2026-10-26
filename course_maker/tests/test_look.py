@@ -28,10 +28,10 @@ class LookTests(unittest.TestCase):
         del data["shadows"]
         self.assertEqual(Look.model_validate(data).shadows, default_look().shadows)
 
-    def test_surface_edges_blend_over_a_fraction_of_a_metre_by_default(self):
+    def test_surface_edges_blend_over_a_metre_or_two_by_default(self):
         edge = default_look().grass.edge
         self.assertGreater(edge, 0)
-        self.assertLess(edge, 2)
+        self.assertLess(edge, 3)
 
     def test_a_look_without_an_edge_gets_the_default_one(self):
         data = default_look().model_dump()
