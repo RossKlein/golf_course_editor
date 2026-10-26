@@ -30,15 +30,24 @@ describe("hash", () => {
 describe("sand speckle", () => {
   const t = speckleTexels(128);
 
-  it("is mostly plain sand with about one grain in seven each salt and pepper, so it averages to plain sand", () => {
+  const share = (pick: (v: number) => boolean) => t.filter(pick).length / t.length;
+
+  it("is mostly plain sand with three kinds of grain: dark and barely dark each about 7%, pale about 14%", () => {
     expect(t.length).toBe(128 * 128);
-    const dark = t.filter((v) => v === 0).length / t.length, pale = t.filter((v) => v === 255).length / t.length;
-    expect(dark).toBeGreaterThan(0.11);
-    expect(dark).toBeLessThan(0.17);
-    expect(pale).toBeGreaterThan(0.11);
-    expect(pale).toBeLessThan(0.17);
-    expect(t.reduce((s, v) => s + v, 0) / t.length).toBeGreaterThan(124);
-    expect(t.reduce((s, v) => s + v, 0) / t.length).toBeLessThan(132);
+    expect(share((v) => v === 0)).toBeGreaterThan(0.05);
+    expect(share((v) => v === 0)).toBeLessThan(0.09);
+    expect(share((v) => v === 64)).toBeGreaterThan(0.05);
+    expect(share((v) => v === 64)).toBeLessThan(0.09);
+    expect(share((v) => v === 255)).toBeGreaterThan(0.11);
+    expect(share((v) => v === 255)).toBeLessThan(0.17);
+  });
+
+  it("is as dark as it is pale, as the shader weighs them (darks 0.1, pales 0.07), so it averages to plain sand", () => {
+    const effect = t.reduce((sum, v) => {
+      const s = (v / 255 - 0.5) * 2;
+      return sum + (s < 0 ? s * 0.1 : s * 0.07);
+    }, 0) / t.length;
+    expect(Math.abs(effect)).toBeLessThan(0.002);
   });
 
   it("is deterministic", () => {
