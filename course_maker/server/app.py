@@ -16,7 +16,10 @@ from pydantic import ValidationError
 from rasterio.errors import RasterioError
 
 from ..compiler.bake import BUILDING_SUFFIX, REPLACED_SUFFIX, BakeError, bake
+from ..build.manager import BuildManager
 from ..compiler.validate import validate_bundle
+from ..design.models import BackupList, BuildStatus, DesignDoc, Layout, RegionsFile
+from ..design.store import DesignError, list_backups, read_design, write_design_file
 from ..models import (
     AerialMeta,
     BakeRequest,
@@ -64,6 +67,7 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     root = Path(data_dir).resolve()
     cache = Path(cache_dir).resolve() if cache_dir else root / ".course_maker_cache"
     app = FastAPI(title="Course Maker")
+    builds = BuildManager()
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):
@@ -181,6 +185,40 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     def editor_put(state: EditorState, path: str = Query()) -> None:
         write_editor(bundle(path), state)
 
+    # --- design (the editable source) and builds ---
+
+    @app.get("/api/bundle/design")
+    def design_get(path: str = Query()) -> DesignDoc:
+        try:
+            return read_design(bundle(path))
+        except DesignError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.put("/api/bundle/design/layout", status_code=204)
+    def design_put_layout(layout: Layout, path: str = Query()) -> None:
+        folder = bundle(path)
+        write_design_file(folder, "layout", layout)
+        builds.schedule(folder)
+
+    @app.put("/api/bundle/design/regions", status_code=204)
+    def design_put_regions(regions: RegionsFile, path: str = Query()) -> None:
+        folder = bundle(path)
+        write_design_file(folder, "regions", regions)
+        builds.schedule(folder)
+
+    @app.get("/api/bundle/design/backups")
+    def design_backups(path: str = Query()) -> BackupList:
+        return BackupList(backups=list_backups(bundle(path)))
+
+    @app.get("/api/bundle/build")
+    def build_status(path: str = Query()) -> BuildStatus:
+        return builds.status(bundle(path))
+
+    @app.post("/api/bundle/build")
+    def build_now(path: str = Query()) -> BuildStatus:
+        """Build immediately and wait for it (the editor normally just saves and lets the debounced build run)."""
+        return builds.run_now(bundle(path))
+
     @app.get("/files/{rel:path}")
     def bundle_file(rel: str):
         """A file of a bundle (course.json, PNGs, trees.bin), exactly as the game will download it."""
@@ -207,6 +245,8 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
             raise HTTPException(422, f"the new bundle did not validate, so nothing was replaced: {exc}") from exc
         except (ValueError, RasterioError) as exc:
             raise HTTPException(422, str(exc)) from exc
+        if (out / ".course_maker" / "design").is_dir():
+            builds.schedule(out, delay=0)  # a replace-bake regenerated empty rasters; re-apply the design
         return BakeResult(bundle=out.relative_to(root).as_posix(), report=validate_bundle(out))
 
     # --- the React app (web/dist, built with `npm run build`; during development Vite serves it instead) ---
@@ -217,6 +257,7 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
             return HTMLResponse(NOT_BUILT, status_code=503)
         return FileResponse(WEB_DIST / "index.html")
 
+    app.state.builds = builds  # exposed so tests can wait for the background build
     if (WEB_DIST / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
     return app

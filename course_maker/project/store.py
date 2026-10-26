@@ -25,11 +25,11 @@ def project_dir(bundle: Path) -> Path:
     return Path(bundle) / DIR_NAME
 
 
-def _atomic_write(path: Path, text: str) -> None:
+def atomic_write(path: Path, text: str) -> None:
     """Write via a temporary file in the same folder, so a crash never leaves half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     gitignore = path.parent / ".gitignore"
-    if not gitignore.exists():
+    if path.parent.name == DIR_NAME and not gitignore.exists():  # only the project folder itself, not design/ below it
         gitignore.write_text(INNER_GITIGNORE, encoding="utf-8")
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     try:
@@ -45,7 +45,7 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def write_editor(bundle: Path, state: EditorState) -> None:
-    _atomic_write(project_dir(bundle) / EDITOR_FILE, state.model_dump_json(indent=2) + "\n")
+    atomic_write(project_dir(bundle) / EDITOR_FILE, state.model_dump_json(indent=2) + "\n")
 
 
 def _tolerant(data: object) -> EditorState | None:
@@ -88,7 +88,7 @@ def read_editor(bundle: Path) -> EditorResponse:
 
 
 def write_project(bundle: Path, project: ProjectFile) -> None:
-    _atomic_write(project_dir(bundle) / PROJECT_FILE, project.model_dump_json(indent=2) + "\n")
+    atomic_write(project_dir(bundle) / PROJECT_FILE, project.model_dump_json(indent=2) + "\n")
 
 
 def read_project(bundle: Path) -> ProjectFile | None:
