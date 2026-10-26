@@ -1,34 +1,49 @@
 // How the ground's surfaces meet, in the one place a test can reach: ground.frag.glsl does the same sums per pixel
-// (gameGround), with SURFACES classes and the same four-by-four neighbourhood.
+// (gameGround), with SURFACES classes.
 //
-// The class map is one surface per cell, with no partial coverage, so a slanted edge is a staircase of cells. Blending the
-// four nearest cells (bilinear) only softens each step. Instead each surface's weight is spread over the sixteen nearest cells
-// with a cubic B-spline, which turns the staircase into a smooth curve, and the two heaviest surfaces are then told apart
-// across the line where their weights are equal, as narrowly as the pixel allows: a clean edge, not a blend.
+// The class map is one surface per cell, with no partial coverage, so a slanted edge is a staircase of cells and a curved
+// one is a staircase with ripples. Each surface's weight is instead spread over the cells around a point with a cubic
+// B-spline, which averages the staircase into a smooth curve; the wider the spline, the bigger and rounder the curves. The
+// two heaviest surfaces are then told apart across the line where their weights are equal, as narrowly as the pixel allows:
+// a clean edge, not a blend.
 
-/** Cubic B-spline weights of the four cells around a point, `t` (0..1) being its place between the middle two. They sum to 1. */
-export function bspline(t: number): [number, number, number, number] {
-  const t2 = t * t, t3 = t2 * t;
-  return [(1 - 3 * t + 3 * t2 - t3) / 6, (4 - 6 * t2 + 3 * t3) / 6, (1 + 3 * t + 3 * t2 - 3 * t3) / 6, t3 / 6];
+/** The cubic B-spline basis: a bump 4 wide, 2/3 high in the middle. Shifted copies of it, one per unit, add up to 1. */
+export function basis(x: number): number {
+  const a = Math.abs(x);
+  if (a < 1) return (4 - 6 * a * a + 3 * a * a * a) / 6;
+  if (a < 2) return (2 - a) ** 3 / 6;
+  return 0;
 }
 
 /** The surface of a class-map cell (column, row). */
 export type CellAt = (cx: number, cz: number) => number;
 
+/** Cells across the spline's width along each axis for a spline `scale` cells to the unit: even, so the point is in the middle. */
+export const tapsFor = (scale: number) => 2 * Math.ceil(2 * scale);
+
+/** The spline's scale in cells for a smoothing `radius` in metres (how far it reaches either side), given the cell size. At least 1. */
+export const scaleOf = (radiusMetres: number, cellMetres: number) => Math.max(1, radiusMetres / (2 * cellMetres));
+
 /**
- * How much of each surface lies around a point `q`, given in cells with a cell's centre at its index plus a half (the
- * shader's `q`, so subtract the half first). The weights add up to 1.
+ * How much of each surface lies around a point `q`, given in cells with a cell's centre at its index (the shader's `q`, so
+ * subtract the half first), averaged with a spline `scale` cells to the unit. The weights add up to 1.
  */
-export function surfaceWeights(cellAt: CellAt, qx: number, qz: number): Map<number, number> {
-  const x0 = Math.floor(qx), z0 = Math.floor(qz);
-  const wx = bspline(qx - x0), wz = bspline(qz - z0);
+export function surfaceWeights(cellAt: CellAt, qx: number, qz: number, scale = 1): Map<number, number> {
+  const taps = tapsFor(scale);
+  const x0 = Math.floor(qx) - taps / 2 + 1, z0 = Math.floor(qz) - taps / 2 + 1;
   const out = new Map<number, number>();
-  for (let j = 0; j < 4; j++) {
-    for (let i = 0; i < 4; i++) {
-      const cls = cellAt(x0 + i - 1, z0 + j - 1);
-      out.set(cls, (out.get(cls) ?? 0) + wx[i] * wz[j]);
+  let total = 0;
+  for (let j = 0; j < taps; j++) {
+    const wz = basis((z0 + j - qz) / scale);
+    for (let i = 0; i < taps; i++) {
+      const w = basis((x0 + i - qx) / scale) * wz;
+      if (w <= 0) continue;
+      const cls = cellAt(x0 + i, z0 + j);
+      out.set(cls, (out.get(cls) ?? 0) + w);
+      total += w;
     }
   }
+  for (const [cls, w] of out) out.set(cls, w / total);
   return out;
 }
 

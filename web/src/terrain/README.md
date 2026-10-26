@@ -11,7 +11,7 @@ The golf renderer, built on `gfx/`. It draws a course from a height grid, the cl
 | Folder | Role |
 | --- | --- |
 | `heightfield/` | the baked heights on the GPU, plus the sculpt offsets; the one place heights are bound |
-| `surfaces/` | the class map, mowing stripe directions, the grass tile, the sand speckle, and `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums) |
+| `surfaces/` | the class map, mowing stripe directions, the grass tile, the sand speckle, `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums), and `edgeMask.ts`, which finds where there is no edge to smooth |
 | `passes/flat/` | the map's hillshade, contours, slope colours (and a CPU fallback) |
 | `passes/ground/` | the 3D ground: rings of mesh out to the horizon, lit and coloured per pixel |
 | `passes/tufts/`, `passes/trees/` | standing grass and trees, instanced, culled to the view |

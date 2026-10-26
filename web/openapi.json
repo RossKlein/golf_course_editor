@@ -2123,6 +2123,12 @@
             "title": "Specklegrain",
             "gt": 0,
             "le": 1
+          },
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "ge": 1,
+            "le": 3
           }
         },
         "additionalProperties": false,
@@ -2131,7 +2137,8 @@
           "tile",
           "tileMetres",
           "wobble",
-          "speckleGrain"
+          "speckleGrain",
+          "smoothing"
         ],
         "title": "Grass"
       },

@@ -37,6 +37,16 @@ class LookTests(unittest.TestCase):
     def test_surface_edges_are_clean_by_default(self):
         self.assertEqual(default_look().grass.wobble, 0)  # golf courses have clean edges: nothing wobbles them
 
+    def test_edges_are_smoothed_over_a_couple_of_metres_by_default(self):
+        smoothing = default_look().grass.smoothing
+        self.assertGreaterEqual(smoothing, 1)
+        self.assertLessEqual(smoothing, 3)  # what the renderer's spline can reach
+
+    def test_a_look_without_smoothing_gets_the_default(self):
+        data = default_look().model_dump()
+        del data["grass"]["smoothing"]
+        self.assertEqual(Look.model_validate(data).grass.smoothing, default_look().grass.smoothing)
+
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
         again = Look.model_validate_json(look.model_dump_json())

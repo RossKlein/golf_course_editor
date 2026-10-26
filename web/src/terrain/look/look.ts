@@ -31,6 +31,7 @@ export function setLookUniforms(gl: WebGL2RenderingContext, p: Program, look: Lo
   gl.uniform1f(p.u.uSpeckleGrain, look.grass.speckleGrain);
   gl.uniform1f(p.u.uTileMetres, look.grass.tileMetres);
   gl.uniform1f(p.u.uWobble, look.grass.wobble);
+  if (look.grass.smoothing !== undefined) gl.uniform1f(p.u.uSmoothing, look.grass.smoothing); // missing when the server that sent the look is older than this page: the narrowest spline
   gl.uniform1f(p.u.uTall, look.tufts.height);
   gl.uniform1f(p.u.uTuftWidth, look.tufts.width);
   gl.uniform3fv(p.u.uTuftRoot, look.tufts.root);

@@ -28,7 +28,7 @@ import treesFrag from "../passes/trees/trees.frag.glsl?raw";
 import treesVert from "../passes/trees/trees.vert.glsl?raw";
 import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
 import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
-import { MAX_SHADOW_SLICES, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SURFACES, TUFT_TILE } from "../limits";
+import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SURFACES, TUFT_TILE } from "../limits";
 
 const chunks = { "head.glsl": head, "height.glsl": height, "overlays.glsl": overlays, "look.glsl": look, "shadow.glsl": shadow, "tree.glsl": tree };
 
@@ -42,7 +42,7 @@ const program = (vertex: string, fragment: string, defines: Record<string, numbe
 /** Every program's finished source, ready to compile. */
 export const SHADERS = {
   flat: program(fullscreenVert, flatFrag),
-  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, ...SHADOWS }),
+  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, EDGE_TAPS_MAX, EDGE_BLOCK, ...SHADOWS }),
   tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES, ...SHADOWS }),
   trees: program(treesVert, treesFrag, SHADOWS),
   shadowDepth: program(depthVert, depthFrag),

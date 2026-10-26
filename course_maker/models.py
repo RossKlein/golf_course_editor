@@ -123,6 +123,9 @@ class Grass(Model):
     tileMetres: Annotated[Number, Field(gt=0, le=100)]  # ground one tile covers
     wobble: Annotated[Number, Field(ge=0, le=4)]  # how far surface edges are wobbled by the texture, in class cells
     speckleGrain: Annotated[Number, Field(gt=0, le=1)]  # metres across one grain of speckle
+    # metres either side of a surface edge that are averaged to draw it as a smooth curve: more gives bigger, rounder curves and
+    # loses thin features; 1 is the least the renderer can do. A look written before this gets the default
+    smoothing: Annotated[Number, Field(ge=1, le=3)] = Field(default_factory=lambda: _default_look().grass.smoothing)
 
 
 class Tufts(Model):

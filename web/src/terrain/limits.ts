@@ -15,6 +15,15 @@ export const SHADOW_REACH = 150;
 /** The most slices the shaders handle. */
 export const MAX_SHADOW_SLICES = 3;
 
+/**
+ * The most cells across (each way) the ground shader averages to smooth a surface edge: a spline reaching the look's most
+ * (grass.smoothing, 3 m, over 0.5 m cells) is 12. Pixels away from any edge skip it, using a mask of blocks of EDGE_BLOCK cells
+ * that is marked within EDGE_REACH cells of an edge.
+ */
+export const EDGE_TAPS_MAX = 12;
+export const EDGE_BLOCK = 4;
+export const EDGE_REACH = EDGE_TAPS_MAX / 2 + 1;
+
 /** The ground's own shadow: samples taken along the ray to the sun, and how far in metres it looks. */
 export const SELF_SHADOW_STEPS = 16;
 export const SELF_SHADOW_REACH = 80;

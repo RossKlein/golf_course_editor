@@ -2,6 +2,8 @@ import type { Device } from "../../gfx/device/device";
 import { uploadImage, type Image } from "../../gfx/resource/image";
 import { LazyTexture } from "../../gfx/resource/texture";
 import type { Program } from "../../gfx/shader/program";
+import { EDGE_BLOCK, EDGE_REACH } from "../limits";
+import { edgeMask } from "./edgeMask";
 import { SPECKLE_SIZE, speckleTexels } from "./speckle";
 
 /**
@@ -14,6 +16,8 @@ export class Surfaces {
   private tileImage: Image | null = null;
   private tileAverage: [number, number, number] = [1, 1, 1];
   private readonly classTexture = new LazyTexture((d) => this.uploadClasses(d));
+  /** Which blocks of the class map are near an edge between surfaces, so the shader smooths only there. */
+  private readonly edgeTexture = new LazyTexture((d) => this.uploadEdges(d));
   private readonly tileTexture = new LazyTexture((d) => uploadImage(d, this.tileImage, { mipmaps: true, repeat: true, blank: [255, 255, 255, 255] }));
   private readonly speckleTexture = new LazyTexture((d) => {
     const { gl } = d;
@@ -36,6 +40,7 @@ export class Surfaces {
     this.classes = image ? { image, res } : null;
     this.stripes = stripes;
     this.classTexture.invalidate();
+    this.edgeTexture.invalidate();
   }
 
   /** The seamless grass the ground is textured with; its average colour is worked out here so tinting keeps the brightness. */
@@ -71,11 +76,25 @@ export class Surfaces {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
+  private uploadEdges(d: Device) {
+    const { gl } = d;
+    const image = this.classes?.image;
+    const mask = image ? edgeMask(image.data, image.width, image.height, EDGE_BLOCK, EDGE_REACH) : { data: new Uint8Array(1), cols: 1, rows: 1 };
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, mask.cols, mask.rows, 0, gl.RED, gl.UNSIGNED_BYTE, mask.data);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
   /** Bind the class map (unit 5) for a program that has uClassMap and uClassInfo. */
   bindClasses(d: Device, p: Program) {
     const { gl } = d;
     this.classTexture.bind(d, 5);
     gl.uniform1i(p.u.uClassMap, 5);
+    this.edgeTexture.bind(d, 9);
+    gl.uniform1i(p.u.uEdgeMask, 9);
     const c = this.classes;
     gl.uniform3f(p.u.uClassInfo, c?.res ?? 1, c?.image.width ?? 1, c?.image.height ?? 1);
   }
@@ -92,6 +111,6 @@ export class Surfaces {
   }
 
   dispose() {
-    for (const t of [this.classTexture, this.tileTexture, this.speckleTexture]) t.free();
+    for (const t of [this.classTexture, this.edgeTexture, this.tileTexture, this.speckleTexture]) t.free();
   }
 }

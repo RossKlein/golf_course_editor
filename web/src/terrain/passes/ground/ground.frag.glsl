@@ -23,6 +23,8 @@ uniform float uUseAerial;
 // the game's look: the surface under each point, from the class map, in the game's flat bright greens
 uniform sampler2D uClassMap;  // nearest: r = surface class, g = owning hole
 uniform vec3 uClassInfo;      // metres per cell, columns, rows
+uniform sampler2D uEdgeMask;   // nearest: 255 for each block of EDGE_BLOCK cells that is near an edge between surfaces
+uniform float uSmoothing;     // metres the surface edges are smoothed over, either side of the line
 uniform sampler2D uTile;      // seamless grass, tiled over everything
 uniform vec3 uTileAvg;        // its average colour, so tinting does not change the brightness
 uniform sampler2D uSpeckleTex; // salt and pepper for sand, mipmapped: one byte a grain, 128 plain, 0 dark, 255 pale
@@ -68,10 +70,12 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
   return base * mix(vec3(1.0), grain, amount);
 }
 
-// cubic B-spline weights of the four cells around a point, t being its place between the middle two (blend.ts is the same maths)
-vec4 bspline(float t) {
-  float t2 = t * t, t3 = t2 * t;
-  return vec4(1.0 - 3.0 * t + 3.0 * t2 - t3, 4.0 - 6.0 * t2 + 3.0 * t3, 1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3, t3) / 6.0;
+// the cubic B-spline basis: a bump 4 wide, 2/3 high in the middle (blend.ts is the same maths)
+float bspline(float x) {
+  float a = abs(x);
+  if (a < 1.0) return (4.0 - 6.0 * a * a + 3.0 * a * a * a) / 6.0;
+  if (a < 2.0) { float b = 2.0 - a; return b * b * b / 6.0; }
+  return 0.0;
 }
 
 // How much of the heaviest surface to show, 0.5 to 1, from the weight difference d (0 on the line between two surfaces, 1 far
@@ -82,31 +86,46 @@ float blendShare(float d, float width) {
   return 0.5 + 0.5 * (smoothstep(-width, width, d) - 0.5) / (top - 0.5);
 }
 
-// the ground in the game's look. The class map is one surface per cell, so a slanted edge is a staircase of cells. Each
-// surface's weight is spread over the sixteen nearest cells with a B-spline, which turns the staircase into a smooth curve,
-// and the two heaviest surfaces are blended across the line where their weights are equal, as narrowly as a pixel (and the
-// look's edge) allows. The edge is wobbled by the grass texture so surfaces meet the way mown grass does rather than along
-// a ruler. shade comes back as how much the relief shading applies here and speckle as how much a dark and a pale grain
-// change the colour, each blended between the two surfaces like the colour
+// the ground in the game's look. The class map is one surface per cell, so a slanted edge is a staircase of cells and a curved
+// one is a staircase with ripples. Each surface's weight is averaged over the cells around the point with a cubic B-spline,
+// uSmoothing metres either side, which turns that into a smooth curve (the wider, the bigger and rounder the curves); the two
+// heaviest surfaces are then told apart across the line where their weights are equal, as narrowly as a pixel allows: a clean
+// edge, not a blend. Far from any edge (the mask says) there is nothing to average and the one cell under the point is the
+// answer. shade comes back as how much the relief shading applies here and speckle as how much a dark and a pale grain change
+// the colour, each taken from the surface shown like the colour
 vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
   vec2 wobble = (texture(uTile, p / (uTileMetres * 3.0) + 0.37).rg - 0.5) * uWobble * uClassInfo.x;
-  vec2 q = (p + wobble) / uClassInfo.x - 0.5;
+  vec2 here = (p + wobble) / uClassInfo.x;      // in cells; a cell's centre is at its index plus a half
+  ivec2 under = ivec2(floor(here));             // the cell the point is in
+  ivec2 block = clamp(under / EDGE_BLOCK, ivec2(0), textureSize(uEdgeMask, 0) - 1);
+
+  if (texelFetch(uEdgeMask, block, 0).r < 0.5) {
+    vec4 cell = classCell(under);
+    int k = clamp(int(cell.r + 0.5), 0, SURFACES - 1);
+    shade = surfaceShade(k);
+    speckle = surfaceSpeckle(k);
+    return surfaceColour(vec4(cell.rg, 0.0, 0.0), p, grain, patchy);
+  }
+
+  vec2 q = here - 0.5;
   ivec2 c0 = ivec2(floor(q));
-  vec2 f = fract(q);
-  vec4 wx = bspline(f.x), wy = bspline(f.y);
+  float scale = max(1.0, uSmoothing / (2.0 * uClassInfo.x)); // cells to the unit of the spline
+  int taps = min(2 * int(ceil(2.0 * scale)), EDGE_TAPS_MAX);
+  ivec2 start = c0 - taps / 2 + 1;
 
   float weight[SURFACES];
   for (int k = 0; k < SURFACES; k++) weight[k] = 0.0;
-  vec2 cell[16];          // each nearby cell's surface and hole
-  float cellWeight[16];
-  for (int j = 0; j < 4; j++) {
-    for (int i = 0; i < 4; i++) {
-      int n = j * 4 + i;
-      cell[n] = classCell(c0 + ivec2(i - 1, j - 1)).rg;
-      cellWeight[n] = wx[i] * wy[j];
-      weight[clamp(int(cell[n].x + 0.5), 0, SURFACES - 1)] += cellWeight[n];
+  float total = 0.0;
+  for (int j = 0; j < EDGE_TAPS_MAX; j++) {
+    if (j >= taps) break;
+    float wy = bspline((float(start.y + j) - q.y) / scale);
+    for (int i = 0; i < EDGE_TAPS_MAX; i++) {
+      if (i >= taps) break;
+      float w = bspline((float(start.x + i) - q.x) / scale) * wy;
+      weight[clamp(int(classCell(start + ivec2(i, j)).r + 0.5), 0, SURFACES - 1)] += w;
+      total += w;
     }
   }
 
@@ -117,17 +136,22 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
     if (weight[k] > wa) { wb = wa; b = a; wa = weight[k]; a = k; }
     else if (weight[k] > wb) { wb = weight[k]; b = k; }
   }
-  float d = wa - wb;
+  float d = (wa - wb) / total;
   float width = fwidth(d) * 0.75; // the edge is as narrow as a pixel: a clean line, antialiased, not a blend
   float share = width > 0.0 ? blendShare(d, width) : (d > 0.0 ? 1.0 : 0.5);
 
-  // each surface takes its hole from the nearest cell of that surface, for the direction of its stripes
+  // each surface takes its hole from the nearest of the cells around the point that has it, for the direction of its stripes
   vec4 ca = vec4(float(a), 0.0, 0.0, 0.0), cb = vec4(float(b), 0.0, 0.0, 0.0);
-  float ba = -1.0, bb = -1.0;
-  for (int n = 0; n < 16; n++) {
-    int k = clamp(int(cell[n].x + 0.5), 0, SURFACES - 1);
-    if (k == a && cellWeight[n] > ba) { ba = cellWeight[n]; ca.xy = cell[n]; }
-    if (k == b && cellWeight[n] > bb) { bb = cellWeight[n]; cb.xy = cell[n]; }
+  float da = 1e9, db = 1e9;
+  for (int dz = -1; dz <= 1; dz++) {
+    for (int dx = -1; dx <= 1; dx++) {
+      ivec2 n = under + ivec2(dx, dz);
+      vec2 cell = classCell(n).rg;
+      int k = clamp(int(cell.x + 0.5), 0, SURFACES - 1);
+      float dist = distance(vec2(n) + 0.5, here);
+      if (k == a && dist < da) { da = dist; ca.xy = cell; }
+      if (k == b && dist < db) { db = dist; cb.xy = cell; }
+    }
   }
   vec3 colour = surfaceColour(ca, p, grain, patchy);
   shade = surfaceShade(a);

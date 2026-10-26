@@ -983,6 +983,8 @@ export interface components {
             wobble: number;
             /** Specklegrain */
             speckleGrain: number;
+            /** Smoothing */
+            smoothing: number;
         };
         /** Grid */
         Grid: {
