@@ -9,6 +9,8 @@ export type Controls3d = {
   /** Move by half the view: x to the right, y forward. */
   nudge: (x: number, y: number) => void;
   fit: () => void;
+  /** Put the camera exactly here. */
+  goTo: (camera: Camera) => void;
 };
 
 type Args = {
@@ -54,6 +56,10 @@ export function useCameraControls({ canvasRef, cameraRef, controlsRef, extentRef
       },
       nudge: (x, y) => {
         cameraRef.current = nudge(cameraRef.current, x, y);
+        request();
+      },
+      goTo: (camera) => {
+        cameraRef.current = camera;
         request();
       },
       fit: () => {

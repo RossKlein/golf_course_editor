@@ -2,6 +2,7 @@
 #include "height.glsl"
 #include "overlays.glsl"
 #include "look.glsl"
+#include "lighting.glsl"
 #include "shadow.glsl"
 
 uniform float uScale;       // vertical exaggeration of the geometry
@@ -227,7 +228,7 @@ void main() {
   vec3 world = vec3(p.x, ground * uScale, p.y);
   float shadow = shadowMapAt(world, normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale)), true);
   if (uShadowMode.x > 0.5) shadow = 1.0 - (1.0 - shadow) * (1.0 - terrainShadow(p, ground));
-  col = applyShadow(col, shadow);
+  col = applyLight(col, shadow, skyVisibilityAt(p));
   if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(light, 0.0, 1.0)), 0.7);
   if (uContour > 0.0) col *= 1.0 - contourDarkening(ground, uContour);
 

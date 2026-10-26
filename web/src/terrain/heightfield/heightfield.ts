@@ -49,6 +49,7 @@ export class HeightField {
   private span: [number, number] | null = null;
   /** The slope and curvature of the heights, smoothed, baked for lighting. */
   readonly relief: Relief;
+  private readonly watchers = new Set<(box: { x0: number; z0: number; x1: number; z1: number } | null) => void>();
 
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. */
   constructor(readonly data: TerrainGrid) {
@@ -57,7 +58,11 @@ export class HeightField {
 
   /** Make the terrain editable. `effective` is the CPU copy of base + sculpting that the sculptor keeps up to date. */
   enableSculpt(effective: HeightGrid): Sculptor {
-    this.sculptor ??= new Sculptor(this.data, effective, (d, unit) => this.base.bind(d, unit), (box) => (box ? this.relief.touch(box) : this.relief.touchAll()));
+    this.sculptor ??= new Sculptor(this.data, effective, (d, unit) => this.base.bind(d, unit), (box) => {
+      if (box) this.relief.touch(box);
+      else this.relief.touchAll();
+      this.watchers.forEach((w) => w(box));
+    });
     return this.sculptor;
   }
 
@@ -74,6 +79,12 @@ export class HeightField {
     gl.uniform2i(p.u.uGrid, grid.cols, grid.rows);
     gl.uniform2f(p.u.uOrigin, origin.x, origin.z);
     gl.uniform2f(p.u.uRes, resX, resZ);
+  }
+
+  /** Be told when heights change: the box of samples (corners included), or null when every one may have. Returns a way to stop. */
+  watch(listener: (box: { x0: number; z0: number; x1: number; z1: number } | null) => void): () => void {
+    this.watchers.add(listener);
+    return () => void this.watchers.delete(listener);
   }
 
   /**

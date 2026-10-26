@@ -6,6 +6,7 @@ import { frustumOf } from "../gfx/math/frustum";
 import type { Rect } from "../core/geometry/coords";
 import { context, currentContext } from "./context";
 import { HeightField, type TerrainGrid } from "./heightfield/heightfield";
+import { Lighting } from "./lighting/lighting";
 import { Overlays } from "./passes/drape/overlays";
 import { drawFlat, type TerrainStyle } from "./passes/flat/flat";
 import { drawGround, type GroundView } from "./passes/ground/ground";
@@ -56,7 +57,8 @@ export class TerrainRenderer {
 
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. `look` is the course's look; `theme` is the editor's. */
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
-    this.world = { height: new HeightField(data), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
+    const height = new HeightField(data);
+    this.world = { height, lighting: new Lighting(height), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
     this.setLook(look);
   }
 
@@ -135,7 +137,8 @@ export class TerrainRenderer {
   render3d(size: number[], v: View3d): HTMLCanvasElement {
     const g = context();
     const { gl, canvas } = g;
-    this.world.height.prepare(g); // the baked relief, first: it uses its own framebuffer and viewport
+    this.world.height.prepare(g); // the baked relief and lighting, first: they use their own framebuffers and viewports
+    this.world.lighting.prepare(g);
     const [low, high] = this.world.height.groundRange();
     const cull: Cull = { frustum: frustumOf(v.viewProj), y0: low * v.scale - 1, y1: high * v.scale + 1 };
     // the sun's shadow maps first, into their own framebuffer; the passes below read them
@@ -159,6 +162,7 @@ export class TerrainRenderer {
   dispose() {
     const g = currentContext();
     this.world.height.dispose();
+    this.world.lighting.dispose();
     this.world.surfaces.dispose();
     this.world.overlays.dispose();
     this.tufts.free(g);

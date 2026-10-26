@@ -39,6 +39,14 @@ float shadowMapAt(vec3 world, vec3 normal, bool soft) {
   return (1.0 - lit) * (1.0 - smoothstep(0.85 * last, last, depth));
 }
 
+// A colour lit by the sun and the sky. Shadowed ground gets only the sky's light, the colour mixed with the tint at the look's
+// strength; the sun supplies the rest, so lit ground under open sky is the colour exactly. s is how much of the sun is blocked, ao
+// how much of the sky is open (1 for open ground, less in a hollow or under trees).
+vec3 applyLight(vec3 colour, float s, float ao) {
+  vec3 sky = mix(vec3(1), uShadowTint, uShadowLook.x);
+  return colour * ((1.0 - sky) * (1.0 - clamp(s, 0.0, 1.0)) + sky * ao);
+}
+
 // A colour in shadow: multiplied by the tint, as strongly as the look says. s is how much of the sun is blocked.
 vec3 applyShadow(vec3 colour, float s) {
   return colour * mix(vec3(1), uShadowTint, clamp(s, 0.0, 1.0) * uShadowLook.x);

@@ -60,6 +60,11 @@ export default function App() {
   const camera3d = useRef<Camera>(cameraFor(0, 0, 500));
   const controls3d = useRef<Controls3d | null>(null);
 
+  // for looking at the same place again, from the console: goTo3d({ x, z, distance, pitch, yaw }) (metres, radians)
+  useEffect(() => {
+    (window as unknown as { goTo3d: (c: Partial<Camera>) => void }).goTo3d = (c) => controls3d.current?.goTo({ ...camera3d.current, ...c });
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       setIndex(await api.index());

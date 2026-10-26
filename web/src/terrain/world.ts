@@ -3,6 +3,7 @@ import type { Device } from "../gfx/device/device";
 import type { Frustum } from "../gfx/math/frustum";
 import type { Program } from "../gfx/shader/program";
 import type { HeightField } from "./heightfield/heightfield";
+import type { Lighting } from "./lighting/lighting";
 import type { Overlays } from "./passes/drape/overlays";
 import type { Sun } from "./sun";
 import type { Surfaces } from "./surfaces/surfaces";
@@ -14,6 +15,8 @@ export type ShadowState = { bind(d: Device, p: Program): void };
 /** What a pass reads to draw: the ground's heights and surfaces, what is draped over it, and how the course looks. */
 export type World = {
   height: HeightField;
+  /** The baked lighting of the ground. */
+  lighting: Lighting;
   surfaces: Surfaces;
   overlays: Overlays;
   look: Look;

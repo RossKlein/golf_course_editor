@@ -43,6 +43,7 @@ export function drawGround(g: Gl, world: World, v: GroundView) {
   gl.useProgram(mesh.program);
   world.height.bind(g, mesh);
   world.height.bindRelief(g, mesh);
+  world.lighting.bind(g, mesh);
   world.overlays.bind(g, mesh, { aerial: v.aerial, fill: v.fill, lines: v.lines });
   world.surfaces.bindClasses(g, mesh);
   world.surfaces.bindGround(g, mesh);
