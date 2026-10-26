@@ -12,7 +12,26 @@ export function hash2(a: number, b: number, seed = 0): number {
   return (h >>> 0) / 4294967296;
 }
 
-export type ClassImage = { data: ArrayLike<number>; width: number; height: number };
+/** Metres a grain of sand speckle covers, and the texels across the speckle texture, which tiles. */
+export const SPECKLE_GRAIN = 0.03;
+export const SPECKLE_SIZE = 256;
+
+/**
+ * The speckle for sand as one byte a texel: 128 is plain sand, 0 a dark grain (pepper), 255 a pale one (salt). Mipmapped
+ * and tiled over the ground, so the GPU averages it for distance and the pattern does not step with it.
+ */
+export function speckleTexels(size = SPECKLE_SIZE): Uint8Array {
+  const out = new Uint8Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const n = hash2(x, y, 41);
+      out[y * size + x] = n < 0.14 ? 0 : n > 0.86 ? 255 : Math.round(128 + (hash2(x, y, 42) - 0.5) * 40);
+    }
+  }
+  return out;
+}
+
+export type ClassImage ={ data: ArrayLike<number>; width: number; height: number };
 
 /**
  * Trees to show where a bundle has none yet: one in each cell of a jittered grid wherever the class map says woods. The

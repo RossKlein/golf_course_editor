@@ -5,6 +5,8 @@
 //  - a 3D mesh whose vertices are lifted by the same lookup, textured with the aerial and the design.
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
+import { SPECKLE_GRAIN, SPECKLE_SIZE } from "../../view3d/scenery";
+
 export const HEAD = `#version 300 es
 precision highp float;
 precision highp int;
@@ -191,6 +193,7 @@ uniform sampler2D uClassMap;  // nearest: r = surface class, g = owning hole
 uniform vec3 uClassInfo;      // metres per cell, columns, rows
 uniform sampler2D uTile;      // seamless grass, tiled over everything
 uniform vec3 uTileAvg;        // its average colour, so tinting does not change the brightness
+uniform sampler2D uSpeckleTex; // salt and pepper for sand, mipmapped: one byte a grain, 128 plain, 0 dark, 255 pale
 uniform float uTileMetres;    // ground one tile covers
 uniform vec2 uStripe[24];     // per hole: unit direction across its mowing stripes
 uniform float uGame;          // 1 for the game's look
@@ -243,15 +246,8 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
 }
 
 // the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
-// surfaces meet the way mown grass does rather than along a ruler
-// a hash of a grain of ground, 0 to 1, without the precision trouble that sin has far from the origin
-float grainHash(vec2 cell) {
-  vec3 q = fract(vec3(mod(cell, 1024.0).xyx) * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
-}
-
-// sand comes back as how much of the point is bunker, 0 to 1, so the lighting can be eased off there
+// surfaces meet the way mown grass does rather than along a ruler. sand comes back as how much of the point is bunker,
+// 0 to 1, so the lighting can be eased off there
 vec3 gameGround(vec2 p, out float sand) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
@@ -293,14 +289,14 @@ void main() {
     albedo = gameGround(p, sand);
     // a bunker's dip would otherwise darken it as a hollow; sand keeps its colour, with a trace of shape at the lip
     light = mix(light, 1.0 + (light - 1.0) * 0.12, sand);
-    // salt and pepper: grains 3 cm across, some paler, some darker. Where a pixel covers more than a grain the grains grow
-    // in doubling steps to stay a pixel or so, so far sand is still speckled. They fade out towards the grass range.
+    // salt and pepper, some grains paler and some darker, from a mipmapped texture so it changes smoothly with distance.
+    // Averaging washes it out as grains shrink below a pixel, so its contrast is raised by the square root of the grains
+    // a pixel covers, which puts back what the averaging took. It fades out towards the grass range.
     float footprint = max(fwidth(p.x), fwidth(p.y));
-    float grainSize = 0.03 * exp2(max(0.0, ceil(log2(max(footprint, 1e-4) / 0.03))));
+    float gain = clamp(footprint / ${SPECKLE_GRAIN}, 1.0, 12.0);
+    float speck = clamp((texture(uSpeckleTex, p / (${SPECKLE_GRAIN} * ${SPECKLE_SIZE}.0)).r - 0.5) * 2.0 * gain, -1.0, 1.0);
     float visible = 1.0 - smoothstep(0.7 * uSpeckle.z, uSpeckle.z, distance(p, uSpeckle.xy));
-    float n = grainHash(floor(p / grainSize));
-    float speck = n < 0.14 ? -0.2 : (n > 0.86 ? 0.14 : (n - 0.5) * 0.12);
-    albedo *= 1.0 + sand * visible * speck;
+    albedo *= 1.0 + sand * visible * (speck < 0.0 ? speck * 0.2 : speck * 0.14);
   }
   else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
 

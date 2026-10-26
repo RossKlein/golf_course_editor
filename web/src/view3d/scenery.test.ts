@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { TUFT_RANGE, TUFT_TILE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
 import { frustumOf } from "./frustum";
 import { lookAt, multiply, perspective } from "./mat4";
-import { chunkTrees, hash2, scatterWoods, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
+import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";
 
 /** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
 function classes(w: number, h: number, fn: (c: number, r: number) => number): ClassImage {
@@ -24,6 +24,25 @@ describe("hash", () => {
     }
     expect(sum / 2000).toBeGreaterThan(0.45);
     expect(sum / 2000).toBeLessThan(0.55);
+  });
+});
+
+describe("sand speckle", () => {
+  const t = speckleTexels(128);
+
+  it("is mostly plain sand with about one grain in seven each salt and pepper, so it averages to plain sand", () => {
+    expect(t.length).toBe(128 * 128);
+    const dark = t.filter((v) => v === 0).length / t.length, pale = t.filter((v) => v === 255).length / t.length;
+    expect(dark).toBeGreaterThan(0.11);
+    expect(dark).toBeLessThan(0.17);
+    expect(pale).toBeGreaterThan(0.11);
+    expect(pale).toBeLessThan(0.17);
+    expect(t.reduce((s, v) => s + v, 0) / t.length).toBeGreaterThan(124);
+    expect(t.reduce((s, v) => s + v, 0) / t.length).toBeLessThan(132);
+  });
+
+  it("is deterministic", () => {
+    expect(Array.from(speckleTexels(16))).toEqual(Array.from(speckleTexels(16)));
   });
 });
 

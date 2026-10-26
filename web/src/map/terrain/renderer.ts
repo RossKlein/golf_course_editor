@@ -4,6 +4,7 @@ import type { Rect } from "../coords";
 import { context, currentContext, LazyTexture, type Gl, type Program } from "./gl";
 import { packHeights } from "./reference";
 import { Sculptor } from "./sculptor";
+import { SPECKLE_SIZE, speckleTexels } from "../../view3d/scenery";
 import { SceneryGpu } from "./sceneryGpu";
 import { SUN, sunDirection } from "./sun";
 
@@ -98,6 +99,18 @@ export class TerrainRenderer {
   private drapeRect: Rect | null = null;
   private sculptor: Sculptor | null = null;
   private readonly scenery = new SceneryGpu();
+  private readonly speckleTexture = new LazyTexture((g) => {
+    const { gl } = g;
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, SPECKLE_SIZE, SPECKLE_SIZE, 0, gl.RED, gl.UNSIGNED_BYTE, speckleTexels());
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); // crisp grains up close
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    if (g.anisotropy.ext) gl.texParameterf(gl.TEXTURE_2D, g.anisotropy.ext.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, g.anisotropy.max));
+  });
   private readonly classTexture = new LazyTexture((g) => this.uploadClasses(g));
   private readonly tileTexture = new LazyTexture((g) => this.uploadImage(g, this.tileImage, true, true, [255, 255, 255, 255]));
   private classes: { image: ImageData; res: number } | null = null;
@@ -335,6 +348,8 @@ export class TerrainRenderer {
     this.bindClasses(g, mesh);
     this.tileTexture.bind(g, 6);
     gl.uniform1i(mesh.u.uTile, 6);
+    this.speckleTexture.bind(g, 7);
+    gl.uniform1i(mesh.u.uSpeckleTex, 7);
     gl.uniform3f(mesh.u.uTileAvg, ...this.tileAverage);
     gl.uniform1f(mesh.u.uTileMetres, 3);
     gl.uniform2fv(mesh.u.uStripe, this.stripes);
@@ -366,7 +381,7 @@ export class TerrainRenderer {
 
   /** Free the textures. The renderer still works afterwards; it uploads again on the next render. */
   dispose() {
-    for (const t of [this.height, this.noOffsets, this.aerialTexture, this.fillTexture, this.linesTexture, this.classTexture, this.tileTexture]) t.free();
+    for (const t of [this.height, this.noOffsets, this.aerialTexture, this.fillTexture, this.linesTexture, this.classTexture, this.tileTexture, this.speckleTexture]) t.free();
     this.scenery.free(currentContext());
     this.sculptor?.free();
   }
