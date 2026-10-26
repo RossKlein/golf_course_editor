@@ -150,6 +150,7 @@ uniform vec2 uWindow;     // course metres of the mesh's corner
 uniform float uSpacing;   // metres between mesh vertices
 uniform int uQuads;       // squares along each side
 uniform float uScale;     // vertical exaggeration
+uniform vec4 uInner;      // the next finer mesh's area (x0, z0, x1, z1); quads wholly inside it are left to that mesh
 
 out vec2 vXZ;
 
@@ -158,8 +159,13 @@ const ivec2 CORNERS[6] = ivec2[6](ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1
 void main() {
   int quad = gl_VertexID / 6;
   ivec2 corner = CORNERS[gl_VertexID - quad * 6];
-  vec2 p = uWindow + vec2(float(quad % uQuads + corner.x), float(quad / uQuads + corner.y)) * uSpacing;
+  vec2 first = uWindow + vec2(float(quad % uQuads), float(quad / uQuads)) * uSpacing;
+  vec2 p = first + vec2(corner) * uSpacing;
   vXZ = p;
+  if (uInner.z > uInner.x && first.x >= uInner.x && first.y >= uInner.y && first.x + uSpacing <= uInner.z && first.y + uSpacing <= uInner.w) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside the picture
+    return;
+  }
   gl_Position = uViewProj * vec4(p.x, heightAt(p).x * uScale, p.y, 1.0);
 }`;
 
@@ -211,13 +217,13 @@ vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain, float patchy) {
   int cls = int(cell.r + 0.5);
   int hole = clamp(int(cell.g + 0.5) - 1, 0, 23);
   vec3 fairwayA = vec3(0.50, 0.86, 0.30), fairwayB = vec3(0.66, 0.95, 0.44);
-  vec3 rough = vec3(0.47, 0.75, 0.28); // a little darker than the fairway
+  vec3 rough = vec3(0.40, 0.65, 0.24); // darker than the fairway
   vec3 a = rough, b = rough;
   float stripe = 0.0, amount = 1.0;
   if (cls == 1) { a = fairwayA; b = fairwayB; stripe = 2.4; amount = 0.55; }
   else if (cls == 2) { a = vec3(0.60, 0.92, 0.38); b = a; amount = 0.3; } // plain: no stripes on a green
   else if (cls == 3) { a = vec3(0.52, 0.82, 0.30); b = vec3(0.60, 0.88, 0.36); stripe = 0.9; amount = 0.35; }
-  else if (cls == 4) { a = vec3(0.55, 0.90, 0.34); b = vec3(0.72, 0.97, 0.48); stripe = 1.0; amount = 0.35; }
+  else if (cls == 4) { a = vec3(0.64, 0.94, 0.42); b = a; amount = 0.35; } // plain: no stripes on a tee
   else if (cls == 5) { a = vec3(0.965, 0.93, 0.81); b = a; amount = 0.4; } // sand, half way to white
   else if (cls == 6) { a = vec3(0.27, 0.60, 0.86); b = a; amount = 0.15; }
   else if (cls == 7) { a = vec3(0.72, 0.66, 0.52); b = a; amount = 0.4; }

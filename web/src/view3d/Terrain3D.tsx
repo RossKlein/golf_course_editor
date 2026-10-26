@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject, type P
 import { designStore } from "../design/store";
 import type { Rect } from "../map/coords";
 import type { TerrainSource } from "../map/scene";
-import { cameraFor, drapeWindow, matricesOf, meshWindow, nudge, orbit, pan, zoom, type Camera } from "./camera";
+import { cameraFor, drapeWindow, matricesOf, meshLevels, nudge, orbit, pan, zoom, type Camera } from "./camera";
 import { DRAPE_PIXELS, paintDrape } from "./drape";
 
 /** What the app can do to the 3D camera from outside (the keyboard). */
@@ -58,7 +58,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     const cam = cameraRef.current;
     const ground = (x: number, z: number) => (terrain.ground(x, z) ?? 0) * opts.scale;
     const { viewProj, eye } = matricesOf(cam, w / h, ground);
-    const mesh = meshWindow(cam);
+    const meshes = meshLevels(cam);
 
     // the design is painted for a square of ground sized to the camera, so it stays sharp close up; repainted when that
     // square moves or the design changes
@@ -77,7 +77,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, mesh, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, trees: opts.trees, eye, target: [cam.x, cam.z],
+        viewProj, meshes, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, trees: opts.trees, eye, target: [cam.x, cam.z],
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       const ctx = canvas.getContext("2d")!;

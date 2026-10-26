@@ -113,8 +113,14 @@ export function drapeWindow(cam: Camera, minSize = 16, maxSize = 16384): { x: nu
 export const MESH_QUADS = 512;
 const SPACINGS = [0.5, 1, 2, 4, 8, 16, 32];
 
-export function meshWindow(cam: Camera): { spacing: number; quads: number; x0: number; z0: number } {
-  const spacing = SPACINGS.find((s) => s * MESH_QUADS >= cam.distance * 5) ?? SPACINGS[SPACINGS.length - 1];
+export type MeshWindow = { spacing: number; quads: number; x0: number; z0: number };
+/** How many times coarser each outer ring of terrain is than the one inside it, and how many rings there are. */
+export const RING_STEP = 4;
+export const RINGS = 3;
+
+/** One ring of the terrain mesh: level 0 is the detailed one around the target, each further level is RING_STEP times coarser. */
+export function meshWindow(cam: Camera, level = 0): MeshWindow {
+  const spacing = (SPACINGS.find((s) => s * MESH_QUADS >= cam.distance * 5) ?? SPACINGS[SPACINGS.length - 1]) * RING_STEP ** level;
   const quantum = spacing * 32;
   const half = (MESH_QUADS * spacing) / 2;
   return {
@@ -123,4 +129,12 @@ export function meshWindow(cam: Camera): { spacing: number; quads: number; x0: n
     x0: Math.floor((cam.x - half) / quantum) * quantum,
     z0: Math.floor((cam.z - half) / quantum) * quantum,
   };
+}
+
+/**
+ * All the rings, from the outermost to the detailed one in the middle. Each outer ring covers the ones inside it, which
+ * leave out of it only what they draw themselves, so the ground reaches the horizon even from low down.
+ */
+export function meshLevels(cam: Camera): MeshWindow[] {
+  return Array.from({ length: RINGS }, (_, i) => meshWindow(cam, RINGS - 1 - i));
 }

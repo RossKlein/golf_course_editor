@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraFor, drapeWindow, eyeOf, FOV, matricesOf, meshWindow, MAX_DISTANCE, nudge, orbit, pan, visibleHeightOf, zoom, type Camera } from "./camera";
+import { cameraFor, drapeWindow, eyeOf, meshLevels, RINGS, RING_STEP, FOV, matricesOf, meshWindow, MAX_DISTANCE, nudge, orbit, pan, visibleHeightOf, zoom, type Camera } from "./camera";
 import { lookAt, multiply, perspective, transform } from "./mat4";
 
 const flat = () => 0;
@@ -153,5 +153,32 @@ describe("drape window", () => {
     const a = drapeWindow(cam({ x: 1000 }));
     expect(drapeWindow(cam({ x: 1003 })).x).toBe(a.x);
     expect(drapeWindow(cam({ x: 1100 })).x).not.toBe(a.x);
+  });
+});
+
+describe("terrain rings", () => {
+  it("has RINGS of them, outermost first, each coarser by the ring step", () => {
+    const rings = meshLevels(cam({ distance: 20 }));
+    expect(rings).toHaveLength(RINGS);
+    for (let i = 1; i < rings.length; i++) expect(rings[i - 1].spacing).toBe(rings[i].spacing * RING_STEP);
+  });
+
+  it("each ring covers the one inside it with room to spare, so no gap opens at the seam", () => {
+    for (const distance of [5, 40, 400, 3000]) {
+      const rings = meshLevels(cam({ distance, x: 1234.5, z: 987.6 }));
+      for (let i = 0; i < rings.length - 1; i++) {
+        const outer = rings[i], inner = rings[i + 1];
+        const size = (r: typeof outer) => r.quads * r.spacing;
+        expect(outer.x0).toBeLessThan(inner.x0);
+        expect(outer.z0).toBeLessThan(inner.z0);
+        expect(outer.x0 + size(outer)).toBeGreaterThan(inner.x0 + size(inner));
+        expect(outer.z0 + size(outer)).toBeGreaterThan(inner.z0 + size(inner));
+      }
+    }
+  });
+
+  it("reaches the horizon even from close to the ground", () => {
+    const outer = meshLevels(cam({ distance: 8 }))[0];
+    expect(outer.quads * outer.spacing).toBeGreaterThan(3000); // the whole course and then some
   });
 });

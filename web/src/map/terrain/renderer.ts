@@ -27,8 +27,8 @@ export type TerrainGrid = {
 /** How to draw the 3D view. */
 export type View3d = {
   viewProj: Mat4;
-  /** The mesh: a square of `quads` squares of `spacing` metres, with its corner at (x0, z0). */
-  mesh: { spacing: number; quads: number; x0: number; z0: number };
+  /** The mesh as rings, outermost first: each a square of `quads` squares of `spacing` metres with its corner at (x0, z0). */
+  meshes: { spacing: number; quads: number; x0: number; z0: number }[];
   /** Vertical exaggeration of the geometry. */
   scale: number;
   /** Exaggeration of the relief shading (as the map's), and how strongly it shows. */
@@ -303,9 +303,6 @@ export class TerrainRenderer {
     gl.uniform3f(mesh.u.uSunDir, ...sunDirection());
     gl.uniform1f(mesh.u.uRelief, v.relief);
     gl.uniform1f(mesh.u.uShading, v.shading);
-    gl.uniform2f(mesh.u.uWindow, v.mesh.x0, v.mesh.z0);
-    gl.uniform1f(mesh.u.uSpacing, v.mesh.spacing);
-    gl.uniform1i(mesh.u.uQuads, v.mesh.quads);
     gl.uniform1f(mesh.u.uScale, v.scale);
     gl.uniform1f(mesh.u.uContour, v.contour);
     gl.uniform1f(mesh.u.uSlope, v.slope ? 1 : 0);
@@ -318,7 +315,19 @@ export class TerrainRenderer {
     gl.uniform1f(mesh.u.uTileMetres, 3);
     gl.uniform2fv(mesh.u.uStripe, this.stripes);
     gl.uniform1f(mesh.u.uGame, game ? 1 : 0);
-    gl.drawArrays(gl.TRIANGLES, 0, v.mesh.quads * v.mesh.quads * 6);
+    // outermost ring first; where rings overlap the finer one wins, so the coarser ones are pushed back a little in depth
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    v.meshes.forEach((m, i) => {
+      const finer = v.meshes[i + 1];
+      gl.polygonOffset(finer ? 2 : 0, finer ? 2 : 0);
+      gl.uniform2f(mesh.u.uWindow, m.x0, m.z0);
+      gl.uniform1f(mesh.u.uSpacing, m.spacing);
+      gl.uniform1i(mesh.u.uQuads, m.quads);
+      const inner = finer ? [finer.x0, finer.z0, finer.x0 + finer.quads * finer.spacing, finer.z0 + finer.quads * finer.spacing] : [0, 0, 0, 0];
+      gl.uniform4f(mesh.u.uInner, inner[0], inner[1], inner[2], inner[3]);
+      gl.drawArrays(gl.TRIANGLES, 0, m.quads * m.quads * 6);
+    });
+    gl.disable(gl.POLYGON_OFFSET_FILL);
 
     if (v.tufts || v.trees) {
       this.scenery.draw(
