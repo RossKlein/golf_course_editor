@@ -1,7 +1,8 @@
 import type { HeightGrid } from "../../decode/decode";
 import type { Mat4 } from "../../view3d/mat4";
 import type { Rect } from "../coords";
-import { context, currentContext, LazyTexture, type Gl, type Program } from "./gl";
+import type { Program } from "../../gfx/shader/program";
+import { context, currentContext, LazyTexture, type Gl } from "./gl";
 import { packHeights } from "./reference";
 import { Sculptor } from "./sculptor";
 import { SPECKLE_SIZE, speckleTexels } from "../../view3d/scenery";

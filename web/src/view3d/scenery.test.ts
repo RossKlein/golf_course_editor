@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TUFT_RANGE, TUFT_TILE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
+import { TUFT_TILE } from "../map/terrain/limits";
+import { TUFT_RANGE, tuftGrid, tuftTiles } from "../map/terrain/sceneryGpu";
 import { frustumOf } from "./frustum";
 import { lookAt, multiply, perspective } from "./mat4";
 import { chunkTrees, hash2, scatterWoods, speckleTexels, splitByKind, stripeAcross, stripeDirections, treeMesh, treesFromBin, TREE_KINDS, type ClassImage } from "./scenery";

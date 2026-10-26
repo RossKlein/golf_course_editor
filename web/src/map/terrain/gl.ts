@@ -1,6 +1,5 @@
-import { FRAGMENT, FRAGMENT_3D, VERTEX, VERTEX_3D } from "./shaders";
-
-export type Program = { program: WebGLProgram; u: Record<string, WebGLUniformLocation | null> };
+import { compileProgram, tryProgram, type Program } from "../../gfx/shader/program";
+import { SHADERS } from "./shaders";
 
 export type Gl = {
   canvas: HTMLCanvasElement;
@@ -15,41 +14,8 @@ export type Gl = {
   generation: number;
 };
 
-const FLAT_UNIFORMS = ["uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uMapOrigin", "uMapPerPixel", "uExaggeration", "uContour", "uSlope", "uSun"];
-const MESH_UNIFORMS = [
-  "uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uInner", "uSunDir", "uContour", "uSlope", "uRelief", "uShading", "uSpeckle", "uSpeckleTex",
-  "uAerial", "uAerialRect", "uUseAerial", "uFill", "uLines", "uDrapeRect", "uFillAlpha", "uLineAlpha",
-  "uClassMap", "uClassInfo", "uTile", "uTileAvg", "uTileMetres", "uStripe", "uGame",
-];
-
 let shared: Gl | null = null;
 let generation = 0;
-
-export function compileProgram(gl: WebGL2RenderingContext, vertex: string, fragment: string, uniforms: string[], name: string): Program {
-  const compile = (type: number, source: string) => {
-    const shader = gl.createShader(type)!;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(`${name} shader: ${gl.getShaderInfoLog(shader)}`);
-    return shader;
-  };
-  const p = gl.createProgram()!;
-  gl.attachShader(p, compile(gl.VERTEX_SHADER, vertex));
-  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragment));
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(`${name} shader: ${gl.getProgramInfoLog(p)}`);
-  return { program: p, u: Object.fromEntries(uniforms.map((n) => [n, gl.getUniformLocation(p, n)])) };
-}
-
-/** A program that is allowed to fail: the error goes to the console and the caller gets null. */
-export function tryProgram(make: () => Program): Program | null {
-  try {
-    return make();
-  } catch (e) {
-    console.error(e);
-    return null;
-  }
-}
 
 /** The one WebGL2 context all terrain views draw with, made on first use and again if the browser takes it away. */
 export function context(): Gl {
@@ -61,13 +27,31 @@ export function context(): Gl {
   shared = {
     canvas,
     gl,
-    flat: compileProgram(gl, VERTEX, FRAGMENT, FLAT_UNIFORMS, "terrain"),
-    mesh: tryProgram(() => compileProgram(gl, VERTEX_3D, FRAGMENT_3D, MESH_UNIFORMS, "terrain 3D")),
+    flat: compileProgram(gl, SHADERS.flat.vertex, SHADERS.flat.fragment, "terrain"),
+    mesh: tryProgram(() => compileProgram(gl, SHADERS.ground.vertex, SHADERS.ground.fragment, "terrain 3D")),
     anisotropy: { ext, max: ext ? (gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT) as number) || 1 : 1 },
     floatTargets: !!gl.getExtension("EXT_color_buffer_float"),
     generation: ++generation,
   };
   return shared;
+}
+
+/**
+ * Compile every shader program on the shared context and return the errors, none when they all build. Programs are normally
+ * built the first time a view needs them, so this is how a change to any shader is checked without visiting every view
+ * (the page offers it as checkShaders() in the console).
+ */
+export function checkShaders(): string[] {
+  const { gl } = context();
+  const errors: string[] = [];
+  for (const [name, source] of Object.entries(SHADERS)) {
+    try {
+      gl.deleteProgram(compileProgram(gl, source.vertex, source.fragment, name).program);
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : String(e));
+    }
+  }
+  return errors;
 }
 
 /** The context if there is one, without making it. */

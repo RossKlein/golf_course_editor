@@ -1,9 +1,10 @@
 import type { HeightGrid } from "../../decode/decode";
 import type { BrushKind } from "../../heights/brush";
 import { readTile, tileRect, tilesInBox, writeTile } from "../../heights/tiles";
-import { compileProgram, context, currentContext, LazyTexture, type Gl, type Program } from "./gl";
+import { compileProgram, type Program } from "../../gfx/shader/program";
+import { context, currentContext, LazyTexture, type Gl } from "./gl";
 import type { TerrainGrid } from "./renderer";
-import { VERTEX } from "./shaders";
+import { SHADERS } from "./shaders";
 
 /** The largest square a single stamp can cover, in samples. */
 const SCRATCH = 512;
@@ -14,68 +15,6 @@ export type Stamp = { kind: BrushKind; x: number; z: number; radius: number; har
 
 /** What a stroke changed, tile by tile: for undo, redo and saving. */
 export type TileChange = { keys: number[]; before: Float32Array[]; after: Float32Array[] };
-
-// One pass of a brush over a box of samples. It reads the baked heights and the current offsets and writes the new
-// offsets; heights.ts (brush.ts stampSample) states the same formulas in code the tests can run.
-const BRUSH_FRAGMENT = `#version 300 es
-precision highp float;
-precision highp int;
-precision highp sampler2D;
-
-uniform sampler2D uHeight;   // baked heights: r = metres, g = 1 where there is data
-uniform sampler2D uDelta;    // offsets so far, in r
-uniform ivec2 uGrid;
-uniform ivec2 uBox;          // the sample this pass's first pixel is
-uniform vec2 uCentre;        // brush centre, in samples
-uniform float uRadius;       // in samples
-uniform float uHardness;
-uniform float uAmount;       // metres, for raise and lower
-uniform float uPull;         // 0..1, for smooth, flatten and restore
-uniform float uLevel;        // metres, for flatten
-uniform int uKind;           // 0 raise, 1 lower, 2 smooth, 3 flatten, 4 restore
-uniform int uStep;           // samples between the taps of the smoothing kernel
-
-out vec4 outColor;
-
-float heightAt(ivec2 c) {
-  c = clamp(c, ivec2(0), uGrid - 1);
-  return texelFetch(uHeight, c, 0).r + texelFetch(uDelta, c, 0).r;
-}
-
-void main() {
-  ivec2 c = uBox + ivec2(gl_FragCoord.xy);
-  float offset = texelFetch(uDelta, c, 0).r;
-  vec2 base = texelFetch(uHeight, c, 0).rg;
-  float d = distance(vec2(c), uCentre);
-  float core = uRadius * uHardness;
-  float w = d >= uRadius ? 0.0 : (d <= core ? 1.0 : 1.0 - smoothstep(core, uRadius, d));
-  if (w > 0.0 && base.y > 0.5) {
-    float height = base.x + offset;
-    if (uKind == 0) {
-      offset += uAmount * w;
-    } else if (uKind == 1) {
-      offset -= uAmount * w;
-    } else if (uKind == 2) {
-      // a 5 x 5 binomial blur of the current heights
-      float sum = 0.0;
-      for (int j = -2; j <= 2; j++) {
-        for (int i = -2; i <= 2; i++) {
-          float wi = (i == 0 ? 6.0 : (abs(i) == 1 ? 4.0 : 1.0)) * (j == 0 ? 6.0 : (abs(j) == 1 ? 4.0 : 1.0));
-          sum += wi * heightAt(c + ivec2(i, j) * uStep);
-        }
-      }
-      offset = height + (sum / 256.0 - height) * min(1.0, uPull * w) - base.x;
-    } else if (uKind == 3) {
-      offset = height + (uLevel - height) * min(1.0, uPull * w) - base.x;
-    } else {
-      offset *= 1.0 - min(1.0, uPull * w);
-    }
-    offset = clamp(offset, -32.0, 32.0);
-  }
-  outColor = vec4(offset, 0.0, 0.0, 1.0);
-}`;
-
-const UNIFORMS = ["uHeight", "uDelta", "uGrid", "uBox", "uCentre", "uRadius", "uHardness", "uAmount", "uPull", "uLevel", "uKind", "uStep"];
 
 /**
  * The sculpted terrain: an offset from the baked height at every sample, kept on the GPU where brushes change it and
@@ -171,7 +110,7 @@ export class Sculptor {
 
   private ensureProgram(g: Gl): Program {
     if (!this.program || this.program.generation !== g.generation) {
-      this.program = { generation: g.generation, p: compileProgram(g.gl, VERTEX, BRUSH_FRAGMENT, UNIFORMS, "brush") };
+      this.program = { generation: g.generation, p: compileProgram(g.gl, SHADERS.brush.vertex, SHADERS.brush.fragment, "brush") };
     }
     return this.program.p;
   }
