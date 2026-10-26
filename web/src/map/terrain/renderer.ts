@@ -326,6 +326,7 @@ export class TerrainRenderer {
     gl.uniform3f(mesh.u.uSunDir, ...sunDirection());
     gl.uniform1f(mesh.u.uRelief, v.relief);
     gl.uniform1f(mesh.u.uShading, v.shading);
+    gl.uniform3f(mesh.u.uSpeckle, v.target[0], v.target[1], v.tuftRange); // sand is speckled as far as the grass grows
     gl.uniform1f(mesh.u.uScale, v.scale);
     gl.uniform1f(mesh.u.uContour, v.contour);
     gl.uniform1f(mesh.u.uSlope, v.slope ? 1 : 0);

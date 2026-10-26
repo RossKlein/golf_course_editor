@@ -17,7 +17,7 @@ export type Gl = {
 
 const FLAT_UNIFORMS = ["uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uMapOrigin", "uMapPerPixel", "uExaggeration", "uContour", "uSlope", "uSun"];
 const MESH_UNIFORMS = [
-  "uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uInner", "uSunDir", "uContour", "uSlope", "uRelief", "uShading",
+  "uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uInner", "uSunDir", "uContour", "uSlope", "uRelief", "uShading", "uSpeckle",
   "uAerial", "uAerialRect", "uUseAerial", "uFill", "uLines", "uDrapeRect", "uFillAlpha", "uLineAlpha",
   "uClassMap", "uClassInfo", "uTile", "uTileAvg", "uTileMetres", "uStripe", "uGame",
 ];

@@ -202,8 +202,9 @@ describe("grass tuft tiles", () => {
 });
 
 describe("grass tuft grid", () => {
-  it("the default is a tuft every half metre across 90 m", () => {
-    expect(tuftGrid(TUFT_RANGE, 1)).toEqual({ cell: 0.5, across: 180 });
+  it("the default is a tuft every half metre across twice the default range", () => {
+    expect(TUFT_RANGE).toBe(200);
+    expect(tuftGrid(TUFT_RANGE, 1)).toEqual({ cell: 0.5, across: 800 });
   });
 
   it("twice the density is twice the tufts to the square metre", () => {

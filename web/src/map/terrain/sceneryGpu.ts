@@ -135,7 +135,7 @@ out vec4 outColor;
 void main() { outColor = vec4(vColor, 1.0); }`;
 
 /** The tufts' defaults: how far from the camera's target they grow, and the spacing that gives "density 1". */
-export const TUFT_RANGE = 45;
+export const TUFT_RANGE = 200;
 const TUFT_CELL = 0.5;
 /** Most tufts across the patch, a bound on the work however far or dense the sliders go (only the tiles in view are drawn). */
 const MAX_ACROSS = 3072;

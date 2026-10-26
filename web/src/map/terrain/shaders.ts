@@ -180,6 +180,7 @@ uniform float uContour;
 uniform float uSlope;
 uniform float uRelief;      // exaggeration of the relief shading, as for the map
 uniform float uShading;     // how strongly the shading shows, 1 for the map's look
+uniform vec3 uSpeckle;      // where sand is speckled: the ground point looked at (x, z) and how far out, the same as the grass
 
 uniform sampler2D uAerial;
 uniform vec4 uAerialRect;   // course metres: x, z of the image's top-left corner, width, height
@@ -292,11 +293,11 @@ void main() {
     albedo = gameGround(p, sand);
     // a bunker's dip would otherwise darken it as a hollow; sand keeps its colour, with a trace of shape at the lip
     light = mix(light, 1.0 + (light - 1.0) * 0.12, sand);
-    // salt and pepper: grains 3 cm across, some paler, some darker. They fade out once a pixel covers more than a grain,
-    // so distant sand is smooth rather than shimmering.
-    float grainSize = 0.03;
+    // salt and pepper: grains 3 cm across, some paler, some darker. Where a pixel covers more than a grain the grains grow
+    // in doubling steps to stay a pixel or so, so far sand is still speckled. They fade out towards the grass range.
     float footprint = max(fwidth(p.x), fwidth(p.y));
-    float visible = 1.0 - smoothstep(grainSize * 0.5, grainSize * 1.5, footprint);
+    float grainSize = 0.03 * exp2(max(0.0, ceil(log2(max(footprint, 1e-4) / 0.03))));
+    float visible = 1.0 - smoothstep(0.7 * uSpeckle.z, uSpeckle.z, distance(p, uSpeckle.xy));
     float n = grainHash(floor(p / grainSize));
     float speck = n < 0.14 ? -0.2 : (n > 0.86 ? 0.14 : (n - 0.5) * 0.12);
     albedo *= 1.0 + sand * visible * speck;
