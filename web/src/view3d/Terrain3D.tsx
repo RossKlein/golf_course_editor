@@ -30,7 +30,7 @@ type Props = {
   hasDesign: boolean;
 };
 
-type Options = { aerial: boolean; surfaces: number; outlines: boolean; scale: number; shading: number };
+type Options = { aerial: boolean; game: boolean; tufts: boolean; trees: boolean; surfaces: number; outlines: boolean; scale: number; shading: number };
 
 /**
  * The terrain as a 3D landscape you can fly around: the same height data and the same sun as the map, draped with the
@@ -38,7 +38,7 @@ type Options = { aerial: boolean; surfaces: number; outlines: boolean; scale: nu
  */
 export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [opts, setOpts] = useState<Options>({ aerial: true, surfaces: 0.5, outlines: true, scale: 1, shading: 1 });
+  const [opts, setOpts] = useState<Options>(() => ({ aerial: true, game: terrain.renderer.hasSurfaces, tufts: true, trees: true, surfaces: terrain.renderer.hasSurfaces ? 0 : 0.5, outlines: true, scale: 1, shading: 1 }));
   const latest = useRef({ terrain, extent, active, opts, contour, slope, relief, hasDesign });
   latest.current = { terrain, extent, active, opts, contour, slope, relief, hasDesign };
   const frame = useRef(0);
@@ -57,7 +57,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     const cam = cameraRef.current;
     const ground = (x: number, z: number) => (terrain.ground(x, z) ?? 0) * opts.scale;
-    const { viewProj } = matricesOf(cam, w / h, ground);
+    const { viewProj, eye } = matricesOf(cam, w / h, ground);
     const mesh = meshWindow(cam);
 
     // the design is painted for a square of ground sized to the camera, so it stays sharp close up; repainted when that
@@ -77,7 +77,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     }
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, mesh, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial,
+        viewProj, mesh, scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts, trees: opts.trees, eye, target: [cam.x, cam.z],
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       const ctx = canvas.getContext("2d")!;
@@ -176,9 +176,22 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     <div className="view3d" hidden={!active}>
       <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()} />
       <div className="v3-panel">
-        {terrain.aerial && (
+        {terrain.renderer.hasSurfaces && (
+          <label className="check" title="Draw the ground as the game will: mown stripes on the fairways, short greens, grain from the game's grass texture">
+            <input type="checkbox" checked={opts.game} onChange={(e) => set({ game: e.target.checked })} /> Game look
+          </label>
+        )}
+        {terrain.aerial && !opts.game && (
           <label className="check"><input type="checkbox" checked={opts.aerial} onChange={(e) => set({ aerial: e.target.checked })} /> Aerial</label>
         )}
+        {terrain.renderer.hasSurfaces && (
+          <label className="check" title="Standing grass in the rough near the camera">
+            <input type="checkbox" checked={opts.tufts} onChange={(e) => set({ tufts: e.target.checked })} /> Rough grass
+          </label>
+        )}
+        <label className="check" title={terrain.treeInfo?.preview ? "This bundle has no trees yet, so these are scattered over the woods surface to show how it will look" : "The bundle's trees"}>
+          <input type="checkbox" checked={opts.trees} onChange={(e) => set({ trees: e.target.checked })} /> Trees{terrain.treeInfo?.preview ? " (preview)" : ""}
+        </label>
         {hasDesign && (
           <>
             <label>

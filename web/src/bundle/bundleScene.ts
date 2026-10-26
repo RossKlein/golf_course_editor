@@ -9,6 +9,7 @@ import { Fill, Stroke, Style, Text } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
 import { api, fileUrl, heightBaseUrl, tifRgbUrl, type Course, type Report } from "../api/api";
 import { HeightSession } from "../heights/session";
+import { scatterWoods, splitByKind, stripeDirections, treesFromBin } from "../view3d/scenery";
 import { buildHillshade, decodeHeights, loadBytes, loadImage, loadPixels, memoLast, pixelCanvas, sampleGrid } from "../decode/decode";
 import { toMap } from "../map/coords";
 import { CLASS_COLORS, css, holeColor } from "./colours";
@@ -69,6 +70,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
   const res = course.height.res;
   let view = { exaggeration: 3, contour: 0, slope: false };
   let terrainSource: TerrainSource | undefined;
+  let setScenery = () => {}; // gives the 3D view the class map, stripes and trees; again after each build
   if (terrainSupported(grid)) {
     // shaded, contoured relief drawn by the GPU for what is on screen; samples sit on grid points
     const renderer = new TerrainRenderer({ grid: baseGrid, origin: { x: 0, z: 0 }, resX: res, resZ: res });
@@ -82,6 +84,17 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     }
     const terrain = terrainLayer({ renderer, style: () => view, multiply: !!aerial });
     redraw = terrain.redraw;
+    // the game's look needs the grass texture, the surfaces and the trees
+    loadImage("/game/grass.png").then((img) => renderer.setGrassTile(img)).catch(() => renderer.setGrassTile(null));
+    terrainSource.treeInfo = { preview: false };
+    setScenery = () => {
+      renderer.setSurfaces(px.class, course.class.res, stripeDirections(course.holes.map((h) => h.route as [number, number][])));
+      const real = treesFromBin(treeBytes);
+      const trees = real.length ? real : scatterWoods(px.class, course.class.res);
+      terrainSource!.treeInfo!.preview = !real.length;
+      renderer.setTrees(splitByKind(trees));
+    };
+    setScenery();
     terrain.layer.setOpacity(aerial ? 0.55 : 1);
     layers.push({ id: "hillshade", label: "Hillshade", visible: true, opacity: aerial ? 0.55 : 1, adjustable: true, olLayer: terrain.layer, dispose: terrain.dispose,
       onParams: (p) => {
@@ -234,6 +247,7 @@ export async function loadBundleScene(path: string): Promise<{ scene: Scene; dat
     data.course = nextCourse;
     data.report = nextReport;
     px.class = nextClass;
+    setScenery();
     px.bounds = nextBounds;
     classImg = classCanvas();
     ownerImg = ownerCanvas();

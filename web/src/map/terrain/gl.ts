@@ -6,7 +6,8 @@ export type Gl = {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   flat: Program;
-  mesh: Program;
+  /** The 3D programs, which can fail to build without taking the flat map with them. */
+  mesh: Program | null;
   anisotropy: { ext: { TEXTURE_MAX_ANISOTROPY_EXT: number } | null; max: number };
   /** Rendering to float textures, which sculpting needs. */
   floatTargets: boolean;
@@ -18,6 +19,7 @@ const FLAT_UNIFORMS = ["uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uR
 const MESH_UNIFORMS = [
   "uHeight", "uDelta", "uHasDelta", "uGrid", "uOrigin", "uRes", "uViewProj", "uWindow", "uSpacing", "uQuads", "uScale", "uSunDir", "uContour", "uSlope", "uRelief", "uShading",
   "uAerial", "uAerialRect", "uUseAerial", "uFill", "uLines", "uDrapeRect", "uFillAlpha", "uLineAlpha",
+  "uClassMap", "uClassInfo", "uTile", "uTileAvg", "uTileMetres", "uStripe", "uGame",
 ];
 
 let shared: Gl | null = null;
@@ -39,6 +41,16 @@ export function compileProgram(gl: WebGL2RenderingContext, vertex: string, fragm
   return { program: p, u: Object.fromEntries(uniforms.map((n) => [n, gl.getUniformLocation(p, n)])) };
 }
 
+/** A program that is allowed to fail: the error goes to the console and the caller gets null. */
+export function tryProgram(make: () => Program): Program | null {
+  try {
+    return make();
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
 /** The one WebGL2 context all terrain views draw with, made on first use and again if the browser takes it away. */
 export function context(): Gl {
   if (shared && !shared.gl.isContextLost()) return shared;
@@ -50,7 +62,7 @@ export function context(): Gl {
     canvas,
     gl,
     flat: compileProgram(gl, VERTEX, FRAGMENT, FLAT_UNIFORMS, "terrain"),
-    mesh: compileProgram(gl, VERTEX_3D, FRAGMENT_3D, MESH_UNIFORMS, "terrain 3D"),
+    mesh: tryProgram(() => compileProgram(gl, VERTEX_3D, FRAGMENT_3D, MESH_UNIFORMS, "terrain 3D")),
     anisotropy: { ext, max: ext ? gl.getParameter(ext.TEXTURE_MAX_ANISOTROPY_EXT) : 1 },
     floatTargets: !!gl.getExtension("EXT_color_buffer_float"),
     generation: ++generation,

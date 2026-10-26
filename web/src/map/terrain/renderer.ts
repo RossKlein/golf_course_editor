@@ -1,9 +1,10 @@
 import type { HeightGrid } from "../../decode/decode";
 import type { Mat4 } from "../../view3d/mat4";
 import type { Rect } from "../coords";
-import { context, LazyTexture, type Gl, type Program } from "./gl";
+import { context, currentContext, LazyTexture, type Gl, type Program } from "./gl";
 import { packHeights } from "./reference";
 import { Sculptor } from "./sculptor";
+import { SceneryGpu } from "./sceneryGpu";
 import { SUN, sunDirection } from "./sun";
 
 export type TerrainStyle = {
@@ -34,6 +35,13 @@ export type View3d = {
   relief: number;
   shading: number;
   aerial: boolean;
+  /** The game's look for the ground (needs `setSurfaces`), and the standing things drawn on it. */
+  game: boolean;
+  tufts: boolean;
+  trees: boolean;
+  /** The camera, for the things that face it, and the ground point it looks at. */
+  eye: [number, number, number];
+  target: [number, number];
   /** How strongly the design's surfaces and outlines show, 0 to 1. */
   fill: number;
   lines: number;
@@ -87,6 +95,13 @@ export class TerrainRenderer {
   private linesImage: Image | null = null;
   private drapeRect: Rect | null = null;
   private sculptor: Sculptor | null = null;
+  private readonly scenery = new SceneryGpu();
+  private readonly classTexture = new LazyTexture((g) => this.uploadClasses(g));
+  private readonly tileTexture = new LazyTexture((g) => this.uploadImage(g, this.tileImage, true, true));
+  private classes: { image: ImageData; res: number } | null = null;
+  private tileImage: Image | null = null;
+  private tileAverage: [number, number, number] = [1, 1, 1];
+  private stripes: Float32Array = new Float32Array(48);
 
   /** `data.grid` is the baked terrain, which the GPU adds the sculpting to. */
   constructor(private readonly data: TerrainGrid) {}
@@ -95,6 +110,47 @@ export class TerrainRenderer {
   enableSculpt(effective: HeightGrid): Sculptor {
     this.sculptor ??= new Sculptor(this.data, effective, (g, unit) => this.height.bind(g, unit));
     return this.sculptor;
+  }
+
+  /**
+   * The surfaces for the game's look: the class map (R = class, G = hole), the metres a cell covers, and the direction
+   * across the mowing stripes of each hole (see stripeDirections).
+   */
+  setSurfaces(image: ImageData | null, res: number, stripes: Float32Array) {
+    this.classes = image ? { image, res } : null;
+    this.stripes = stripes;
+    this.classTexture.invalidate();
+  }
+
+  /** The seamless grass the ground is textured with; its average colour is worked out here so tinting keeps the brightness. */
+  setGrassTile(image: Image | null) {
+    this.tileImage = image;
+    this.tileAverage = [1, 1, 1];
+    if (image) {
+      const c = document.createElement("canvas");
+      c.width = c.height = 16;
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(image, 0, 0, 16, 16);
+      const px = ctx.getImageData(0, 0, 16, 16).data;
+      const sum = [0, 0, 0];
+      for (let i = 0; i < px.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += px[i + k];
+      this.tileAverage = sum.map((s) => s / 255 / (px.length / 4)) as [number, number, number];
+    }
+    this.tileTexture.invalidate();
+  }
+
+  /** Trees to draw, packed four to a tree (x, z, height, kind) and grouped by model kind. */
+  setTrees(groups: Float32Array[]) {
+    this.scenery.setTrees(groups);
+  }
+
+  get treeCount() {
+    return this.scenery.treeCount;
+  }
+
+  /** Whether the game's look has what it needs. */
+  get hasSurfaces() {
+    return !!this.classes;
   }
 
   /** The imagery draped over the 3D view, covering `rect` (course metres, top-left corner and size). */
@@ -116,7 +172,27 @@ export class TerrainRenderer {
     this.linesTexture.invalidate();
   }
 
-  private uploadImage(g: Gl, image: Image | null, mipmaps: boolean) {
+  private uploadClasses(g: Gl) {
+    const { gl } = g;
+    const image = this.classes?.image;
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    if (image) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+    for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  /** Bind the class map (unit 5) for a program that has uClassMap and uClassInfo. */
+  private bindClasses(g: Gl, p: Program) {
+    const { gl } = g;
+    this.classTexture.bind(g, 5);
+    gl.uniform1i(p.u.uClassMap, 5);
+    const c = this.classes;
+    gl.uniform3f(p.u.uClassInfo, c?.res ?? 1, c?.image.width ?? 1, c?.image.height ?? 1);
+  }
+
+  private uploadImage(g: Gl, image: Image | null, mipmaps: boolean, repeat = false) {
     const { gl } = g;
     const limit = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
     let source: Image | null = image;
@@ -132,8 +208,8 @@ export class TerrainRenderer {
     if (source) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
     else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     if (mipmaps && source) {
       gl.generateMipmap(gl.TEXTURE_2D);
@@ -196,7 +272,9 @@ export class TerrainRenderer {
   /** Draw the terrain as a 3D mesh into the shared canvas, `size` pixels across. Use the canvas before the next render. */
   render3d(size: number[], v: View3d): HTMLCanvasElement {
     const g = context();
-    const { gl, canvas, mesh } = g;
+    const { gl, canvas } = g;
+    const mesh = g.mesh;
+    if (!mesh) throw new Error("the 3D terrain program did not build; the console has the shader error");
     this.resize(g, size);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
@@ -230,13 +308,32 @@ export class TerrainRenderer {
     gl.uniform1f(mesh.u.uScale, v.scale);
     gl.uniform1f(mesh.u.uContour, v.contour);
     gl.uniform1f(mesh.u.uSlope, v.slope ? 1 : 0);
+
+    const game = v.game && this.classes;
+    this.bindClasses(g, mesh);
+    this.tileTexture.bind(g, 6);
+    gl.uniform1i(mesh.u.uTile, 6);
+    gl.uniform3f(mesh.u.uTileAvg, ...this.tileAverage);
+    gl.uniform1f(mesh.u.uTileMetres, 3);
+    gl.uniform2fv(mesh.u.uStripe, this.stripes);
+    gl.uniform1f(mesh.u.uGame, game ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, v.mesh.quads * v.mesh.quads * 6);
+
+    if (v.tufts || v.trees) {
+      this.scenery.draw(
+        g,
+        { viewProj: v.viewProj, eye: v.eye, target: v.target, sunDir: sunDirection(), scale: v.scale, tufts: v.tufts && !!this.classes, trees: v.trees },
+        (p) => this.bindHeight(g, p),
+        (p) => this.bindClasses(g, p),
+      );
+    }
     return canvas;
   }
 
   /** Free the textures. The renderer still works afterwards; it uploads again on the next render. */
   dispose() {
-    for (const t of [this.height, this.noOffsets, this.aerialTexture, this.fillTexture, this.linesTexture]) t.free();
+    for (const t of [this.height, this.noOffsets, this.aerialTexture, this.fillTexture, this.linesTexture, this.classTexture, this.tileTexture]) t.free();
+    this.scenery.free(currentContext());
     this.sculptor?.free();
   }
 }

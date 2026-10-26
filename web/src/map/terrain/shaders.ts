@@ -5,14 +5,14 @@
 //  - a 3D mesh whose vertices are lifted by the same lookup, textured with the aerial and the design.
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
-const HEAD = `#version 300 es
+export const HEAD = `#version 300 es
 precision highp float;
 precision highp int;
 precision highp sampler2D;
 `;
 
 /** The height grid and its bilinear lookup. */
-const HEIGHT = `
+export const HEIGHT = `
 uniform sampler2D uHeight;   // RG32F: r = baked height in metres, g = 1 where there is data
 uniform sampler2D uDelta;    // RGBA32F: r = sculpted offset from the baked height, in metres
 uniform float uHasDelta;     // 1 when uDelta holds sculpting
@@ -179,6 +179,15 @@ uniform sampler2D uAerial;
 uniform vec4 uAerialRect;   // course metres: x, z of the image's top-left corner, width, height
 uniform float uUseAerial;
 
+// the game's look: the surface under each point, from the class map, in the game's flat bright greens
+uniform sampler2D uClassMap;  // nearest: r = surface class, g = owning hole
+uniform vec3 uClassInfo;      // metres per cell, columns, rows
+uniform sampler2D uTile;      // seamless grass, tiled over everything
+uniform vec3 uTileAvg;        // its average colour, so tinting does not change the brightness
+uniform float uTileMetres;    // ground one tile covers
+uniform vec2 uStripe[24];     // per hole: unit direction across its mowing stripes
+uniform float uGame;          // 1 for the game's look
+
 // what the design draws over the ground; premultiplied, covering one square of the course
 uniform sampler2D uFill;
 uniform sampler2D uLines;
@@ -190,6 +199,46 @@ in vec2 vXZ;
 out vec4 outColor;
 
 bool inside(vec2 uv) { return uv.x >= 0.0 && uv.y >= 0.0 && uv.x <= 1.0 && uv.y <= 1.0; }
+
+vec4 classCell(ivec2 c) {
+  c = clamp(c, ivec2(0), ivec2(int(uClassInfo.y), int(uClassInfo.z)) - 1);
+  return texelFetch(uClassMap, c, 0) * 255.0;
+}
+
+// one surface's colour at a point: mown surfaces are striped across the line of play, every surface has grass grain
+vec3 surfaceColour(vec4 cell, vec2 p, vec3 grain) {
+  int cls = int(cell.r + 0.5);
+  int hole = clamp(int(cell.g + 0.5) - 1, 0, 23);
+  vec3 a = vec3(0.37, 0.58, 0.20), b = a; // rough
+  float stripe = 0.0, amount = 1.0;
+  if (cls == 1) { a = vec3(0.55, 0.80, 0.28); b = vec3(0.70, 0.90, 0.40); stripe = 2.4; amount = 0.55; }
+  else if (cls == 2) { a = vec3(0.50, 0.86, 0.30); b = vec3(0.66, 0.95, 0.44); stripe = 1.2; amount = 0.3; }
+  else if (cls == 3) { a = vec3(0.52, 0.82, 0.30); b = vec3(0.60, 0.88, 0.36); stripe = 0.9; amount = 0.35; }
+  else if (cls == 4) { a = vec3(0.58, 0.84, 0.32); b = vec3(0.70, 0.92, 0.42); stripe = 0.8; amount = 0.35; }
+  else if (cls == 5) { a = vec3(0.93, 0.86, 0.62); b = a; amount = 0.5; }
+  else if (cls == 6) { a = vec3(0.27, 0.60, 0.86); b = a; amount = 0.15; }
+  else if (cls == 7) { a = vec3(0.72, 0.66, 0.52); b = a; amount = 0.4; }
+  else if (cls == 8) { a = vec3(0.22, 0.40, 0.16); b = a; amount = 0.8; }
+  vec3 base = a;
+  if (stripe > 0.0 && cell.g > 0.5) base = mix(a, b, mod(floor(dot(p, uStripe[hole]) / stripe), 2.0));
+  else if (stripe > 0.0) base = mix(a, b, 0.5);
+  return base * mix(vec3(1.0), grain, amount);
+}
+
+// the ground in the game's look: the four nearest class cells blended, with the edge wobbled by the grass texture so
+// surfaces meet the way mown grass does rather than along a ruler
+vec3 gameGround(vec2 p) {
+  vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
+  vec2 wobble = (texture(uTile, p / (uTileMetres * 3.0) + 0.37).rg - 0.5) * 0.9 * uClassInfo.x;
+  vec2 q = (p + wobble) / uClassInfo.x - 0.5;
+  ivec2 c0 = ivec2(floor(q));
+  vec2 f = fract(q);
+  vec3 s00 = surfaceColour(classCell(c0), p, grain);
+  vec3 s10 = surfaceColour(classCell(c0 + ivec2(1, 0)), p, grain);
+  vec3 s01 = surfaceColour(classCell(c0 + ivec2(0, 1)), p, grain);
+  vec3 s11 = surfaceColour(classCell(c0 + ivec2(1, 1)), p, grain);
+  return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
+}
 
 void main() {
   vec2 p = vXZ;
@@ -208,7 +257,8 @@ void main() {
 
   vec3 albedo = vec3(0.42, 0.55, 0.30);
   vec2 aerialUv = (p - uAerialRect.xy) / uAerialRect.zw;
-  if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
+  if (uGame > 0.5) albedo = gameGround(p);
+  else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
 
   vec2 drapeUv = (p - uDrapeRect.xy) / uDrapeRect.zw;
   bool onDrape = inside(drapeUv);
