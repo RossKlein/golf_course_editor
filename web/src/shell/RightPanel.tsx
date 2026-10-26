@@ -38,6 +38,12 @@ export default function RightPanel({ scene, tif, bundle, build, editor, patch, l
         <Tabs.Content value="view">
           <LayerControls layers={scene.layers} state={layerState} onChange={onLayer} />
           {scene.layers.some((l) => l.id === "hillshade") && <ExaggerationSlider value={editor.exaggeration} onCommit={(exaggeration) => patch({ exaggeration })} />}
+          {bundle && (
+            <label title="How strongly the surfaces, bounds and other editor shapes are drawn over the map. Routes are not affected.">
+              Overlay opacity {Math.round(editor.overlayOpacity * 100)}%
+              <input type="range" min={0} max={1} step={0.05} value={editor.overlayOpacity} onChange={(e) => patch({ overlayOpacity: Number(e.target.value) })} />
+            </label>
+          )}
           <pre className="readout">
             {readout
               ? readout.map((line, i) => (

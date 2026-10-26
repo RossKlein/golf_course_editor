@@ -628,6 +628,11 @@ export interface components {
              */
             snap?: boolean;
             /**
+             * Overlayopacity
+             * @default 1
+             */
+            overlayOpacity?: number;
+            /**
              * Hideothers
              * @default false
              */
@@ -714,6 +719,11 @@ export interface components {
              * @default true
              */
             snap: boolean;
+            /**
+             * Overlayopacity
+             * @default 1
+             */
+            overlayOpacity: number;
             /**
              * Hideothers
              * @default false

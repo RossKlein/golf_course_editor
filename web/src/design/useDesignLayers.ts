@@ -35,21 +35,23 @@ export function useDesignLayers(map: Map | null, isBundle: boolean, editable: bo
     };
   }, [map, isBundle]);
 
-  const { editor: open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds } = editor;
+  const { editor: open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity } = editor;
   useEffect(() => {
     if (!layers) return;
     const course = editable && open === "course";
     const bounds = editable && open === "bounds";
     const reference = bounds && boundsFeatures !== "off";
     layers.regions.layer.setVisible(course || reference);
-    layers.regions.layer.setOpacity(bounds ? 0.55 : 1);
+    layers.regions.layer.setOpacity(overlayOpacity * (bounds ? 0.55 : 1)); // as reference under the bounds, surfaces are dimmer still
     layers.regions.showOnly(course ? (hideOthers ? hole : null) : boundsFeatures === "hole" ? hole : null);
     layers.routes.layer.setVisible(course || reference);
     layers.routes.setView({ hole, hideOthers: course ? hideOthers : !boundsAllHoles });
     layers.bounds.layer.setVisible(bounds);
+    layers.bounds.layer.setOpacity(overlayOpacity);
     layers.bounds.context.setVisible(bounds);
+    layers.bounds.context.setOpacity(overlayOpacity);
     layers.bounds.setView({ hole, showOthers: boundsAllBounds });
-  }, [layers, editable, open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds]);
+  }, [layers, editable, open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity]);
 
   return layers;
 }

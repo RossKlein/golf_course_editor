@@ -1458,6 +1458,13 @@
             "title": "Snap",
             "default": true
           },
+          "overlayOpacity": {
+            "type": "number",
+            "title": "Overlayopacity",
+            "default": 1.0,
+            "ge": 0,
+            "le": 1
+          },
           "hideOthers": {
             "type": "boolean",
             "title": "Hideothers",
@@ -1578,6 +1585,13 @@
             "title": "Snap",
             "default": true
           },
+          "overlayOpacity": {
+            "type": "number",
+            "title": "Overlayopacity",
+            "default": 1.0,
+            "ge": 0,
+            "le": 1
+          },
           "hideOthers": {
             "type": "boolean",
             "title": "Hideothers",
@@ -1637,6 +1651,7 @@
           "tool",
           "activeClass",
           "snap",
+          "overlayOpacity",
           "hideOthers",
           "boundsFeatures",
           "boundsAllHoles",

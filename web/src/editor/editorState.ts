@@ -13,6 +13,7 @@ export const defaultEditorState = (): EditorState => ({
   tool: "select",
   activeClass: 1,
   snap: true,
+  overlayOpacity: 1,
   hideOthers: false,
   boundsFeatures: "hole",
   boundsAllHoles: false,

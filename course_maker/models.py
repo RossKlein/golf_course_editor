@@ -206,6 +206,7 @@ class EditorState(Model):
     tool: Annotated[str, Field(max_length=32)] = "select"
     activeClass: Annotated[Int, Field(ge=0, le=max(spec.CLASSES.values()))] = spec.FAIRWAY  # the surface new regions get
     snap: bool = True
+    overlayOpacity: Annotated[Number, Field(ge=0, le=1)] = 1.0  # how strongly the editors' polygons are drawn over the map
     hideOthers: bool = False  # Course editor: show only the active hole's outlines and route
     boundsFeatures: Literal["off", "hole", "course"] = "hole"  # Out-of-bounds editor: which course features to show under the bounds
     boundsAllHoles: bool = False  # Out-of-bounds editor: also show the other holes' routes
