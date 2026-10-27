@@ -3,22 +3,18 @@ import { basis, reliefAt, reliefScale, reliefTaps, reliefWeights } from "./relie
 
 const grid = (f: (x: number, z: number) => number | null) => (i: number, j: number) => f(i, j);
 
-describe("the spline's derivatives", () => {
-  it("agree with differences of the spline itself", () => {
+describe("the spline's slope", () => {
+  it("agrees with differences of the spline itself", () => {
     for (const x of [-1.7, -1.2, -0.6, -0.1, 0.3, 0.9, 1.4, 1.9]) {
       const h = 1e-5;
-      const d1 = (basis(x + h).b - basis(x - h).b) / (2 * h);
-      const d2 = (basis(x + h).d1 - basis(x - h).d1) / (2 * h);
-      expect(basis(x).d1).toBeCloseTo(d1, 5);
-      expect(basis(x).d2).toBeCloseTo(d2, 5);
+      expect(basis(x).d1).toBeCloseTo((basis(x + h).b - basis(x - h).b) / (2 * h), 5);
     }
   });
 
-  it("is a smooth bump with a slope that is odd and a curvature that is even", () => {
+  it("is a smooth bump with a slope that is odd, and nothing past two", () => {
     expect(basis(0).b).toBeCloseTo(2 / 3, 12);
     expect(basis(0).d1).toBe(0);
     expect(basis(0.7).d1).toBeCloseTo(-basis(-0.7).d1, 12);
-    expect(basis(0.7).d2).toBeCloseTo(basis(-0.7).d2, 12);
     expect(basis(2).b).toBe(0);
   });
 });
@@ -34,12 +30,11 @@ describe("the width of the spline", () => {
     expect(reliefTaps(1.3) % 2).toBe(0);
   });
 
-  it("weights add up to what a plane and a bowl need, whatever the width", () => {
+  it("weights add up to what a level field and a plane need, whatever the width", () => {
     for (const scale of [1, 1.5, 2, 3]) {
       const w = reliefWeights(scale);
       expect(w.n0).toBeCloseTo(1, 1);
       expect(w.n1).toBeGreaterThan(0.7);
-      expect(w.n2).toBeGreaterThan(0.7);
     }
   });
 });
@@ -53,19 +48,15 @@ describe("the relief of the ground", () => {
       const r = reliefAt(plane, 40, 40, scale, resX, resZ)!;
       expect(r.gx).toBeCloseTo(0.3, 9);
       expect(r.gz).toBeCloseTo(-0.1, 9);
-      expect(r.curvature).toBeCloseTo(0, 9);
     }
   });
 
-  it("is the exact curvature of a bowl, and positive in a hollow", () => {
-    const bowl = grid((i, j) => 0.5 * 0.2 * (i * i + j * j)); // second derivative 0.2 along each axis
-    for (const scale of [1, 2, 3]) {
-      const r = reliefAt(bowl, 0, 0, scale, 1, 1)!;
-      expect(r.curvature).toBeCloseTo(0.4, 6);
-      expect(r.gx).toBeCloseTo(0, 9);
+  it("is level on level ground at any height", () => {
+    for (const scale of [1, 1.5, 3]) {
+      const r = reliefAt(grid(() => 87.3), 5, 5, scale, 1, 1)!;
+      expect(r.gx).toBeCloseTo(0, 12);
+      expect(r.gz).toBeCloseTo(0, 12);
     }
-    const crest = grid((i, j) => -0.5 * 0.2 * (i * i + j * j));
-    expect(reliefAt(crest, 0, 0, 1, 1, 1)!.curvature).toBeLessThan(0);
   });
 
   it("is smoother than differences of the grid, which is why it does not look faceted", () => {

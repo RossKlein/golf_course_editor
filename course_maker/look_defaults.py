@@ -21,7 +21,7 @@ def default_look() -> Look:
             Surface(color=(0.60, 0.92, 0.38), grain=0.3),  # green: plain, no stripes
             Surface(color=(0.52, 0.82, 0.30), grain=0.35),  # collar: plain, a darker green than the green
             Surface(color=(0.64, 0.94, 0.42), grain=0.35),  # tee: plain
-            Surface(color=(0.965, 0.93, 0.81), grain=0.4, shade=0.12, speckleDark=0.1, specklePale=0.07),  # bunker
+            Surface(color=(0.965, 0.93, 0.81), grain=0.4, speckleDark=0.1, specklePale=0.07),  # bunker
             Surface(color=(0.27, 0.60, 0.86), grain=0.15),  # water
             Surface(color=(0.72, 0.66, 0.52), grain=0.4),  # path
             Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7),  # woods: rough mottled with soil

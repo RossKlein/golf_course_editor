@@ -14,7 +14,7 @@ type Box = { x0: number; z0: number; x1: number; z1: number };
 type Target = { generation: number; texture: WebGLTexture; framebuffer: WebGLFramebuffer };
 
 /**
- * The ground's relief baked into a texture, one pixel for each height sample: slope to the east and south, and curvature,
+ * The ground's relief baked into a texture, one pixel for each height sample: the slope to the east and south,
  * of the heights smoothed with a cubic B-spline (see reliefMath.ts). Lighting reads it with ordinary filtering, so shading is
  * smooth, the same at every distance, and costs one lookup instead of a couple of dozen. It is baked when first needed, again
  * in full when the smoothing changes, and for just the samples a brush has changed (and those the spline reaches from them).
@@ -80,7 +80,7 @@ export class Relief {
     const { cols, rows } = this.data.grid;
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, cols, rows, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, cols, rows, 0, gl.RG, gl.HALF_FLOAT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

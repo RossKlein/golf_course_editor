@@ -47,7 +47,7 @@ export class HeightField {
   });
   private sculptor: Sculptor | null = null;
   private span: [number, number] | null = null;
-  /** The slope and curvature of the heights, smoothed, baked for lighting. */
+  /** The slope of the heights, smoothed, baked for lighting. */
   readonly relief: Relief;
   private readonly watchers = new Set<(box: { x0: number; z0: number; x1: number; z1: number } | null) => void>();
 

@@ -186,16 +186,15 @@ void main() {
   if (!onGrid(p)) discard;
   float ground = heightAt(p).x;
 
-  // Golf ground is gentle, so true lighting barely shows. Light it the way the map does, with the relief exaggerated,
-  // and add the cue the eye uses for subtle contours: hollows a little darker, crests a little lighter. Both multiply
-  // the aerial, whose own light is left alone on flat ground. The slope and curvature are the baked, spline-smoothed relief,
-  // so they are smooth and the same at every distance (mipmaps average them far away).
-  vec3 relief = reliefAt(p, max(0.35, 0.5 * uSpacing));
-  vec2 g = relief.xy;
+  // Golf ground is gentle, so true lighting barely shows. Light it the way the map does, with the slope exaggerated (uRelief).
+  // The slope is the baked, spline-smoothed relief, so it is smooth and the same at every distance (mipmaps average it far away).
+  // Only the sun has a direction, so the slope shades only the sun's share of the light (see applyLight): slope is 1 on the flat,
+  // up where the ground faces the sun and down where it faces away. There is no cue for hollows and crests: it came from the
+  // curvature of the heights, which is mostly noise, and it ringed every mound with dark at its foot and bright on its rim.
+  vec2 g = reliefAt(p, max(0.35, 0.5 * uSpacing));
   vec3 lit = normalize(vec3(-g.x * uRelief, 1.0, -g.y * uRelief));
   float facing = clamp(dot(lit, uSunDir), 0.0, 1.0) - uSunDir.y; // 0 on the flat, up facing the sun, down facing away
-  float hollow = clamp(-relief.z * 2.0 * uRelief, -0.3, 0.3);
-  float light = clamp(1.0 + uShading * (0.6 * facing + hollow), 0.3, 1.7);
+  float slope = clamp(1.0 + uShading * 0.6 * facing, 0.3, 1.7);
 
   vec3 albedo = uBare;
   vec2 aerialUv = (p - uAerialRect.xy) / uAerialRect.zw;
@@ -203,8 +202,8 @@ void main() {
     float shade;
     vec2 speckle;
     albedo = gameGround(p, shade, speckle);
-    // a bunker's dip would otherwise darken it as a hollow: a surface says how much of the relief shading it takes
-    light = 1.0 + (light - 1.0) * shade;
+    // a surface says how much of the slope shading it takes (every surface takes all of it unless its look says otherwise)
+    slope = 1.0 + (slope - 1.0) * shade;
     // salt and pepper, some grains paler and some darker, from a mipmapped texture so it changes smoothly with distance.
     // Averaging washes it out as grains shrink below a pixel, so its contrast is raised by the square root of the grains
     // a pixel covers, which puts back what the averaging took. It fades out towards the grass range.
@@ -223,7 +222,7 @@ void main() {
     albedo = albedo * (1.0 - fill.a * uFillAlpha) + fill.rgb * uFillAlpha;
   }
 
-  vec3 col = albedo * light;
+  vec3 col = albedo;
   // the sun's shadows: trees from the shadow map, and (at high quality) the ground's own from the height field
   vec3 world = vec3(p.x, ground * uScale, p.y);
   // the sun's shadows on the ground, terrain and trees, are baked (see terrain/lighting). Without the bake it looks them up in the
@@ -234,8 +233,8 @@ void main() {
     shadow = shadowMapAt(world, normalize(vec3(-g.x * uScale, 1.0, -g.y * uScale)), true);
     if (uShadowMode.x > 0.5) shadow = 1.0 - (1.0 - shadow) * (1.0 - terrainShadow(p, ground));
   }
-  col = applyLight(col, shadow, skyVisibilityAt(p));
-  if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(light, 0.0, 1.0)), 0.7);
+  col = applyLight(col, slope, shadow, skyVisibilityAt(p));
+  if (uSlope > 0.5) col = mix(col, slopeColour(length(g)) * (0.55 + 0.45 * clamp(slope, 0.0, 1.0)), 0.7);
   if (uContour > 0.0) col *= 1.0 - contourDarkening(ground, uContour);
 
   if (onDrape) {

@@ -14,7 +14,7 @@ class LookTests(unittest.TestCase):
         look = default_look()
         self.assertEqual(len(look.surfaces), len(spec.CLASSES))
         self.assertEqual(look.surfaces[spec.CLASSES["fairway"]].stripe, 2.4)
-        self.assertEqual(look.surfaces[spec.CLASSES["bunker"]].shade, 0.12)
+        self.assertEqual(look.surfaces[spec.CLASSES["bunker"]].shade, 1.0)  # a bunker is shaded by its slope like the rest of the ground
         self.assertEqual([s.tuft > 0 for s in look.surfaces], [True, False, False, False, False, False, False, False, True])
 
     def test_the_collar_is_plain_and_a_darker_green_than_the_green(self):

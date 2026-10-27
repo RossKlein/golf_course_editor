@@ -4,7 +4,7 @@ uniform float uHasDelta;     // 1 when uDelta holds sculpting
 uniform ivec2 uGrid;         // samples across, down
 uniform vec2 uOrigin;        // course metres of sample (0, 0)
 uniform vec2 uRes;           // metres between samples, x and z
-uniform sampler2D uReliefMap; // RGBA16F, one pixel a sample: slope east and south, and curvature, of the spline-smoothed heights (see relief/)
+uniform sampler2D uReliefMap; // RG16F, one pixel a sample: slope east and south of the spline-smoothed heights (see relief/)
 uniform float uReliefOn;      // 1 when uReliefMap holds the baked relief
 
 // height (x) and whether there is data (y) of one grid sample: the baked height plus whatever was sculpted
@@ -33,13 +33,6 @@ bool onGrid(vec2 p) {
   return f.x >= -0.5 && f.y >= -0.5 && f.x <= float(uGrid.x) - 0.5 && f.y <= float(uGrid.y) - 0.5 && heightAt(p).y > 0.5;
 }
 
-// how much the ground curves: positive in a hollow, negative on a crest, per metre; 0 beside missing data
-float curvatureAt(vec2 p, float s) {
-  vec2 c = heightAt(p), e = heightAt(p + vec2(s, 0.0)), w = heightAt(p - vec2(s, 0.0)), n = heightAt(p - vec2(0.0, s)), t = heightAt(p + vec2(0.0, s));
-  if (min(min(c.y, e.y), min(min(w.y, n.y), t.y)) < 0.5) return 0.0;
-  return (e.x + w.x + n.x + t.x - 4.0 * c.x) / (s * s);
-}
-
 // rise over run to the east and to the south, from central differences s metres either side
 vec2 gradientAt(vec2 p, float s) {
   float here = heightAt(p).x;
@@ -49,13 +42,13 @@ vec2 gradientAt(vec2 p, float s) {
               ((ez.y > 0.5 ? ez.x : here) - (wz.y > 0.5 ? wz.x : here)) / (2.0 * s));
 }
 
-// The ground's slope to the east and south (xy) and its curvature (z) at a point, for lighting. The baked relief is smooth
-// and the same at every distance, and its mipmaps average it as the ground gets far away. Without it (a GPU that cannot
-// bake it) they come from differences of heights s metres either side, which is faceted but works.
-vec3 reliefAt(vec2 p, float s) {
+// The ground's slope to the east and south at a point, for lighting. The baked relief is smooth and the same at every
+// distance, and its mipmaps average it as the ground gets far away. Without it (a GPU that cannot bake it) the slope comes
+// from differences of heights s metres either side, which is faceted but works.
+vec2 reliefAt(vec2 p, float s) {
   if (uReliefOn > 0.5) {
     vec2 f = (p - uOrigin) / uRes + 0.5; // a sample's centre is its pixel's centre
-    return texture(uReliefMap, f / vec2(uGrid)).xyz;
+    return texture(uReliefMap, f / vec2(uGrid)).xy;
   }
-  return vec3(gradientAt(p, s), curvatureAt(p, max(1.0, 1.5 * s)));
+  return gradientAt(p, s);
 }

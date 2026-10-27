@@ -76,11 +76,11 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           {counts.shadowSlices} {counts.shadowSlices === 1 ? "map" : "maps"}, {counts.shadowTrees.toLocaleString()} trees drawn
         </div>
       )}
-      <label title="How strongly the relief is shaded. Hollows go darker and crests lighter, which is what shows gentle contours.">
+      <label title="How strongly the slope shows in the sun's light: 0% is flat light, 100% is as lit. Only the sun's light is shaded by the slope; the sky's is not. Relief below makes the slope look steeper.">
         Shading {Math.round(opts.shading * 100)}%
         <input type="range" min={0} max={1.5} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
       </label>
-      <label title="Exaggerates the slopes for the shading only, as on the map. The ground itself keeps its shape.">
+      <label title="Exaggerates the slopes for the shading only, as on the map, so gentle ground shows. 1 is the true slope. The ground itself keeps its shape; Height stretches it.">
         Relief ×{relief}
         <input type="range" min={1} max={10} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
       </label>

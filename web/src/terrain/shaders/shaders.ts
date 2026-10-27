@@ -2,13 +2,13 @@
 // give a shader a number defined once in TypeScript.
 //
 // Heights are sampled exactly as the game does (bilinear between grid points), so the ground on screen is the ground the ball
-// will see. The lighting of the 3D ground reads a baked relief instead (slope and curvature of a spline over the heights, see
+// will see. The lighting of the 3D ground reads a baked relief instead (the slope of a spline over the heights, see
 // relief/), because the slope of a bilinear surface is faceted. The programs:
 //  - flat: a top-down shade for the map (one full-screen triangle, every pixel looks up the ground under it);
 //  - ground: a 3D mesh whose vertices are lifted by the same lookup, textured with the aerial and the design;
 //  - tufts and trees: the standing things drawn on the ground, placed entirely in the vertex shader;
 //  - brush: one pass of the sculpting brush over a box of heights;
-//  - relief: bakes the smoothed slope and curvature into a texture, all of it or the part a brush changed;
+//  - relief: bakes the smoothed slope into a texture, all of it or the part a brush changed;
 //  - sky and canopy: bake how much sky each height sample can see, from the ground and then from the trees (the lighting bakes are in lighting/).
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 

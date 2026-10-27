@@ -21,6 +21,8 @@ is lit as `A`):
 - `skyVisibility` (0 to 1) is baked: how much sky the terrain and the trees leave open. It darkens hollows, bunkers, banks and
   the ground under woods, and its bent normal (the average open direction) steers the sky's light.
 - The stylised slope shading (`Shading`, `Relief x`) stays: it multiplies the sun's share, because only the sun has a direction.
+  (Built first as a multiplier of the whole light, with a curvature cue for hollows; the cue was removed for being noise, and the
+  slope now shades the sun's share only. See frontend-architecture.md.)
 
 No new look fields are needed. The sun's softness already exists (`shadows.softness`).
 

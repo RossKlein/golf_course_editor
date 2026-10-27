@@ -455,11 +455,18 @@ the picture, so moving the cursor costs no 3D frame. While a stroke goes only th
 `TerrainSource.watch` makes the view redraw on every stamp, undo and redo.
 
 **Afterwards: baked relief.** *(visual)*
-The 3D ground is lit from a baked texture of the ground's slope and curvature instead of per-pixel differences of the heights.
+The 3D ground is lit from a baked texture of the ground's slope instead of per-pixel differences of the heights.
 The grid is 1 m with bilinear heights, whose slope is faceted; a cubic B-spline over the heights (`look.relief.smoothing`) and
 its derivative give a smooth slope, baked once by `terrain/relief/` (and again for just the box a brush changes). Geometry
 and what the ball touches stay on the raw heights. This is the first baked-lighting step; baking the sun's shadows and ambient
 occlusion the same way is the natural next one.
+
+**Afterwards: shading without curvature.** *(visual)*
+The ground's relief lighting once had a second cue for hollows and crests, from the curvature of the heights. Curvature is a second
+difference of 1 m lidar, so it was mostly noise: the ground came out mottled in squares of the grid, and every mound had a dark
+ring at its foot and a bright one on its rim. It is gone. The slope shades only the sun's share of the light (the sky has no
+direction), every surface takes it (the bunker's `shade` is back to 1), and real occlusion comes from the baked sky and canopy.
+`Relief` exaggerates slopes for the shading only (1 is true), and `Shading` is how much of that shows.
 
 **Afterwards: baked lighting.** *(visual)*
 The ground's sky occlusion and sun shadows (terrain and trees) are baked into textures by `terrain/lighting/` and looked up by
