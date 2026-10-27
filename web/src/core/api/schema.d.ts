@@ -1103,7 +1103,9 @@ export interface components {
             ];
             sun: components["schemas"]["Sun"];
             /** Surfaces */
-            surfaces: components["schemas"]["Surface"][];
+            surfaces: {
+                [key: string]: components["schemas"]["Surface"];
+            };
             grass: components["schemas"]["Grass"];
             tufts: components["schemas"]["Tufts"];
             trees: components["schemas"]["Trees"];

@@ -1,6 +1,8 @@
 """Run from the repo root:  python -m unittest discover -s course_maker/tests -t ."""
 import json
+import re
 import unittest
+from pathlib import Path
 
 from pydantic import ValidationError
 
@@ -12,14 +14,14 @@ from course_maker.models import Course, Look
 class LookTests(unittest.TestCase):
     def test_default_look_has_a_surface_for_every_class(self):
         look = default_look()
-        self.assertEqual(len(look.surfaces), len(spec.CLASSES))
-        self.assertEqual(look.surfaces[spec.CLASSES["fairway"]].stripe, 2.4)
-        self.assertEqual(look.surfaces[spec.CLASSES["bunker"]].shade, 1.0)  # a bunker is shaded by its slope like the rest of the ground
-        self.assertEqual([s.tuft > 0 for s in look.surfaces], [True, False, False, False, False, False, False, False, True])
+        self.assertEqual(list(look.surfaces), list(spec.CLASSES))
+        self.assertEqual(look.surfaces["fairway"].stripe, 2.4)
+        self.assertEqual(look.surfaces["bunker"].shade, 1.0)  # a bunker is shaded by its slope like the rest of the ground
+        self.assertEqual([s.tuft > 0 for s in look.surfaces.values()], [True, False, False, False, False, False, False, False, True])
 
     def test_the_collar_is_plain_and_a_darker_green_than_the_green(self):
         look = default_look()
-        collar, green = look.surfaces[spec.CLASSES["collar"]], look.surfaces[spec.CLASSES["green"]]
+        collar, green = look.surfaces["collar"], look.surfaces["green"]
         self.assertEqual(collar.stripe, 0)
         self.assertLess(sum(collar.color), sum(green.color))
 
@@ -59,7 +61,7 @@ class LookTests(unittest.TestCase):
 
     def test_the_default_surfaces_have_the_detail_they_should(self):
         look = default_look()
-        bump = {name: look.surfaces[i] for name, i in spec.CLASSES.items()}
+        bump = look.surfaces
         self.assertEqual(bump["water"].bump, 0)  # water is smooth
         self.assertEqual((bump["bunker"].bumpMap, bump["path"].bumpMap), ("grain", "grain"))  # sand and paths are grains
         self.assertEqual(bump["fairway"].bumpMap, "grass")
@@ -67,9 +69,29 @@ class LookTests(unittest.TestCase):
 
     def test_a_look_without_detail_has_none(self):
         data = default_look().model_dump()
-        for s in data["surfaces"]:
+        for s in data["surfaces"].values():
             del s["bump"], s["bumpMap"]
-        self.assertTrue(all(s.bump == 0 for s in Look.model_validate(data).surfaces))
+        self.assertTrue(all(s.bump == 0 for s in Look.model_validate(data).surfaces.values()))
+
+    def test_surfaces_are_named_for_the_classes_and_a_wrong_name_is_refused(self):
+        data = default_look().model_dump()
+        del data["surfaces"]["water"]
+        with self.assertRaisesRegex(ValueError, "missing: \\['water'\\]"):
+            Look.model_validate(data)
+        data = default_look().model_dump()
+        data["surfaces"]["lava"] = data["surfaces"].pop("water")
+        with self.assertRaisesRegex(ValueError, "not a class: \\['lava'\\]"):
+            Look.model_validate(data)
+
+    def test_surfaces_come_out_in_class_order_however_they_were_written(self):
+        data = default_look().model_dump()
+        data["surfaces"] = dict(reversed(list(data["surfaces"].items())))
+        self.assertEqual(list(Look.model_validate(data).surfaces), list(spec.CLASSES))
+
+    def test_the_web_app_knows_the_same_classes_in_the_same_order(self):
+        limits = (Path(__file__).resolve().parents[2] / "web" / "src" / "terrain" / "limits.ts").read_text(encoding="utf-8")
+        names = re.search(r"SURFACE_NAMES = \[(.*?)\]", limits, re.S).group(1)
+        self.assertEqual(re.findall(r'"(\w+)"', names), list(spec.CLASSES))
 
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
@@ -91,7 +113,7 @@ class LookTests(unittest.TestCase):
 
     def test_values_are_checked(self):
         data = default_look().model_dump()
-        data["surfaces"] = data["surfaces"][:3]
+        data["surfaces"] = dict(list(data["surfaces"].items())[:3])  # most of the classes have none
         with self.assertRaises(ValidationError):
             Look.model_validate(data)
         data = default_look().model_dump()

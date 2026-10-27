@@ -4,8 +4,12 @@
 /** Tufts are drawn in square tiles of this many across, so a tile that is out of view is never sent to the GPU. */
 export const TUFT_TILE = 32;
 
-/** Surface classes in the bundle format (spec.CLASSES): the look has one surface for each, and shaders size their table by it. */
-export const SURFACES = 9;
+/**
+ * Surface classes in the bundle format, in class order (spec.CLASSES; a test in the Python suite checks they agree): the look has
+ * one surface for each, by name, and the class map and the shaders' table go by the number.
+ */
+export const SURFACE_NAMES = ["rough", "fairway", "green", "collar", "tee", "bunker", "water", "path", "woods"] as const;
+export const SURFACES = SURFACE_NAMES.length;
 
 /** Texels across each shadow map (a GPU that allows less gets less), and how many slices of the view each quality uses. */
 export const SHADOW_MAP = 2048;

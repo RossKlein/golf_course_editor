@@ -2471,12 +2471,10 @@
             "$ref": "#/components/schemas/Sun"
           },
           "surfaces": {
-            "items": {
+            "additionalProperties": {
               "$ref": "#/components/schemas/Surface"
             },
-            "type": "array",
-            "maxItems": 9,
-            "minItems": 9,
+            "type": "object",
             "title": "Surfaces"
           },
           "grass": {

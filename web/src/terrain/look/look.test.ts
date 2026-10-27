@@ -32,7 +32,16 @@ describe("the look as the shader's table", () => {
     expect(packSurfaces(testLook.surfaces)).toBe(table);
   });
 
-  it("refuses a look with the wrong number of surfaces", () => {
-    expect(() => packSurfaces(testLook.surfaces.slice(0, 4))).toThrow(/4 surfaces/);
+  it("refuses a look with a surface missing or one that is not a class", () => {
+    const { water, ...without } = testLook.surfaces;
+    expect(water).toBeDefined();
+    expect(() => packSurfaces(without)).toThrow(/no surface named water/);
+    expect(() => packSurfaces({ ...testLook.surfaces, lava: water })).toThrow(/no class for: lava/);
+  });
+
+  it("puts each surface in the row of its class, whatever order they were written in", () => {
+    const entries = Object.entries(testLook.surfaces).reverse();
+    const shuffled = Object.fromEntries(entries);
+    expect(Array.from(packSurfaces(shuffled))).toEqual(Array.from(table));
   });
 });

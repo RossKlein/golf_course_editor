@@ -16,17 +16,17 @@ export const testSun = solarPosition(33.5, 23.44, -36);
 export const testLook: Look = {
   sky: [0.62, 0.76, 0.9],
   sun: { latitude: 33.5, declination: 23.44, hourAngle: -36 },
-  surfaces: [
-    surface({ color: ROUGH, grain: 1, tuft: 1 }), // rough
-    surface({ color: [0.5, 0.86, 0.3], color2: [0.66, 0.95, 0.44], stripe: 2.4, grain: 0.55, bump: 0.35 }), // fairway
-    surface({ color: [0.6, 0.92, 0.38], grain: 0.3 }), // green
-    surface({ color: [0.52, 0.82, 0.3], color2: [0.6, 0.88, 0.36], stripe: 0.9, grain: 0.35 }), // collar
-    surface({ color: [0.64, 0.94, 0.42], grain: 0.35 }), // tee
-    surface({ color: [0.965, 0.93, 0.81], grain: 0.4, speckleDark: 0.1, specklePale: 0.07, bump: 0.25, bumpMap: "grain" }), // bunker
-    surface({ color: [0.27, 0.6, 0.86], grain: 0.15 }), // water
-    surface({ color: [0.72, 0.66, 0.52], grain: 0.4 }), // path
-    surface({ color: ROUGH, earth: [0.42, 0.31, 0.2], mottle: 1.6, grain: 0.8, tuft: 0.7 }), // woods
-  ],
+  surfaces: {
+    rough: surface({ color: ROUGH, grain: 1, tuft: 1 }), // rough
+    fairway: surface({ color: [0.5, 0.86, 0.3], color2: [0.66, 0.95, 0.44], stripe: 2.4, grain: 0.55, bump: 0.35 }), // fairway
+    green: surface({ color: [0.6, 0.92, 0.38], grain: 0.3 }), // green
+    collar: surface({ color: [0.52, 0.82, 0.3], color2: [0.6, 0.88, 0.36], stripe: 0.9, grain: 0.35 }), // collar
+    tee: surface({ color: [0.64, 0.94, 0.42], grain: 0.35 }), // tee
+    bunker: surface({ color: [0.965, 0.93, 0.81], grain: 0.4, speckleDark: 0.1, specklePale: 0.07, bump: 0.25, bumpMap: "grain" }), // bunker
+    water: surface({ color: [0.27, 0.6, 0.86], grain: 0.15 }), // water
+    path: surface({ color: [0.72, 0.66, 0.52], grain: 0.4 }), // path
+    woods: surface({ color: ROUGH, earth: [0.42, 0.31, 0.2], mottle: 1.6, grain: 0.8, tuft: 0.7 }), // woods
+  },
   relief: { smoothing: 2 },
   shadows: { strength: 0.8, tint: [0.5, 0.58, 0.78], softness: 0.6, distance: 200 },
   grass: { tile: "grass.png", tileMetres: 3, wobble: 0, speckleGrain: 0.03, smoothing: 2 },

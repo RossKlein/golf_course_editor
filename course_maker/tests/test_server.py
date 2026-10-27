@@ -120,10 +120,10 @@ class ServerTests(unittest.TestCase):
         # an edit to the look in course.json is kept when the bundle is built from the design
         path = self.root / "bundles/augusta/course.json"
         raw = json.loads(path.read_text(encoding="utf-8"))
-        raw["look"]["surfaces"][1]["stripe"] = 3.0
+        raw["look"]["surfaces"]["fairway"]["stripe"] = 3.0
         path.write_text(json.dumps(raw), encoding="utf-8")
         self.assertEqual(self.client.post("/api/bundle/build", params=q).status_code, 200)
-        self.assertEqual(self.client.get("/api/bundle", params=q).json()["look"]["surfaces"][1]["stripe"], 3.0)
+        self.assertEqual(self.client.get("/api/bundle", params=q).json()["look"]["surfaces"]["fairway"]["stripe"], 3.0)
 
     def test_bundle_aerial_is_placed_in_course_coordinates(self):
         self.bake()

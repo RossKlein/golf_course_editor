@@ -1,24 +1,27 @@
 import type { Look, Surface } from "../../core/api/api";
 import type { Program } from "../../gfx/shader/program";
-import { SURFACES } from "../limits";
+import { SURFACE_NAMES, SURFACES } from "../limits";
 
 // The course's look reaches the shaders as uniforms, so no colour or size is written in a shader. Surfaces are a table, one
 // row of five vec4s each (the shader's accessors are in shaders/look.glsl); everything else is a few named uniforms.
 
 export const FLOATS_PER_SURFACE = 20;
 
-const packed = new WeakMap<readonly Surface[], Float32Array>();
+const packed = new WeakMap<object, Float32Array>();
 
 /**
  * The surfaces as the shader's table. Per surface, five vec4s: (color, stripe), (color2, grain), (earth, mottle),
  * (shade, speckleDark, specklePale, tuft) and (bump, which map: 0 the grass tile, 1 grain). A colour a surface does not have is its own colour, so it is never missing.
  */
-export function packSurfaces(surfaces: readonly Surface[]): Float32Array {
+export function packSurfaces(surfaces: Readonly<Record<string, Surface>>): Float32Array {
   const known = packed.get(surfaces);
   if (known) return known;
-  if (surfaces.length !== SURFACES) throw new Error(`the look has ${surfaces.length} surfaces but the renderer is built for ${SURFACES}`);
+  const unknown = Object.keys(surfaces).filter((n) => !(SURFACE_NAMES as readonly string[]).includes(n));
+  if (unknown.length) throw new Error(`the look has surfaces the renderer has no class for: ${unknown.join(", ")}`);
   const out = new Float32Array(SURFACES * FLOATS_PER_SURFACE);
-  surfaces.forEach((s, i) => {
+  SURFACE_NAMES.forEach((name, i) => {
+    const s = surfaces[name];
+    if (!s) throw new Error(`the look has no surface named ${name}`);
     out.set([...s.color, s.stripe, ...(s.color2 ?? s.color), s.grain, ...(s.earth ?? s.color), s.mottle, s.shade, s.speckleDark, s.specklePale, s.tuft, s.bump ?? 0, s.bumpMap === "grain" ? 1 : 0, 0, 0], i * FLOATS_PER_SURFACE);
   });
   packed.set(surfaces, out);

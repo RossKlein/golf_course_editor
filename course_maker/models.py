@@ -12,6 +12,7 @@ from pydantic import (
     StrictInt,
     StringConstraints,
     computed_field,
+    field_validator,
     model_validator,
 )
 
@@ -204,13 +205,22 @@ class Shadows(Model):
 class Look(Model):
     sky: Color
     sun: Sun
-    # one for each surface class, in class order: rough, fairway, green, collar, tee, bunker, water, path, woods
-    surfaces: Annotated[list[Surface], Field(min_length=len(spec.CLASSES), max_length=len(spec.CLASSES))]
+    # one for each surface class, by its name: rough, fairway, green, collar, tee, bunker, water, path, woods
+    surfaces: dict[str, Surface]
     grass: Grass
     tufts: Tufts
     trees: Trees
     shadows: Shadows = Field(default_factory=lambda: _default_look().shadows)  # a look written before shadows existed gets the default
     relief: ReliefLook = Field(default_factory=lambda: _default_look().relief)  # likewise for the relief
+
+    @field_validator("surfaces")
+    @classmethod
+    def _one_for_each_class(cls, surfaces: dict[str, Surface]) -> dict[str, Surface]:
+        missing = [n for n in spec.CLASSES if n not in surfaces]
+        unknown = [n for n in surfaces if n not in spec.CLASSES]
+        if missing or unknown:
+            raise ValueError(f"surfaces must be one for each class ({', '.join(spec.CLASSES)}); missing: {missing or 'none'}, not a class: {unknown or 'none'}")
+        return {name: surfaces[name] for name in spec.CLASSES}  # in class order, however it was written
 
 
 def _default_look() -> "Look":
