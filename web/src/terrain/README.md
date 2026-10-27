@@ -13,7 +13,7 @@ The golf renderer, built on `gfx/`. It draws a course from a height grid, the cl
 | `heightfield/` | the baked heights on the GPU, plus the sculpt offsets; the one place heights are bound |
 | `lighting/` | the ground's baked lighting: how much sky (terrain, then trees' crowns) and how much sun (terrain, then trees' shadows tile by tile) reaches each point, as textures the ground and grass look up; `bake.ts` is the shared full-screen-pass texture, and each bake has a CPU twin (`skyMath`, `canopyMath`, `sunMath`, `tileLight`) with the tests |
 | `relief/` | the ground's slope, spline-smoothed and baked into a texture for lighting: `reliefMath.ts` is the maths (and its tests), `relief.frag.glsl` the GPU bake, `relief.ts` the texture, re-baked for just the box a brush changed |
-| `surfaces/` | the class map, mowing stripe directions, the grass tile, the sand speckle, `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums), and `edgeMask.ts`, which finds where there is no edge to smooth |
+| `surfaces/` | the class map, mowing stripe directions, the grass tile, the sand speckle, the normal maps for the surfaces' fine detail (`bump.ts`: from the grass tile's light and dark, and from noise), `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums), and `edgeMask.ts`, which finds where there is no edge to smooth |
 | `passes/flat/` | the map's hillshade, contours, slope colours (and a CPU fallback) |
 | `passes/ground/` | the 3D ground: rings of mesh out to the horizon, lit and coloured per pixel |
 | `passes/tufts/`, `passes/trees/` | standing grass and trees, instanced, culled to the view |

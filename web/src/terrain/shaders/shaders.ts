@@ -13,6 +13,7 @@
 // The reference maths for the 2D lighting lives in reference.ts, pinned by tests to the old CPU hillshade.
 
 import { preprocess } from "../../gfx/shader/preprocess";
+import { BUMP_RANGE } from "../surfaces/bump";
 import { SPECKLE_SIZE } from "../surfaces/speckle";
 import brushFrag from "../sculpt/brush.frag.glsl?raw";
 import flatFrag from "../passes/flat/flat.frag.glsl?raw";
@@ -52,7 +53,7 @@ const program = (vertex: string, fragment: string, defines: Record<string, numbe
 /** Every program's finished source, ready to compile. */
 export const SHADERS = {
   flat: program(fullscreenVert, flatFrag),
-  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, EDGE_TAPS_MAX, EDGE_BLOCK, ...SHADOWS }),
+  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, BUMP_RANGE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, EDGE_TAPS_MAX, EDGE_BLOCK, ...SHADOWS }),
   tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES, ...SHADOWS }),
   trees: program(treesVert, treesFrag, SHADOWS),
   shadowDepth: program(depthVert, depthFrag),

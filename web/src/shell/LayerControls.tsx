@@ -74,7 +74,7 @@ export function ExaggerationSlider({ value, onCommit }: { value: number; onCommi
   return (
     <label>
       Relief exaggeration ×{local}
-      <input type="range" min={1} max={10} step={0.5} value={local} onChange={(e) => setLocal(Number(e.target.value))} />
+      <input type="range" min={1} max={20} step={0.5} value={local} onChange={(e) => setLocal(Number(e.target.value))} />
     </label>
   );
 }

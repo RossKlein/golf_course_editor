@@ -3,22 +3,52 @@ import { uploadImage, type Image } from "../../gfx/resource/image";
 import { LazyTexture } from "../../gfx/resource/texture";
 import type { Program } from "../../gfx/shader/program";
 import { EDGE_BLOCK, EDGE_REACH } from "../limits";
+import { grainHeights, luminanceHeights, slopeMap } from "./bump";
 import { edgeMask } from "./edgeMask";
 import { SPECKLE_SIZE, speckleTexels } from "./speckle";
 
+/** A normal map: the slope of a surface's fine detail, two bytes a pixel (see bump.ts). */
+type BumpMap = { data: Uint8Array; width: number; height: number };
+
+/** The biggest the grass tile's normal map is made, in pixels across: more is detail a screen cannot show. */
+const BUMP_SIZE = 1024;
+/** Pixels across the grain normal map, and the seed that makes it the same every time. */
+const GRAIN_SIZE = 256;
+const GRAIN_SEED = 3;
+
+/** Fill the bound texture from a normal map (a level one pixel map when there is none), repeating, with mipmaps so it fades to level with distance. */
+function uploadBump(d: Device, map: BumpMap | null) {
+  const { gl } = d;
+  const m = map ?? { data: new Uint8Array([128, 128]), width: 1, height: 1 };
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, m.width, m.height, 0, gl.RG, gl.UNSIGNED_BYTE, m.data);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  if (d.anisotropy.ext) gl.texParameterf(gl.TEXTURE_2D, d.anisotropy.ext.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, d.anisotropy.max));
+}
+
 /**
  * What the game's look needs to know about the ground: the class map (R = surface, G = owning hole), the direction of each
- * hole's mowing stripes, the grass texture the surfaces are tiled with, and the speckle texture for sand.
+ * hole's mowing stripes, the grass texture the surfaces are tiled with, the speckle texture for sand, and two normal
+ * maps for the surfaces' fine detail: one made from the grass texture's own light and dark, one of grains.
  */
 export class Surfaces {
   private classes: { image: ImageData; res: number } | null = null;
   private stripes: Float32Array = new Float32Array(48);
   private tileImage: Image | null = null;
   private tileAverage: [number, number, number] = [1, 1, 1];
+  private grassBump: BumpMap | null = null;
+  private grainBump: BumpMap | null = null;
   private readonly classTexture = new LazyTexture((d) => this.uploadClasses(d));
   /** Which blocks of the class map are near an edge between surfaces, so the shader smooths only there. */
   private readonly edgeTexture = new LazyTexture((d) => this.uploadEdges(d));
   private readonly tileTexture = new LazyTexture((d) => uploadImage(d, this.tileImage, { mipmaps: true, repeat: true, blank: [255, 255, 255, 255] }));
+  private readonly grassBumpTexture = new LazyTexture((d) => uploadBump(d, this.grassBump));
+  private readonly grainBumpTexture = new LazyTexture((d) => uploadBump(d, (this.grainBump ??= { data: slopeMap(grainHeights(GRAIN_SIZE, GRAIN_SEED), GRAIN_SIZE, GRAIN_SIZE), width: GRAIN_SIZE, height: GRAIN_SIZE })));
   private readonly speckleTexture = new LazyTexture((d) => {
     const { gl } = d;
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -47,6 +77,8 @@ export class Surfaces {
   setGrassTile(image: Image | null) {
     this.tileImage = image;
     this.tileAverage = [1, 1, 1];
+    this.grassBump = image ? grassNormals(image) : null;
+    this.grassBumpTexture.invalidate();
     if (image) {
       const c = document.createElement("canvas");
       c.width = c.height = 16;
@@ -106,11 +138,27 @@ export class Surfaces {
     gl.uniform1i(p.u.uTile, 6);
     this.speckleTexture.bind(d, 7);
     gl.uniform1i(p.u.uSpeckleTex, 7);
+    this.grassBumpTexture.bind(d, 14);
+    gl.uniform1i(p.u.uBumpGrass, 14);
+    this.grainBumpTexture.bind(d, 15);
+    gl.uniform1i(p.u.uBumpGrain, 15);
     gl.uniform3f(p.u.uTileAvg, ...this.tileAverage);
     gl.uniform2fv(p.u.uStripe, this.stripes);
   }
 
   dispose() {
-    for (const t of [this.classTexture, this.edgeTexture, this.tileTexture, this.speckleTexture]) t.free();
+    for (const t of [this.classTexture, this.edgeTexture, this.tileTexture, this.speckleTexture, this.grassBumpTexture, this.grainBumpTexture]) t.free();
   }
+}
+
+/** The normal map of the grass tile: its light and dark read as height, so blades and clumps catch the sun. */
+function grassNormals(image: Image): BumpMap {
+  const k = Math.min(1, BUMP_SIZE / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * k)), height = Math.max(1, Math.round(image.height * k));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(image, 0, 0, width, height);
+  return { data: slopeMap(luminanceHeights(ctx.getImageData(0, 0, width, height).data, width, height), width, height), width, height };
 }

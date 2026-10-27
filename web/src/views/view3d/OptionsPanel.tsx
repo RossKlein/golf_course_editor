@@ -78,11 +78,11 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
       )}
       <label title="How strongly the slope shows in the sun's light: 0% is flat light, 100% is as lit. Only the sun's light is shaded by the slope; the sky's is not. Relief below makes the slope look steeper.">
         Shading {Math.round(opts.shading * 100)}%
-        <input type="range" min={0} max={1.5} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
+        <input type="range" min={0} max={3} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
       </label>
       <label title="Exaggerates the slopes for the shading only, as on the map, so gentle ground shows. 1 is the true slope. The ground itself keeps its shape; Height stretches it.">
         Relief ×{relief}
-        <input type="range" min={1} max={10} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
+        <input type="range" min={1} max={20} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
       </label>
       <label title="Stretches the ground itself upward.">
         Height ×{opts.scale}

@@ -57,6 +57,20 @@ class LookTests(unittest.TestCase):
         del data["relief"]
         self.assertEqual(Look.model_validate(data).relief, default_look().relief)
 
+    def test_the_default_surfaces_have_the_detail_they_should(self):
+        look = default_look()
+        bump = {name: look.surfaces[i] for name, i in spec.CLASSES.items()}
+        self.assertEqual(bump["water"].bump, 0)  # water is smooth
+        self.assertEqual((bump["bunker"].bumpMap, bump["path"].bumpMap), ("grain", "grain"))  # sand and paths are grains
+        self.assertEqual(bump["fairway"].bumpMap, "grass")
+        self.assertGreater(bump["fairway"].bump, bump["green"].bump)  # a green is smoother than a fairway
+
+    def test_a_look_without_detail_has_none(self):
+        data = default_look().model_dump()
+        for s in data["surfaces"]:
+            del s["bump"], s["bumpMap"]
+        self.assertTrue(all(s.bump == 0 for s in Look.model_validate(data).surfaces))
+
     def test_it_survives_a_json_round_trip(self):
         look = default_look()
         again = Look.model_validate_json(look.model_dump_json())

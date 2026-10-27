@@ -1320,6 +1320,17 @@ export interface components {
              * @default 0
              */
             tuft: number;
+            /**
+             * Bump
+             * @default 0
+             */
+            bump: number;
+            /**
+             * Bumpmap
+             * @default grass
+             * @enum {string}
+             */
+            bumpMap: "grass" | "grain";
         };
         /** TifEntry */
         TifEntry: {

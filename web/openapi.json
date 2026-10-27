@@ -1682,7 +1682,7 @@
             "title": "Exaggeration",
             "default": 3.0,
             "ge": 1,
-            "le": 10
+            "le": 20
           },
           "contourInterval": {
             "type": "number",
@@ -1842,7 +1842,7 @@
             "title": "Exaggeration",
             "default": 3.0,
             "ge": 1,
-            "le": 10
+            "le": 20
           },
           "contourInterval": {
             "type": "number",
@@ -3073,6 +3073,22 @@
             "default": 0.0,
             "ge": 0,
             "le": 4
+          },
+          "bump": {
+            "type": "number",
+            "title": "Bump",
+            "default": 0.0,
+            "ge": 0,
+            "le": 3
+          },
+          "bumpMap": {
+            "type": "string",
+            "enum": [
+              "grass",
+              "grain"
+            ],
+            "title": "Bumpmap",
+            "default": "grass"
           }
         },
         "additionalProperties": false,
@@ -3087,7 +3103,9 @@
           "specklePale",
           "earth",
           "mottle",
-          "tuft"
+          "tuft",
+          "bump",
+          "bumpMap"
         ],
         "title": "Surface",
         "description": "How one surface class is coloured, and what grows on it. The look has one for each class, in class order."

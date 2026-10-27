@@ -28,6 +28,8 @@ uniform sampler2D uEdgeMask;   // nearest: 255 for each block of EDGE_BLOCK cell
 uniform float uSmoothing;     // metres the surface edges are smoothed over, either side of the line
 uniform sampler2D uTile;      // seamless grass, tiled over everything
 uniform vec3 uTileAvg;        // its average colour, so tinting does not change the brightness
+uniform sampler2D uBumpGrass;   // RG8: the slope of the grass tile's light and dark, east and south, in units of its rms over BUMP_RANGE, from 0 to 1
+uniform sampler2D uBumpGrain;   // RG8: the same for grains (noise), for sand and paths
 uniform sampler2D uSpeckleTex; // salt and pepper for sand, mipmapped: one byte a grain, 128 plain, 0 dark, 255 pale
 uniform float uTileMetres;    // ground one tile covers
 uniform vec2 uStripe[24];     // per hole: unit direction across its mowing stripes
@@ -94,10 +96,18 @@ float blendShare(float d, float width) {
 // edge, not a blend. Far from any edge (the mask says) there is nothing to average and the one cell under the point is the
 // answer. shade comes back as how much the relief shading applies here and speckle as how much a dark and a pale grain change
 // the colour, each taken from the surface shown like the colour
-vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
+// a surface's normal-map detail, as a slope to add to the ground's: from the grass tile's map or the grain map, as steep as the look says
+vec2 surfaceDetail(int cls, vec2 grassSlope, vec2 grainSlope) {
+  return mix(grassSlope, grainSlope, surfaceBumpMap(cls)) * surfaceBump(cls);
+}
+
+vec3 gameGround(vec2 p, out float shade, out vec2 speckle, out vec2 detail) {
   vec3 grain = texture(uTile, p / uTileMetres).rgb / uTileAvg;
   float patchy = texture(uTile, p / (uTileMetres * 0.7) + 0.11).g / uTileAvg.g;
   vec2 wobble = (texture(uTile, p / (uTileMetres * 3.0) + 0.37).rg - 0.5) * uWobble * uClassInfo.x;
+  // the normal maps, read before the branches below, which texture lookups must not be in; the slope of each in units of its rms
+  vec2 grassSlope = (texture(uBumpGrass, p / uTileMetres).rg * 2.0 - 1.0) * float(BUMP_RANGE);
+  vec2 grainSlope = (texture(uBumpGrain, p / uTileMetres).rg * 2.0 - 1.0) * float(BUMP_RANGE);
   vec2 here = (p + wobble) / uClassInfo.x;      // in cells; a cell's centre is at its index plus a half
   ivec2 under = ivec2(floor(here));             // the cell the point is in
   ivec2 block = clamp(under / EDGE_BLOCK, ivec2(0), textureSize(uEdgeMask, 0) - 1);
@@ -107,6 +117,7 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
     int k = clamp(int(cell.r + 0.5), 0, SURFACES - 1);
     shade = surfaceShade(k);
     speckle = surfaceSpeckle(k);
+    detail = surfaceDetail(k, grassSlope, grainSlope);
     return surfaceColour(vec4(cell.rg, 0.0, 0.0), p, grain, patchy);
   }
 
@@ -157,11 +168,13 @@ vec3 gameGround(vec2 p, out float shade, out vec2 speckle) {
   vec3 colour = surfaceColour(ca, p, grain, patchy);
   shade = surfaceShade(a);
   speckle = surfaceSpeckle(a);
+  detail = surfaceDetail(a, grassSlope, grainSlope);
   if (share < 1.0) {
     float other = 1.0 - share;
     colour = mix(colour, surfaceColour(cb, p, grain, patchy), other);
     shade = mix(shade, surfaceShade(b), other);
     speckle = mix(speckle, surfaceSpeckle(b), other);
+    detail = mix(detail, surfaceDetail(b, grassSlope, grainSlope), other);
   }
   return colour;
 }
@@ -192,18 +205,14 @@ void main() {
   // up where the ground faces the sun and down where it faces away. There is no cue for hollows and crests: it came from the
   // curvature of the heights, which is mostly noise, and it ringed every mound with dark at its foot and bright on its rim.
   vec2 g = reliefAt(p, max(0.35, 0.5 * uSpacing));
-  vec3 lit = normalize(vec3(-g.x * uRelief, 1.0, -g.y * uRelief));
-  float facing = clamp(dot(lit, uSunDir), 0.0, 1.0) - uSunDir.y; // 0 on the flat, up facing the sun, down facing away
-  float slope = clamp(1.0 + uShading * 0.6 * facing, 0.3, 1.7);
 
   vec3 albedo = uBare;
+  float shade = 1.0;       // how much of the slope shading the surface takes (all of it unless its look says otherwise)
+  vec2 detail = vec2(0.0); // the surface's normal-map detail: a slope added to the ground's
   vec2 aerialUv = (p - uAerialRect.xy) / uAerialRect.zw;
   if (uGame > 0.5) {
-    float shade;
     vec2 speckle;
-    albedo = gameGround(p, shade, speckle);
-    // a surface says how much of the slope shading it takes (every surface takes all of it unless its look says otherwise)
-    slope = 1.0 + (slope - 1.0) * shade;
+    albedo = gameGround(p, shade, speckle, detail);
     // salt and pepper, some grains paler and some darker, from a mipmapped texture so it changes smoothly with distance.
     // Averaging washes it out as grains shrink below a pixel, so its contrast is raised by the square root of the grains
     // a pixel covers, which puts back what the averaging took. It fades out towards the grass range.
@@ -214,6 +223,11 @@ void main() {
     albedo *= 1.0 + visible * (speck < 0.0 ? speck * speckle.x : speck * speckle.y);
   }
   else if (uUseAerial > 0.5 && inside(aerialUv)) albedo = texture(uAerial, aerialUv).rgb;
+
+  // the sun's light on the slope: the ground's, exaggerated, plus the surface's own fine detail (which is not)
+  vec3 lit = normalize(vec3(-(g.x * uRelief + detail.x), 1.0, -(g.y * uRelief + detail.y)));
+  float facing = clamp(dot(lit, uSunDir), 0.0, 1.0) - uSunDir.y; // 0 on the flat, up facing the sun, down facing away
+  float slope = 1.0 + (clamp(1.0 + uShading * 0.6 * facing, 0.3, 1.7) - 1.0) * shade;
 
   vec2 drapeUv = (p - uDrapeRect.xy) / uDrapeRect.zw;
   bool onDrape = inside(drapeUv);

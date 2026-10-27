@@ -461,6 +461,14 @@ its derivative give a smooth slope, baked once by `terrain/relief/` (and again f
 and what the ball touches stay on the raw heights. This is the first baked-lighting step; baking the sun's shadows and ambient
 occlusion the same way is the natural next one.
 
+**Afterwards: normal maps.** *(visual)*
+Each surface can carry fine detail lit by the sun (`surface.bump`, `surface.bumpMap` in the look). There are two maps, both made on
+the client so the bundle does not grow: the grass tile's own light and dark read as height (blades and clumps), and tileable
+noise for grains (sand, paths). Each is a map of slopes in units of its own root mean square, so `bump` is how steep it is. The
+ground shader adds a surface's detail slope to the terrain's, so it shades only the sun's share like the rest of the slope, and
+mipmaps fade it to level with distance. Strengths were chosen on the real grass tile and on noise in an offline render, not in
+the app. The ground shader now reads 15 textures, one under the 16 every WebGL2 GPU must have.
+
 **Afterwards: shading without curvature.** *(visual)*
 The ground's relief lighting once had a second cue for hollows and crests, from the curvature of the heights. Curvature is a second
 difference of 1 m lidar, so it was mostly noise: the ground came out mottled in squares of the grid, and every mound had a dark

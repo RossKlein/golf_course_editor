@@ -16,15 +16,15 @@ def default_look() -> Look:
         # high: about 98 degrees round and 57 degrees up.
         sun=Sun(latitude=33.5, declination=23.44, hourAngle=-36),
         surfaces=[
-            Surface(color=ROUGH, grain=1.0, tuft=1.0),  # rough
-            Surface(color=(0.50, 0.86, 0.30), color2=(0.66, 0.95, 0.44), stripe=2.4, grain=0.55),  # fairway
-            Surface(color=(0.60, 0.92, 0.38), grain=0.3),  # green: plain, no stripes
-            Surface(color=(0.52, 0.82, 0.30), grain=0.35),  # collar: plain, a darker green than the green
-            Surface(color=(0.64, 0.94, 0.42), grain=0.35),  # tee: plain
-            Surface(color=(0.965, 0.93, 0.81), grain=0.4, speckleDark=0.1, specklePale=0.07),  # bunker
+            Surface(color=ROUGH, grain=1.0, tuft=1.0, bump=0.5),  # rough
+            Surface(color=(0.50, 0.86, 0.30), color2=(0.66, 0.95, 0.44), stripe=2.4, grain=0.55, bump=0.35),  # fairway
+            Surface(color=(0.60, 0.92, 0.38), grain=0.3, bump=0.2),  # green: plain, no stripes
+            Surface(color=(0.52, 0.82, 0.30), grain=0.35, bump=0.3),  # collar: plain, a darker green than the green
+            Surface(color=(0.64, 0.94, 0.42), grain=0.35, bump=0.3),  # tee: plain
+            Surface(color=(0.965, 0.93, 0.81), grain=0.4, speckleDark=0.1, specklePale=0.07, bump=0.25, bumpMap="grain"),  # bunker
             Surface(color=(0.27, 0.60, 0.86), grain=0.15),  # water
-            Surface(color=(0.72, 0.66, 0.52), grain=0.4),  # path
-            Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7),  # woods: rough mottled with soil
+            Surface(color=(0.72, 0.66, 0.52), grain=0.4, bump=0.25, bumpMap="grain"),  # path
+            Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7, bump=0.5),  # woods: rough mottled with soil
         ],
         grass=Grass(tile="grass.png", tileMetres=3.0, wobble=0.0, speckleGrain=0.03, smoothing=2.0),
         relief=ReliefLook(smoothing=2.0),
