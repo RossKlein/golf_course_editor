@@ -13,13 +13,13 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ..project.store import atomic_write, project_dir
-from .models import BoundsFile, DesignDoc, Layout, RegionsFile
+from .models import BoundsFile, DesignDoc, Layout, RegionsFile, TreeEdits
 
 DESIGN_DIR = "design"
 BACKUP_DIR = "backups"
 KEEP_BACKUPS = 20
 HEIGHT_DIR = "height"  # design/height/macro.delta: terrain sculpting (see build/height.py)
-FILES = {"layout": ("layout.json", Layout), "regions": ("regions.json", RegionsFile), "bounds": ("bounds.json", BoundsFile)}
+FILES = {"layout": ("layout.json", Layout), "regions": ("regions.json", RegionsFile), "bounds": ("bounds.json", BoundsFile), "trees": ("trees.json", TreeEdits)}
 
 
 class DesignError(ValueError):
@@ -55,11 +55,15 @@ def read_bounds(bundle: Path) -> BoundsFile:
     return _read(bundle, "bounds")
 
 
+def read_trees(bundle: Path) -> TreeEdits:
+    return _read(bundle, "trees")
+
+
 def read_design(bundle: Path) -> DesignDoc:
-    return DesignDoc(layout=read_layout(bundle), regions=read_regions(bundle), bounds=read_bounds(bundle))
+    return DesignDoc(layout=read_layout(bundle), regions=read_regions(bundle), bounds=read_bounds(bundle), trees=read_trees(bundle))
 
 
-def write_design_file(bundle: Path, name: str, value: Layout | RegionsFile | BoundsFile) -> None:
+def write_design_file(bundle: Path, name: str, value: Layout | RegionsFile | BoundsFile | TreeEdits) -> None:
     # stable key order and compact-but-readable output so a versioned diff stays small
     atomic_write(design_dir(bundle) / FILES[name][0], value.model_dump_json(by_alias=True, indent=1) + "\n")
 

@@ -19,6 +19,9 @@ from ..compiler.codec import encode_height, write_png
 from ..models import ElevationLayer, RasterLayer, TifView
 
 MAX_RENDER = 4096
+# The cache key is the file's identity. Bump this when a rendered field changes meaning, or an old view.json
+# would keep saying a foot grid cannot be baked.
+RENDER_VERSION = "2"
 ELEVATION_WORDS = ("elev", "height", "dem", "dtm", "dsm")
 RGB_FILE, ELEVATION_FILE, VIEW_FILE = "rgb.jpg", "elevation.png", "view.json"
 
@@ -49,7 +52,7 @@ def metres_per_unit(ds) -> tuple[float, float]:
 
 def cache_dir(path: Path, cache_root: Path) -> Path:
     st = path.stat()
-    key = hashlib.sha1(f"{path.resolve()}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:16]
+    key = hashlib.sha1(f"{RENDER_VERSION}|{path.resolve()}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:16]
     return cache_root / "tifs" / key
 
 
@@ -100,13 +103,14 @@ def render(path: Path, cache_root: Path) -> tuple[TifView, Path]:
                     write_png(folder / ELEVATION_FILE, png)
                     elevation = ElevationLayer(width=w, height=h, hMin=lo, hMax=hi)
 
-            projected_m = ds.crs is not None and not ds.crs.is_geographic and abs(ux - 1) < 1e-9
+            # Any projected linear unit (metres or feet). Degrees stay unbakeable; the grid is sampled in metres later.
+            projected = ds.crs is not None and not ds.crs.is_geographic and ux > 0
             view = TifView(
                 width=ds.width, height=ds.height, count=ds.count, dtypes=list(ds.dtypes),
                 descriptions=list(ds.descriptions), crs=ds.crs.to_string() if ds.crs else None,
                 geographic=bool(ds.crs and ds.crs.is_geographic), decimation=decimation,
                 transform=[t.a, t.b, t.c, t.d, t.e, t.f], resX=abs(t.a) * ux, resZ=abs(t.e) * uy,
-                rgb=rgb, elevation=elevation, bakeable=projected_m and elevation is not None,
+                rgb=rgb, elevation=elevation, bakeable=projected and elevation is not None,
             )
         (folder / VIEW_FILE).write_text(view.model_dump_json(), encoding="utf-8")
         return view, folder

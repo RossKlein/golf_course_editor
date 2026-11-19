@@ -1,11 +1,16 @@
-"""The default look: what a course is drawn like until someone changes it. These are the values the renderer used to carry
-as constants in its shaders and scenery code, so adopting the look changed nothing on screen."""
+"""The default look: what a course is drawn like until someone changes it. The surfaces, grass, tufts, shadows, relief and the light on the
+trees are Augusta National's, which was tuned by eye to look like a golf course; the sky, sun and tree models are the original defaults."""
 from __future__ import annotations
 
 from .models import Blob, Frustum, Grass, Look, ReliefLook, Shadows, Sun, Surface, TreeKind, Trees, Tufts
 
 TRUNK = (0.42, 0.29, 0.18)
-ROUGH = (0.40, 0.65, 0.24)  # darker than the fairway
+
+
+def surface(**fields) -> Surface:
+    """A default surface. It states its standing grass's density and clumping, so building the defaults never asks for them
+    (a look read from a file that lacks them is given these, by Look)."""
+    return Surface(**{"tuftDensity": 1.0, "tuftClump": 0.0, **fields})
 
 
 def default_look() -> Look:
@@ -16,23 +21,23 @@ def default_look() -> Look:
         # high: about 98 degrees round and 57 degrees up.
         sun=Sun(latitude=33.5, declination=23.44, hourAngle=-36),
         surfaces={
-            "rough": Surface(color=ROUGH, grain=1.0, tuft=1.0, bump=0.5),
-            "fairway": Surface(color=(0.50, 0.86, 0.30), color2=(0.66, 0.95, 0.44), stripe=2.4, grain=0.55, bump=0.35),
-            "green": Surface(color=(0.60, 0.92, 0.38), grain=0.3, bump=0.2),  # green: plain, no stripes
-            "collar": Surface(color=(0.52, 0.82, 0.30), grain=0.35, bump=0.3),  # collar: plain, a darker green than the green
-            "tee": Surface(color=(0.64, 0.94, 0.42), grain=0.35, bump=0.3),  # tee: plain
-            "bunker": Surface(color=(0.965, 0.93, 0.81), grain=0.4, speckleDark=0.1, specklePale=0.07, bump=0.25, bumpMap="grain"),
-            "water": Surface(color=(0.27, 0.60, 0.86), grain=0.15),
-            "path": Surface(color=(0.72, 0.66, 0.52), grain=0.4, bump=0.25, bumpMap="grain"),
-            "woods": Surface(color=ROUGH, earth=(0.42, 0.31, 0.20), mottle=1.6, grain=0.8, tuft=0.7, bump=0.5),  # woods: rough mottled with soil
+            "rough": surface(color=(0.304161, 0.591428, 0.12031), grain=0.76, shade=1.01, tuft=2.01, tuftDensity=1.0, tuftClump=0.08, bump=1.4, height=0.063),
+            "fairway": surface(color=(0.5, 0.86, 0.3), color2=(0.66, 0.95, 0.44), stripe=2.4, grain=0.55, tuftDensity=1.0, tuftClump=0.0, bump=0.35, height=0.015),
+            "green": surface(color=(0.6, 0.92, 0.38), stripe=1.1, grain=0.3, tuftDensity=1.0, tuftClump=0.0, bump=0.2, height=0.003),  # green: with a faint stripe
+            "collar": surface(color=(0.52, 0.82, 0.3), grain=0.3, shade=0.84, tuftDensity=1.0, tuftClump=0.0, bump=0.4, height=0.01),  # collar: plain, a darker green than the green
+            "tee": surface(color=(0.550816, 0.814286, 0.357605), grain=0.2, shade=0.08, tuftDensity=1.0, tuftClump=0.0, bump=0.3, height=0.022),  # tee: plain
+            "bunker": surface(color=(0.888571, 0.846993, 0.704438), grain=0.0, shade=0.67, speckleDark=0.1, specklePale=0.07, tuftDensity=1.0, tuftClump=0.0, bump=0.2, bumpMap='grain', height=0.002),
+            "water": surface(color=(0.111923, 0.555908, 0.905714), grain=0.15, tuftDensity=1.0, tuftClump=0.0, height=0.0),
+            "path": surface(color=(0.557143, 0.557143, 0.557143), stripe=0.1, grain=0.0, shade=0.91, speckleDark=0.09, specklePale=0.07, tuftDensity=1.0, tuftClump=0.0, bump=0.05, bumpMap='grain', height=0.102),
+            "woods": surface(color=(0.419608, 0.309804, 0.2), grain=0.38, speckleDark=0.2, earth=(0.4, 0.65098, 0.239216), mottle=0.4, tuft=2.88, tuftDensity=0.08, tuftClump=1.0, bump=0.5, height=0.038),  # woods: soil with grass in clumps
         },
-        grass=Grass(tile="grass.png", tileMetres=3.0, wobble=0.0, speckleGrain=0.03, smoothing=2.0),
-        relief=ReliefLook(smoothing=2.0),
-        shadows=Shadows(strength=0.8, tint=(0.5, 0.58, 0.78), softness=0.6, distance=200),
-        tufts=Tufts(height=0.4, width=1.1, root=(0.16, 0.31, 0.10), tip=(0.46, 0.66, 0.24)),
+        grass=Grass(tile='grass.png', tileMetres=6.8, wobble=0.07, speckleGrain=0.02, smoothing=2.5, edgeWidth=0.039, edgeRagged=0.059, edgeShadow=0.05, edgeGain=1.5),
+        relief=ReliefLook(smoothing=1.3, exaggeration=5.0, shading=1.8),
+        shadows=Shadows(strength=0.8, tint=(0.5, 0.58, 0.78), softness=0.3, distance=200.0),
+        tufts=Tufts(height=0.17, spread=0.7, bladeWidth=0.043, blades=18, root=(0.16, 0.31, 0.1), tip=(0.46, 0.66, 0.24)),
         trees=Trees(
-            ambient=0.5,
-            direct=0.65,
+            ambient=0.52,
+            direct=0.72,
             base=0.78,
             kinds=[
                 TreeKind(  # a long bare trunk and a narrow crown of stacked cones

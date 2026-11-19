@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { falloff, perStamp, resized, stampPoints, stampSample, MAX_RADIUS, MIN_RADIUS, type Brush } from "./brush";
+import { cloneTarget, falloff, perStamp, resized, stampPoints, stampSample, MAX_RADIUS, MIN_RADIUS, type Brush } from "./brush";
 import { decodeDelta, encodeDelta, readTile, tileKey, tileRect, tilesAcross, tilesInBox, writeTile, type Grid } from "./tiles";
 
 const grid: Grid = { cols: 150, rows: 130 };
@@ -98,7 +98,7 @@ describe("stamping a sample", () => {
   });
 
   it("changes nothing outside the brush", () => {
-    for (const kind of ["raise", "lower", "smooth", "flatten", "restore"] as const) expect(stampSample(kind, 50, 1.234, 0, 5, 1, 0)).toBe(1.234);
+    for (const kind of ["raise", "lower", "smooth", "flatten", "restore", "clone"] as const) expect(stampSample(kind, 50, 1.234, 0, 5, 1, 0)).toBe(1.234);
   });
 });
 
@@ -134,3 +134,19 @@ describe("brush size keys", () => {
     expect(resized(MIN_RADIUS, false)).toBe(MIN_RADIUS);
   });
 });
+
+describe("the clone brush's numbers", () => {
+  it("copies the shape onto the ground where the stroke began, or the exact heights", () => {
+    // a hill 12 m above the spot it was picked at (80 m), stamped where the ground is 30 m
+    expect(cloneTarget(92, 80, 30, true)).toBe(42);
+    expect(cloneTarget(80, 80, 30, true)).toBe(30); // the picked spot itself lands on the new ground
+    expect(cloneTarget(92, 80, 30, false)).toBe(92);
+  });
+
+  it("pulls the ground towards the target like a flatten, in proportion to the weight", () => {
+    const target = cloneTarget(92, 80, 30, true); // 42
+    expect(50 + stampSample("clone", 50, 0, 1, 0, 1, target)).toBeCloseTo(42); // 50 m ground, pulled all the way
+    expect(stampSample("clone", 50, 1, 0.5, 0, 0.5, target)).toBeCloseTo(stampSample("flatten", 50, 1, 0.5, 0, 0.5, target));
+  });
+});
+

@@ -16,7 +16,7 @@ class LookTests(unittest.TestCase):
         look = default_look()
         self.assertEqual(list(look.surfaces), list(spec.CLASSES))
         self.assertEqual(look.surfaces["fairway"].stripe, 2.4)
-        self.assertEqual(look.surfaces["bunker"].shade, 1.0)  # a bunker is shaded by its slope like the rest of the ground
+        self.assertEqual(look.surfaces["bunker"].shade, 0.67)  # a bunker is shaded by its slope a little less than the rest of the ground (Augusta's tuning)
         self.assertEqual([s.tuft > 0 for s in look.surfaces.values()], [True, False, False, False, False, False, False, False, True])
 
     def test_the_collar_is_plain_and_a_darker_green_than_the_green(self):
@@ -36,8 +36,8 @@ class LookTests(unittest.TestCase):
         del data["shadows"]
         self.assertEqual(Look.model_validate(data).shadows, default_look().shadows)
 
-    def test_surface_edges_are_clean_by_default(self):
-        self.assertEqual(default_look().grass.wobble, 0)  # golf courses have clean edges: nothing wobbles them
+    def test_surface_edges_are_nearly_clean_by_default(self):
+        self.assertLess(default_look().grass.wobble, 0.1)  # golf courses have clean edges: the grass only just roughens them (Augusta's tuning)
 
     def test_edges_are_smoothed_over_a_couple_of_metres_by_default(self):
         smoothing = default_look().grass.smoothing
@@ -58,6 +58,113 @@ class LookTests(unittest.TestCase):
         data = default_look().model_dump()
         del data["relief"]
         self.assertEqual(Look.model_validate(data).relief, default_look().relief)
+
+    def test_the_default_relief_is_shaded_as_the_editor_always_has(self):
+        relief = default_look().relief
+        self.assertEqual((relief.exaggeration, relief.shading), (5, 1.8))  # Augusta's tuning
+
+    def test_a_relief_without_exaggeration_or_shading_gets_the_defaults(self):
+        data = default_look().model_dump()
+        del data["relief"]["exaggeration"], data["relief"]["shading"]
+        self.assertEqual(Look.model_validate(data).relief, default_look().relief)
+
+    def test_relief_exaggeration_and_shading_are_kept_in_range(self):
+        for field, bad in (("exaggeration", 0.5), ("exaggeration", 21), ("shading", -0.1), ("shading", 3.5)):
+            data = default_look().model_dump()
+            data["relief"][field] = bad
+            with self.assertRaises(ValidationError, msg=f"{field} = {bad}"):
+                Look.model_validate(data)
+
+    def test_the_default_grass_heights_are_a_mowers(self):
+        h = {name: s.height for name, s in default_look().surfaces.items()}
+        self.assertLess(h["green"], h["collar"])
+        self.assertLess(h["collar"], h["fairway"] + 1e-9)
+        self.assertLess(h["fairway"], h["rough"])
+        self.assertTrue(all(0 <= v <= 0.15 for v in h.values()))  # centimetres, not metres
+        self.assertLessEqual(h["bunker"], 0.005)  # sand is a hair off the ground (Augusta's tuning), and water is level with it
+        self.assertEqual(h["water"], 0)
+
+    def test_a_surface_without_a_height_gets_its_classes_default(self):
+        data = default_look().model_dump()
+        for s in data["surfaces"].values():
+            del s["height"]
+        look = Look.model_validate(data)
+        self.assertEqual({n: s.height for n, s in look.surfaces.items()}, {n: s.height for n, s in default_look().surfaces.items()})
+
+    def test_a_height_that_is_written_is_kept_even_when_it_is_zero(self):
+        data = default_look().model_dump()
+        data["surfaces"]["rough"]["height"] = 0.0
+        self.assertEqual(Look.model_validate(data).surfaces["rough"].height, 0.0)
+
+    def test_a_height_is_kept_in_range(self):
+        data = default_look().model_dump()
+        data["surfaces"]["rough"]["height"] = 0.6
+        with self.assertRaises(ValidationError):
+            Look.model_validate(data)
+
+    def test_a_look_without_edge_settings_gets_the_defaults(self):
+        data = default_look().model_dump()
+        for k in ("edgeWidth", "edgeRagged", "edgeShadow", "edgeGain"):
+            del data["grass"][k]
+        self.assertEqual(Look.model_validate(data).grass, default_look().grass)
+
+    def test_the_default_step_looks_taller_than_it_is(self):
+        self.assertEqual(default_look().grass.edgeGain, 1.5)  # Augusta's tuning
+
+    def test_the_edge_settings_are_kept_in_range(self):
+        for field, bad in (("edgeWidth", 0), ("edgeWidth", 0.6), ("edgeRagged", -0.01), ("edgeShadow", 1.1), ("edgeGain", 0.5), ("edgeGain", 11)):
+            data = default_look().model_dump()
+            data["grass"][field] = bad
+            with self.assertRaises(ValidationError, msg=f"{field} = {bad}"):
+                Look.model_validate(data)
+
+    def test_the_default_tufts_are_clumps_of_blades(self):
+        t = default_look().tufts
+        self.assertEqual((t.spread, t.blades), (0.7, 18))  # Augusta's tuning
+        self.assertLess(t.bladeWidth, 0.1)  # centimetres, not metres
+
+    def test_a_look_with_the_old_tuft_width_is_read_and_the_width_let_go(self):
+        data = default_look().model_dump()
+        for k in ("spread", "bladeWidth", "blades"):
+            del data["tufts"][k]
+        data["tufts"]["width"] = 1.1
+        look = Look.model_validate(data)
+        self.assertEqual(look.tufts, default_look().tufts)
+        self.assertNotIn("width", look.model_dump()["tufts"])
+
+    def test_the_tuft_settings_are_kept_in_range(self):
+        for field, bad in (("spread", 0), ("spread", 2.1), ("bladeWidth", 0), ("bladeWidth", 0.2), ("blades", 2), ("blades", 65), ("blades", 8.5)):
+            data = default_look().model_dump()
+            data["tufts"][field] = bad
+            with self.assertRaises(ValidationError, msg=f"{field} = {bad}"):
+                Look.model_validate(data)
+
+    def test_the_forest_floor_is_sparse_and_in_patches_and_the_rough_is_not(self):
+        s = default_look().surfaces
+        self.assertLess(s["woods"].tuftDensity, s["rough"].tuftDensity)
+        self.assertGreater(s["woods"].tuftClump, s["rough"].tuftClump)
+
+    def test_a_surface_without_tuft_density_or_clumping_gets_its_classes_default(self):
+        data = default_look().model_dump()
+        for surface in data["surfaces"].values():
+            del surface["tuftDensity"], surface["tuftClump"]
+        look = Look.model_validate(data)
+        for name, surface in look.surfaces.items():
+            self.assertEqual((surface.tuftDensity, surface.tuftClump), (default_look().surfaces[name].tuftDensity, default_look().surfaces[name].tuftClump), name)
+
+    def test_a_tuft_density_that_is_written_is_kept(self):
+        data = default_look().model_dump()
+        data["surfaces"]["woods"]["tuftDensity"] = 1.0
+        data["surfaces"]["woods"]["tuftClump"] = 0.0
+        woods = Look.model_validate(data).surfaces["woods"]
+        self.assertEqual((woods.tuftDensity, woods.tuftClump), (1.0, 0.0))
+
+    def test_tuft_density_and_clumping_are_kept_in_range(self):
+        for field, bad in (("tuftDensity", -0.1), ("tuftDensity", 1.1), ("tuftClump", -0.1), ("tuftClump", 1.1)):
+            data = default_look().model_dump()
+            data["surfaces"]["rough"][field] = bad
+            with self.assertRaises(ValidationError, msg=f"{field} = {bad}"):
+                Look.model_validate(data)
 
     def test_the_default_surfaces_have_the_detail_they_should(self):
         look = default_look()

@@ -18,9 +18,10 @@ from pathlib import Path
 import numpy as np
 
 from ..compiler.codec import decode_height, encode_height, read_png, write_png
+from .cache import read_cache, sha1_bytes, write_cache
 from ..design.store import DesignError, design_dir
 from ..models import Course
-from ..project.store import project_dir
+from ..project.store import project_dir, replace_file
 
 TILE = 64
 MAGIC = b"HDLT"
@@ -102,7 +103,7 @@ def write_delta_bytes(bundle: Path, data: bytes, rows: int, cols: int) -> None:
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
-        os.replace(tmp, path)
+        replace_file(tmp, path)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -167,14 +168,23 @@ class HeightResult:
     h_min: float
     h_max: float
     sha: str  # of the height.png that will be in place
+    key: str = ""  # what went into it (see apply_delta), for the build to remember
 
 
 def apply_delta(bundle: Path, course: Course, notes: list[str]) -> HeightResult:
     """The heights this design makes: base + delta, encoded as height.png."""
     base = refresh_base(bundle, course)
     base_png = (base_dir(bundle) / "height.png").read_bytes()
-    current = (bundle / course.height.file).read_bytes()
     rows, cols = course.height.rows, course.height.cols
+    delta_file = delta_path(bundle)
+    # What goes into the heights: the base, the sculpting, and the range. If they are what the last build used, and height.png is still the
+    # file it wrote (refresh_base found its sha unchanged), the result is that file and the decode, add and encode below are skipped.
+    key = sha1_bytes(base_png, delta_file.read_bytes() if delta_file.is_file() else b"", f"{base.h_min},{base.h_max},{bool(course.patches)},{rows},{cols}".encode())
+    cache = read_cache(bundle)
+    kept = cache.get("heights")
+    if kept and kept.get("key") == key and kept.get("sha") == base.built_sha:
+        return HeightResult(None, float(kept["hMin"]), float(kept["hMax"]), str(kept["sha"]), key)
+    current = (bundle / course.height.file).read_bytes()
     delta = read_delta(bundle, rows, cols)
 
     if delta is None or not delta.any():
@@ -193,4 +203,4 @@ def apply_delta(bundle: Path, course: Course, notes: list[str]) -> HeightResult:
         buf = io.BytesIO()
         write_png(buf, encode_height(heights, h_min, h_max))
         png = buf.getvalue()
-    return HeightResult(None if png == current else png, float(h_min), float(h_max), hashlib.sha1(png).hexdigest())
+    return HeightResult(None if png == current else png, float(h_min), float(h_max), hashlib.sha1(png).hexdigest(), key)

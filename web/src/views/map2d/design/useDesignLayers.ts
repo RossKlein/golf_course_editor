@@ -35,7 +35,7 @@ export function useDesignLayers(map: Map | null, isBundle: boolean, editable: bo
     };
   }, [map, isBundle]);
 
-  const { editor: open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity } = editor;
+  const { editor: open, tool, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity } = editor;
   useEffect(() => {
     if (!layers) return;
     const course = editable && open === "course";
@@ -43,7 +43,8 @@ export function useDesignLayers(map: Map | null, isBundle: boolean, editable: bo
     const sculpt = editable && open === "heightmap"; // the outlines are there to see what the brush is doing
     const reference = (bounds && boundsFeatures !== "off") || sculpt;
     layers.regions.layer.setVisible(course || reference);
-    layers.regions.layer.setOpacity(overlayOpacity * (bounds ? 0.55 : sculpt ? 0.4 : 1)); // as reference, surfaces are dimmer
+    const outlining = sculpt && (tool === "cut" || tool === "island"); // drawing a void: see it against the other surfaces
+    layers.regions.layer.setOpacity(overlayOpacity * (bounds ? 0.55 : sculpt && !outlining ? 0.4 : 1)); // as reference, surfaces are dimmer
     layers.regions.showOnly(course ? (hideOthers ? hole : null) : bounds && boundsFeatures === "hole" ? hole : null);
     layers.routes.layer.setVisible(course || reference);
     layers.routes.setView({ hole, hideOthers: course ? hideOthers : bounds ? !boundsAllHoles : false });
@@ -52,7 +53,7 @@ export function useDesignLayers(map: Map | null, isBundle: boolean, editable: bo
     layers.bounds.context.setVisible(bounds);
     layers.bounds.context.setOpacity(overlayOpacity);
     layers.bounds.setView({ hole, showOthers: boundsAllBounds });
-  }, [layers, editable, open, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity]);
+  }, [layers, editable, open, tool, hole, hideOthers, boundsFeatures, boundsAllHoles, boundsAllBounds, overlayOpacity]);
 
   return layers;
 }

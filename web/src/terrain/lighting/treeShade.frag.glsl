@@ -1,4 +1,6 @@
 #include "head.glsl"
+// DepthArray has one mip level. Explicit zero gradients preserve filtered depth comparisons
+// after per-fragment exits without relying on implicit derivatives in divergent control flow.
 #include "height.glsl"
 
 // Resolves one tile's tree shadow map into the sun bake: for each texel of ground it looks the point up in the map (see
@@ -29,7 +31,7 @@ void main() {
   float texel = 1.0 / uMap.x;
   float lit = 0.0;
   for (int j = -1; j <= 1; j++) {
-    for (int i = -1; i <= 1; i++) lit += texture(uTileMap, vec4(t.xy + vec2(float(i), float(j)) * texel, 0.0, ref));
+    for (int i = -1; i <= 1; i++) lit += textureGrad(uTileMap, vec4(t.xy + vec2(float(i), float(j)) * texel, 0.0, ref), vec2(0.0), vec2(0.0));
   }
   outColor = vec4(lit / 9.0);
 }

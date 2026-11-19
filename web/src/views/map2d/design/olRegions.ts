@@ -45,7 +45,7 @@ function regionStyle(f: FeatureLike): Style[] {
   const styles = [
     new Style({
       geometry: shown,
-      fill: new Fill({ color: css(rgb, selected ? 0.5 : 0.35) }),
+      fill: new Fill({ color: css(rgb, cls === 255 ? (selected ? 0.9 : 0.8) : selected ? 0.5 : 0.35) }), // a void is solid: there is nothing there
       stroke: new Stroke({ color: css(rgb, 1), width: 2, lineDash: orphan ? [8, 5] : undefined }),
     }),
   ];

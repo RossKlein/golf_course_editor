@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { createPortal } from "react-dom";
 import type { Rect } from "../../core/geometry/coords";
 import type { GroundTool } from "../../scene/groundTool";
 import type { TerrainSource } from "../../scene/scene";
 import { drapeWindow, matricesOf, meshLevels, type Camera } from "../../terrain/camera/camera";
-import { defaultOptions, type Options } from "./options";
-import OptionsPanel, { type SceneryCounts } from "./OptionsPanel";
+import type { Options } from "./options";
+import OptionsPanel, { OptionsFields, type SceneryCounts } from "./OptionsPanel";
 import { useCameraControls, type Controls3d } from "./useCameraControls";
 import { useDrape } from "./useDrape";
 import { useGroundTool } from "./useGroundTool";
@@ -23,8 +24,16 @@ type Props = {
   /** The relief exaggeration shared with the map's hillshade, and a way to change it. */
   relief: number;
   onRelief: (value: number) => void;
+  /** How strongly the slope shades the sun's light, when it is the course's look (a bundle). Without it the view has its own slider. */
+  shading?: number;
+  /** The Look editor is open: its Viewer tab holds this view's sliders (`optionsHost`, when that tab is showing), so the corner panel goes. */
+  lookOpen?: boolean;
+  optionsHost?: HTMLElement | null;
   /** Draw the bundle's design (surfaces, outlines, routes) over the ground. */
   hasDesign: boolean;
+  /** The view's settings (kept in the editor's saved state) and a way to change some of them. */
+  opts: Options;
+  onOpts: (p: Partial<Options>) => void;
   /** A tool that works on the ground under the pointer, such as a sculpting brush. While there is one, the left button is its. */
   tool?: GroundTool;
 };
@@ -39,17 +48,17 @@ const TIMING_EVERY_MS = 500;
  * aerial and, live, with the design's surfaces and outlines. A tool can work on it (the sculpting brush): the view finds
  * the ground under the pointer for it and draws its ring, and while a stroke goes it draws only the ground.
  */
-export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, hasDesign, tool }: Props) {
+export default function Terrain3D({ terrain, extent, active, cameraRef, controlsRef, contour, slope, relief, onRelief, shading, lookOpen = false, optionsHost = null, hasDesign, opts, onOpts, tool }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLCanvasElement>(null);
-  const [opts, setOpts] = useState<Options>(() => defaultOptions(terrain.renderer.hasSurfaces));
   const [counts, setCounts] = useState<SceneryCounts>({ tufts: 0, tuftsAll: 0, trees: 0, shadowSlices: 0, shadowTrees: 0 });
   const [timing, setTiming] = useState<{ perSecond: number; ms: number } | null>(null);
-  const latest = useRef({ terrain, active, opts, contour, slope, relief, hasDesign });
-  latest.current = { terrain, active, opts, contour, slope, relief, hasDesign };
+  const latest = useRef({ terrain, active, opts, contour, slope, relief, shading, hasDesign });
+  latest.current = { terrain, active, opts, contour, slope, relief, shading, hasDesign };
   const extentRef = useRef(extent);
   extentRef.current = extent;
   const frame = useRef(0);
+  const again = useRef<() => void>(() => {}); // ask for the next frame: set below, used by draw while the lighting is being baked
   const paintDrape = useRef<(rect: Rect) => void>(() => {});
   const paintCursor = useRef<() => void>(() => {});
   const lean = useRef(false); // a stroke is going, or just was
@@ -58,7 +67,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const { terrain, active, opts, contour, slope, relief, hasDesign } = latest.current;
+    const { terrain, active, opts, contour, slope, relief, shading, hasDesign } = latest.current;
     if (!canvas || !active || !canvas.clientWidth || !canvas.clientHeight) return;
     const started = performance.now();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -74,10 +83,11 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     const bare = lean.current && opts.leanStrokes; // just the ground, while sculpting
     try {
       const out = terrain.renderer.render3d([w, h], {
-        viewProj, meshes: meshLevels(cam), scale: opts.scale, relief, shading: opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts && !bare, tuftRange: opts.grassRange, tuftDensity: opts.grassDensity, trees: opts.trees && !bare, shadows: bare ? "off" : opts.shadows, eye, target: [cam.x, cam.z],
+        viewProj, meshes: meshLevels(cam), scale: opts.scale, relief, shading: shading ?? opts.shading, aerial: opts.aerial, game: opts.game, tufts: opts.tufts && !bare, tuftRange: opts.grassRange, tuftDensity: opts.grassDensity, trees: opts.trees && !bare, water: opts.water, shadows: bare ? "off" : opts.shadows, eye, target: [cam.x, cam.z],
         fill: hasDesign ? opts.surfaces : 0, lines: hasDesign && opts.outlines ? 1 : 0, contour, slope,
       });
       canvas.getContext("2d")!.drawImage(out, 0, 0);
+      if (terrain.renderer.baking) again.current(); // the lighting is baked a strip a frame, so draw the next
       const s = terrain.renderer.sceneryStats;
       setCounts((c) => (c.tufts === s.tufts && c.tuftsAll === s.tuftsAll && c.trees === s.trees && c.shadowSlices === s.shadowSlices && c.shadowTrees === s.shadowTrees ? c : { tufts: s.tufts, tuftsAll: s.tuftsAll, trees: s.trees, shadowSlices: s.shadowSlices, shadowTrees: s.shadowTrees }));
     } catch (e) {
@@ -103,6 +113,8 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     });
   }, [draw]);
 
+  again.current = request;
+
   const onStroke = useCallback(
     (going: boolean) => {
       clearTimeout(leanTimer.current);
@@ -126,7 +138,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
   paintCursor.current = ground.paint;
 
   // redraw when anything that shows changes, including the heights (a brush stamp, an undo)
-  useEffect(request, [request, active, opts, contour, slope, relief, hasDesign, terrain]);
+  useEffect(request, [request, active, opts, contour, slope, relief, shading, hasDesign, terrain]);
   useEffect(() => terrain.watch(request), [terrain, request]);
   useEffect(() => ground.paint(), [tool, active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(
@@ -138,7 +150,8 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
     [],
   );
 
-  const set = (p: Partial<Options>) => setOpts((o) => ({ ...o, ...p }));
+  const optionProps = { terrain, opts, set: onOpts, counts, relief, onRelief, lookBacked: shading !== undefined, hasDesign, sculpting: !!tool, timing };
+  const options = lookOpen ? (optionsHost ? createPortal(<OptionsFields {...optionProps} />, optionsHost) : null) : <OptionsPanel {...optionProps} />;
   return (
     <div className="view3d" hidden={!active}>
       <canvas
@@ -164,7 +177,7 @@ export default function Terrain3D({ terrain, extent, active, cameraRef, controls
         onContextMenu={(e) => e.preventDefault()}
       />
       <canvas ref={cursorRef} className="v3-cursor" />
-      <OptionsPanel terrain={terrain} opts={opts} set={set} counts={counts} relief={relief} onRelief={onRelief} hasDesign={hasDesign} sculpting={!!tool} timing={timing} />
+      {options}
     </div>
   );
 }

@@ -10,10 +10,16 @@ import { SHADERS } from "../shaders/shaders";
 
 /** The largest square a single stamp can cover, in samples. */
 const SCRATCH = 512;
-const KINDS: Record<BrushKind, number> = { raise: 0, lower: 1, smooth: 2, flatten: 3, restore: 4 };
+const KINDS: Record<BrushKind, number> = { raise: 0, lower: 1, smooth: 2, flatten: 3, restore: 4, clone: 5 };
 
-/** One dab of a brush. Positions are course metres. `amount` is metres for raise and lower; `pull` is 0..1 for the rest. */
-export type Stamp = { kind: BrushKind; x: number; z: number; radius: number; hardness: number; amount: number; pull: number; level: number };
+/** What a clone dab copies: the ground `dx`, `dz` metres from where it is stamped (see `cloneTarget` for the rest). */
+export type CloneParams = { dx: number; dz: number; srcLevel: number; relative: boolean };
+
+/**
+ * One dab of a brush. Positions are course metres. `amount` is metres for raise and lower; `pull` is 0..1 for the rest. `level` is the height a
+ * flatten levels to, and the ground a clone sets its shape on.
+ */
+export type Stamp = { kind: BrushKind; x: number; z: number; radius: number; hardness: number; amount: number; pull: number; level: number; clone?: CloneParams };
 
 /** What a stroke changed, tile by tile: for undo, redo and saving. */
 export type TileChange = { keys: number[]; before: Float32Array[]; after: Float32Array[] };
@@ -154,6 +160,9 @@ export class Sculptor {
     gl.uniform1f(p.u.uPull, s.pull);
     gl.uniform1f(p.u.uLevel, s.level);
     gl.uniform1i(p.u.uKind, KINDS[s.kind]);
+    gl.uniform2f(p.u.uShift, s.clone ? s.clone.dx / resX : 0, s.clone ? s.clone.dz / resZ : 0);
+    gl.uniform1f(p.u.uSrcLevel, s.clone?.srcLevel ?? 0);
+    gl.uniform1i(p.u.uRelative, s.clone?.relative ? 1 : 0);
     gl.uniform1i(p.u.uStep, Math.max(1, Math.floor(r * 0.06)));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 

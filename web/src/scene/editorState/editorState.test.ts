@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { EditorState } from "../../core/api/api";
 import type { Scene, SceneLayer } from "../scene";
-import { defaultEditorState, mergeSaved, serialise, viewFromViewport, viewportFromView } from "./editorState";
+import { defaultEditorState, defaultViewer, mergeSaved, serialise, viewFromViewport, viewportFromView } from "./editorState";
 
 const layer = (id: string, visible: boolean, opacity = 1): SceneLayer => ({ id, label: id, visible, opacity, adjustable: true, olLayer: null as never });
 const scene = (...layers: SceneLayer[]): Scene => ({
   key: "bundle:x", kind: "bundle", title: "x", subtitle: () => "", extent: { x: 0, z: 0, w: 10, h: 10 }, layers, readout: () => [],
 });
 const saved = (patch: Partial<EditorState>): EditorState => ({ ...defaultEditorState(), ...patch });
+const withTerrain = (hasSurfaces: boolean): Scene => ({ ...scene(), terrain: { renderer: { hasSurfaces } } as unknown as Scene["terrain"] });
 
 describe("mergeSaved", () => {
   it("uses the scene's defaults when nothing was saved", () => {
@@ -41,6 +42,48 @@ describe("mergeSaved", () => {
   it("keeps the saved viewport", () => {
     const viewport = { x: 5, z: 6, scale: 2 };
     expect(mergeSaved(scene(), saved({ viewport }), 1).viewport).toEqual(viewport);
+  });
+});
+
+describe("the 3D view's saved settings", () => {
+  it("starts as its terrain suits when none were saved: the game's look where the terrain can show it", () => {
+    expect(mergeSaved(withTerrain(true), null, 1).viewer).toEqual(defaultViewer(true));
+    expect(mergeSaved(withTerrain(false), null, 1).viewer).toEqual(defaultViewer(false));
+    expect(mergeSaved(withTerrain(true), saved({ viewer: null }), 1).viewer).toEqual(defaultViewer(true)); // a file from before they were saved
+    expect(defaultViewer(true).game).toBe(true);
+    expect(defaultViewer(false).game).toBe(false);
+  });
+
+  it("keeps what was saved: grass range and density, rough grass, outlines and the rest", () => {
+    const viewer = { ...defaultViewer(true), grassRange: 120, grassDensity: 7.5, tufts: false, outlines: false, shadows: "high" as const, scale: 2.5, trees: false, water: false };
+    expect(mergeSaved(withTerrain(true), saved({ viewer }), 1).viewer).toEqual(viewer);
+  });
+
+  it("does not turn the game's look on where the terrain cannot show it, whatever was saved", () => {
+    const viewer = { ...defaultViewer(true), game: true };
+    expect(mergeSaved(withTerrain(false), saved({ viewer }), 1).viewer?.game).toBe(false);
+    expect(mergeSaved(scene(), saved({ viewer }), 1).viewer?.game).toBe(false); // no terrain at all
+  });
+
+  it("fills a setting a saved file lacks from the defaults", () => {
+    const { grassRange, ...older } = { ...defaultViewer(true), grassDensity: 3 };
+    expect(grassRange).toBeDefined();
+    const merged = mergeSaved(withTerrain(true), saved({ viewer: older as EditorState["viewer"] }), 1).viewer;
+    expect(merged?.grassDensity).toBe(3);
+    expect(merged?.grassRange).toBe(defaultViewer(true).grassRange);
+  });
+
+  it("keeps whether the 3D view was open and which Look tab was, and starts with both closed", () => {
+    expect(defaultEditorState()).toMatchObject({ view3d: false, lookTab: "sky", viewer: null });
+    expect(mergeSaved(scene(), saved({ view3d: true, lookTab: "grass" }), 1)).toMatchObject({ view3d: true, lookTab: "grass" });
+  });
+
+  it("is part of what makes a state different, so a change is saved", () => {
+    const a = saved({ viewer: defaultViewer(true) });
+    const b = saved({ viewer: { ...defaultViewer(true), grassDensity: 5 } });
+    expect(serialise(a, null)).not.toBe(serialise(b, null));
+    expect(serialise(saved({ view3d: true }), null)).not.toBe(serialise(saved({ view3d: false }), null));
+    expect(serialise(saved({ lookTab: "trees" }), null)).not.toBe(serialise(saved({ lookTab: "sky" }), null));
   });
 });
 

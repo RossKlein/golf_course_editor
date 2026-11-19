@@ -13,7 +13,10 @@ uniform float uHardness;
 uniform float uAmount;       // metres, for raise and lower
 uniform float uPull;         // 0..1, for smooth, flatten and restore
 uniform float uLevel;        // metres, for flatten
-uniform int uKind;           // 0 raise, 1 lower, 2 smooth, 3 flatten, 4 restore
+uniform int uKind;           // 0 raise, 1 lower, 2 smooth, 3 flatten, 4 restore, 5 clone
+uniform vec2 uShift;         // for clone: from a sample to the one it copies, in samples
+uniform float uSrcLevel;     // for clone: the height at the spot the source was picked, in metres
+uniform int uRelative;       // for clone: 1 to copy the shape only (the source less uSrcLevel, on uLevel), 0 to copy the heights
 uniform int uStep;           // samples between the taps of the smoothing kernel
 
 out vec4 outColor;
@@ -21,6 +24,16 @@ out vec4 outColor;
 float heightAt(ivec2 c) {
   c = clamp(c, ivec2(0), uGrid - 1);
   return texelFetch(uHeight, c, 0).r + texelFetch(uDelta, c, 0).r;
+}
+
+// the current height (x) and whether there is data (y) at a fractional sample, bilinear between the four nearest
+vec2 sourceAt(vec2 p) {
+  vec2 f = clamp(p, vec2(0.0), vec2(uGrid - 1));
+  ivec2 c0 = min(ivec2(floor(f)), uGrid - 2);
+  vec2 t = f - vec2(c0);
+  float a = heightAt(c0), b = heightAt(c0 + ivec2(1, 0)), d = heightAt(c0 + ivec2(0, 1)), e = heightAt(c0 + ivec2(1, 1));
+  float ok = min(min(texelFetch(uHeight, c0, 0).g, texelFetch(uHeight, c0 + ivec2(1, 0), 0).g), min(texelFetch(uHeight, c0 + ivec2(0, 1), 0).g, texelFetch(uHeight, c0 + ivec2(1, 1), 0).g));
+  return vec2(mix(mix(a, b, t.x), mix(d, e, t.x), t.y), ok);
 }
 
 void main() {
@@ -48,6 +61,12 @@ void main() {
       offset = height + (sum / 256.0 - height) * min(1.0, uPull * w) - base.x;
     } else if (uKind == 3) {
       offset = height + (uLevel - height) * min(1.0, uPull * w) - base.x;
+    } else if (uKind == 5) {
+      vec2 src = sourceAt(vec2(c) + uShift);
+      if (src.y > 0.5) { // not where the source has no ground
+        float target = uRelative == 1 ? src.x - uSrcLevel + uLevel : src.x;
+        offset = height + (target - height) * min(1.0, uPull * w) - base.x;
+      }
     } else {
       offset *= 1.0 - min(1.0, uPull * w);
     }

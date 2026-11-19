@@ -20,7 +20,7 @@ function manualFrames() {
   };
 }
 
-function setup(brush: Partial<Brush> = {}) {
+function setup(brush: Partial<Brush> = {}, relative = true) {
   const stamps: Stamp[] = [];
   const log: string[] = [];
   const f = manualFrames();
@@ -31,6 +31,7 @@ function setup(brush: Partial<Brush> = {}) {
       session: { stamp: (s) => stamps.push(s), show: () => log.push("show"), end: () => log.push("end") },
       ground: (x, z) => x + z,
       brush: () => b,
+      clone: { relative: () => relative, say: (t) => log.push(`say: ${t}`) },
     },
     f.frames,
   );
@@ -139,3 +140,76 @@ describe("a sculpting stroke", () => {
     expect(t.f.pending()).toBe(1);
   });
 });
+
+describe("the clone brush", () => {
+  it("Ctrl picks the source and starts no stroke", () => {
+    const t = setup({ kind: "clone" });
+    const picked: (Pt | null)[] = [];
+    t.stroke.onSource = (p) => picked.push(p);
+    t.stroke.begin(t.where, false, 0, true);
+    expect(t.stroke.active).toBe(false);
+    expect(picked).toEqual([[10, 20]]);
+    expect(t.stroke.spot(null)).toEqual([10, 20]);
+    t.f.run(16);
+    expect(t.stamps).toHaveLength(0);
+    expect(t.log.some((l) => l.startsWith("say: Copying from here"))).toBe(true);
+  });
+
+  it("will not paint until a source is picked, and says so", () => {
+    const t = setup({ kind: "clone" });
+    t.stroke.begin(t.where, false, 0);
+    t.f.run(16);
+    expect(t.stroke.active).toBe(false);
+    expect(t.stamps).toHaveLength(0);
+    expect(t.log.some((l) => l.startsWith("say: Ctrl+click first"))).toBe(true);
+  });
+
+  it("stamps with an offset from where it paints to what it copies, and the grounds' heights", () => {
+    const t = setup({ kind: "clone" });
+    t.stroke.begin(t.where, false, 0, true); // pick (10, 20): ground 30
+    t.move([100, 50]);
+    t.stroke.begin(t.where, false, 16); // start painting at (100, 50): ground 150
+    t.move([110, 50]);
+    t.f.run(32);
+    const s = t.stamps[t.stamps.length - 1];
+    expect(s.kind).toBe("clone");
+    expect(s.clone).toEqual({ dx: -90, dz: -30, srcLevel: 30, relative: true });
+    expect(s.level).toBe(150);
+    expect([s.x + s.clone!.dx, s.z + s.clone!.dz]).toEqual([20, 20]); // the pointer has moved 10 m east, so has the source
+    expect(t.stroke.spot([110, 50])).toEqual([20, 20]);
+  });
+
+  it("starts each stroke again from the picked spot, and keeps it between strokes", () => {
+    const t = setup({ kind: "clone" });
+    t.stroke.begin(t.where, false, 0, true);
+    t.move([100, 50]);
+    t.stroke.begin(t.where, false, 16);
+    t.f.run(32);
+    t.stroke.end();
+    expect(t.stroke.spot([300, 300])).toEqual([10, 20]); // idle: the source itself
+    t.move([200, 200]);
+    t.stroke.begin(t.where, false, 64);
+    t.f.run(80);
+    const s = t.stamps[t.stamps.length - 1];
+    expect(s.clone).toMatchObject({ dx: -190, dz: -180 });
+    expect([s.x + s.clone!.dx, s.z + s.clone!.dz]).toEqual([10, 20]); // the same hill again
+  });
+
+  it("copies exact heights when the shape-only choice is off", () => {
+    const t = setup({ kind: "clone" }, false);
+    t.stroke.begin(t.where, false, 0, true);
+    t.move([100, 50]);
+    t.stroke.begin(t.where, false, 16);
+    t.f.run(32);
+    expect(t.stamps[0].clone?.relative).toBe(false);
+  });
+
+  it("Ctrl does nothing special for the other brushes", () => {
+    const t = setup({ kind: "raise" });
+    t.stroke.begin(t.where, false, 0, true);
+    t.f.run(16);
+    expect(t.stamps).toHaveLength(1);
+    expect(t.stamps[0].clone).toBeUndefined();
+  });
+});
+

@@ -50,6 +50,9 @@ export default function HolesPanel({ data, hole, fmt, onHole, onAddHole, onAssig
         Attribution
         <TextField label="Attribution" value={layout.attribution ?? ""} placeholder={data.course.attribution} onCommit={(v) => updateLayout("Edit attribution", { attribution: v.trim() || null })} />
       </label>
+      {data.course.kind === "range" ? (
+        <p className="muted">A range has one tee and any number of greens and fairways. Each separate green is a target, and the game puts a flag on it. These are not holes.</p>
+      ) : <>
       <div className="row">
         <h2 style={{ margin: 0, flex: 1 }}>Holes</h2>
         <button type="button" onClick={onAddHole}><Plus size={13} /> Add</button>
@@ -86,6 +89,7 @@ export default function HolesPanel({ data, hole, fmt, onHole, onAddHole, onAssig
       ) : (
         <p className="muted">No holes yet. Add one, then draw its route with the Route tool (<kbd>Shift</kbd>+<kbd>R</kbd>).</p>
       )}
+      </>}
     </section>
   );
 }

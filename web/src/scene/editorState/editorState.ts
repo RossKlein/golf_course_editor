@@ -1,7 +1,28 @@
 import type { EditorState, Viewport } from "../../core/api/api";
+import { TUFT_RANGE } from "../../terrain/passes/tufts/tufts";
 import { initialLayerState, type Scene } from "../scene";
 
 // The editor's saved state (.course_maker/editor.json). The shape is defined by the pydantic model EditorState.
+
+/** The 3D view's settings, which are saved with the rest of the editor's state. */
+export type Viewer = NonNullable<EditorState["viewer"]>;
+
+/** How the 3D view starts: in the game's look when the terrain has the surfaces for it. */
+export const defaultViewer = (hasSurfaces: boolean): Viewer => ({
+  aerial: true,
+  game: hasSurfaces,
+  tufts: true,
+  grassRange: TUFT_RANGE,
+  grassDensity: 1,
+  trees: true,
+  water: true,
+  surfaces: hasSurfaces ? 0 : 0.5,
+  outlines: true,
+  scale: 1,
+  shading: 1,
+  shadows: "low",
+  leanStrokes: true,
+});
 
 export const defaultEditorState = (): EditorState => ({
   version: 1,
@@ -23,15 +44,22 @@ export const defaultEditorState = (): EditorState => ({
   brushRadius: 10,
   brushStrength: 0.3,
   brushHardness: 0.5,
+  cloneRelative: true,
   smoothing: 0.1,
+  pathWidth: 2.5,
+  collarThickness: 1.5,
   leftCollapsed: false,
   rightTab: "view",
+  view3d: false,
+  viewer: null,
+  lookTab: "sky",
 });
 
 /**
  * The state to show for a scene: the scene's own layer defaults, overlaid with whatever was saved.
  * Layers the scene has but the file lacks keep their defaults (new layers appear normally in old projects);
- * saved layers the scene does not have are dropped. The hole is clamped to the holes that exist.
+ * saved layers the scene does not have are dropped. The hole is clamped to the holes that exist. The 3D view's settings are the
+ * saved ones, or the defaults for the scene's terrain when none were saved; the game's look is only kept on if the terrain can show it.
  */
 export function mergeSaved(scene: Scene, saved: EditorState | null, holeCount: number): EditorState {
   const layers = initialLayerState(scene);
@@ -42,9 +70,12 @@ export function mergeSaved(scene: Scene, saved: EditorState | null, holeCount: n
     }
   }
   const base = saved ?? defaultEditorState();
+  const hasSurfaces = !!scene.terrain?.renderer.hasSurfaces;
+  const viewer = base.viewer ? { ...defaultViewer(hasSurfaces), ...base.viewer, game: base.viewer.game && hasSurfaces } : defaultViewer(hasSurfaces);
   return {
     ...base,
     version: 1,
+    viewer,
     layers,
     hole: Math.min(Math.max(1, base.hole), Math.max(1, holeCount)),
   };

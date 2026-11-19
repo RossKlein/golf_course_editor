@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from .. import spec
-from ..models import Int, Model, Name, Number, Report
+from ..models import Int, Look, Model, Name, Number, Report
 
 Point = tuple[Number, Number]
 Ring = Annotated[list[Point], Field(min_length=4, max_length=20_000)]  # closed: first point equals last
@@ -22,23 +22,39 @@ def _closed(ring: list[Point], where: str) -> None:
         raise ValueError(f"{where}: a ring must be closed (first point equals last)")
 
 
+class ForestSettings(Model):
+    """How a forest patch (a woods region) is planted. docs/tree-editor-plan.md, section 3."""
+
+    spacing: Annotated[Number, Field(ge=2, le=20)] = 5.0  # metres between trees on average
+    kinds: Annotated[dict[Name, Annotated[Number, Field(ge=0, le=1)]], Field(max_length=8)] = {}  # weight of each tree kind by its name; missing is 1
+    heightScale: Annotated[Number, Field(ge=0.5, le=2)] = 1.0  # a scale on each kind's height range
+    edgeThinning: Annotated[Number, Field(ge=0, le=30)] = 8.0  # metres over which the forest thins towards open ground; 0 for none
+    edgeDensity: Annotated[Number, Field(ge=0, le=1)] = 0.3  # how full it is right at the border, as a share of full density
+    seed: Annotated[Int, Field(ge=0, le=2**31 - 1)] = 0  # which random arrangement
+
+
 class Region(Model):
     """A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones."""
 
     id: Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")]
-    class_: Annotated[Int, Field(ge=0, le=max(spec.CLASSES.values()))] = Field(alias="class")
+    class_: Annotated[Int, Field(ge=0, le=spec.VOID)] = Field(alias="class")  # a surface class, or spec.VOID (no ground)
     hole: Annotated[Int, Field(ge=1, le=99)] | None = None  # only for fairway, green and tee
     outer: Ring
     inner: list[Ring] = []
     note: Annotated[str, Field(max_length=500)] | None = None
+    trees: ForestSettings | None = None  # woods only; None uses the woods defaults (TreeEdits.defaults)
 
     @model_validator(mode="after")
     def _valid(self) -> "Region":
         _closed(self.outer, f"region {self.id} outer")
         for i, ring in enumerate(self.inner):
             _closed(ring, f"region {self.id} inner[{i}]")
+        if self.class_ != spec.VOID and self.class_ not in spec.CLASSES.values():
+            raise ValueError(f"region {self.id}: {self.class_} is not a surface class")
         if self.hole is not None and self.class_ not in spec.OWNED_CLASSES:
             raise ValueError(f"region {self.id}: only fairway, green and tee regions can have a hole number")
+        if self.trees is not None and self.class_ != spec.CLASSES["woods"]:
+            raise ValueError(f"region {self.id}: only woods regions have tree settings")
         return self
 
 
@@ -104,16 +120,79 @@ class Layout(Model):
         return self
 
 
+class PlacedTree(Model):
+    """A tree put down by hand. It is a plain tree in trees.bin, and the forest does not grow within its crown."""
+
+    x: Number
+    z: Number
+    height: Annotated[Number, Field(gt=0, le=60)]  # metres
+    kind: Annotated[Int, Field(ge=0, le=7)]  # index into the look's tree kinds
+
+
+class Clearing(Model):
+    """A circle drawn by hand where the forest is not planted."""
+
+    x: Number
+    z: Number
+    r: Annotated[Number, Field(gt=0, le=100)]  # metres
+
+
+MAX_TREE_EDITS = 5000
+
+
+class TreeEdits(Model):
+    """`.course_maker/design/trees.json`: the woods defaults and the hand edits. Clearings around placed trees and landmarks are derived at build time, not stored."""
+
+    defaults: ForestSettings = ForestSettings()  # for woods patches with none of their own
+    added: Annotated[list[PlacedTree], Field(max_length=MAX_TREE_EDITS)] = []
+    removed: Annotated[list[Clearing], Field(max_length=MAX_TREE_EDITS)] = []
+
+
+class TreesPreview(Model):
+    """What the editor sends to see trees before saving them: the tree edits, and the forest settings of the woods patches that have their own
+    (by region id; null for a patch on the woods defaults). The outlines are the saved ones."""
+
+    edits: TreeEdits
+    settings: dict[str, ForestSettings | None] = {}
+
+
 class DesignDoc(Model):
     """Everything the editor edits."""
 
     layout: Layout
     regions: RegionsFile
     bounds: BoundsFile = BoundsFile()
+    trees: TreeEdits = TreeEdits()
+
+
+class DesignResponse(DesignDoc):
+    """What the editor loads: the design, and the course's look, which is kept in course.json and edited with the rest."""
+
+    look: Look
 
 
 class BackupList(Model):
     backups: list[str]  # newest first
+
+
+class CropRequest(Model):
+    """The part of the map to keep, in whole course metres: the samples from x0 to x1 east and z0 to z1 south, edges included."""
+
+    x0: Annotated[Int, Field(ge=0)]
+    z0: Annotated[Int, Field(ge=0)]
+    x1: Annotated[Int, Field(ge=1)]
+    z1: Annotated[Int, Field(ge=1)]
+
+
+class CropResponse(Model):
+    cols: int
+    rows: int
+    notes: list[str] = []  # what the crop moved, cut or removed that is worth knowing
+    crops: list[str]  # the crops that can now be taken back, newest first
+
+
+class CropList(Model):
+    crops: list[str]
 
 
 class BuildStatus(Model):
@@ -129,3 +208,5 @@ class BuildStatus(Model):
     ms: dict[str, int] = {}  # timing of each step
     regions: int = 0
     holes: int = 0
+    trees: int = 0  # trees in trees.bin after the last build
+    files: dict[str, str] = {}  # sha1 of each file the build wrote (class.png, bounds.png, trees.bin, course.json, height.png), so the viewer reloads only what changed

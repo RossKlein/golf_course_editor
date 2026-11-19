@@ -81,6 +81,14 @@ export class HeightField {
     gl.uniform2f(p.u.uRes, resX, resZ);
   }
 
+  /** The grid's `valid` marks have changed (ground that is gone, or back, as a void comes and goes): upload the heights again and light them again. */
+  refreshGround() {
+    this.base.invalidate();
+    this.span = null;
+    this.relief.touchAll();
+    this.watchers.forEach((w) => w(null));
+  }
+
   /** Be told when heights change: the box of samples (corners included), or null when every one may have. Returns a way to stop. */
   watch(listener: (box: { x0: number; z0: number; x1: number; z1: number } | null) => void): () => void {
     this.watchers.add(listener);

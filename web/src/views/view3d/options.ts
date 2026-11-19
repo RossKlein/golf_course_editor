@@ -1,35 +1,7 @@
-import type { ShadowQuality } from "../../terrain/passes/shadow/shadow";
-import { TUFT_RANGE } from "../../terrain/passes/tufts/tufts";
+import type { Viewer } from "../../scene/editorState/editorState";
 
-/** What the 3D view's panel sets. Grass range and density and the shadow quality are the viewer's settings, not part of the course's look. */
-export type Options = {
-  aerial: boolean;
-  game: boolean;
-  tufts: boolean;
-  grassRange: number;
-  grassDensity: number;
-  trees: boolean;
-  surfaces: number;
-  outlines: boolean;
-  scale: number;
-  shading: number;
-  shadows: ShadowQuality;
-  /** While a brush stroke is going, leave out the grass, trees and shadows so the ground keeps up with the brush. */
-  leanStrokes: boolean;
-};
-
-/** How the view starts: in the game's look when the terrain has the surfaces for it. */
-export const defaultOptions = (hasSurfaces: boolean): Options => ({
-  aerial: true,
-  game: hasSurfaces,
-  tufts: true,
-  grassRange: TUFT_RANGE,
-  grassDensity: 1,
-  trees: true,
-  surfaces: hasSurfaces ? 0 : 0.5,
-  outlines: true,
-  scale: 1,
-  shading: 1,
-  shadows: "low",
-  leanStrokes: true,
-});
+/**
+ * What the 3D view's panel sets. Grass range and density and the shadow quality are the viewer's settings, not part of the course's
+ * look. They are kept in the editor's saved state (scene/editorState), so they are there when the bundle is opened again.
+ */
+export type Options = Viewer;

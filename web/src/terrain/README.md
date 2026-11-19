@@ -11,18 +11,18 @@ The golf renderer, built on `gfx/`. It draws a course from a height grid, the cl
 | Folder | Role |
 | --- | --- |
 | `heightfield/` | the baked heights on the GPU, plus the sculpt offsets; the one place heights are bound |
-| `lighting/` | the ground's baked lighting: how much sky (terrain, then trees' crowns) and how much sun (terrain, then trees' shadows tile by tile) reaches each point, as textures the ground and grass look up; `bake.ts` is the shared full-screen-pass texture, and each bake has a CPU twin (`skyMath`, `canopyMath`, `sunMath`, `tileLight`) with the tests |
+| `lighting/` | the ground's baked lighting (done a strip of rows a frame, so a big bake never holds the GPU long enough to freeze the screen, and only the ground a changed tree reaches is baked again after a tree edit; `strips.ts`): how much sky (terrain, then trees' crowns) and how much sun (terrain, then trees' shadows tile by tile) reaches each point, as textures the ground and grass look up; `bake.ts` is the shared full-screen-pass texture, and each bake has a CPU twin (`skyMath`, `canopyMath`, `sunMath`, `tileLight`) with the tests |
 | `relief/` | the ground's slope, spline-smoothed and baked into a texture for lighting: `reliefMath.ts` is the maths (and its tests), `relief.frag.glsl` the GPU bake, `relief.ts` the texture, re-baked for just the box a brush changed |
-| `surfaces/` | the class map, mowing stripe directions, the grass tile, the sand speckle, the normal maps for the surfaces' fine detail (`bump.ts`: from the grass tile's light and dark, and from noise), `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums), and `edgeMask.ts`, which finds where there is no edge to smooth |
+| `surfaces/` | the class map, `grassEdge.ts` (the lit step between two heights of grass where surfaces meet, drawn `edgeGain` times taller than it is, and the shade at its foot, cast away from the sun), mowing stripe directions, the grass tile, the sand speckle, the normal maps for the surfaces' fine detail (`bump.ts`: from the grass tile's light and dark, and from noise), `blend.ts`, the maths of how surfaces meet (the ground shader does the same sums), and `edgeMask.ts`, which finds where there is no edge to smooth |
 | `passes/flat/` | the map's hillshade, contours, slope colours (and a CPU fallback) |
 | `passes/ground/` | the 3D ground: rings of mesh out to the horizon, lit and coloured per pixel |
-| `passes/tufts/`, `passes/trees/` | standing grass and trees, instanced, culled to the view |
+| `passes/tufts/`, `passes/trees/` | standing grass (clumps of blades built in the vertex shader, fewer and wider blades for a tile far from the eye) and trees, instanced, culled to the view |
 | `passes/shadow/` | the sun's shadow maps: slices of the view each with a map, trees drawn into them from the sun, and the ground's own shadow by a ray march (`selfShadow.ts` is its CPU twin) |
 | `passes/drape/` | the aerial and the design's painted overlays |
-| `sculpt/` | the GPU brush, the offset tiles, the delta format (editor only) |
+| `sculpt/` | the GPU brush, the offset tiles, the delta format, and the lake basin's maths (`basin.ts`) (editor only) |
 | `scenery/` | where trees are, and tree models built from the look |
 | `camera/` | the orbit camera, the windows of ground that mesh and drape cover, and picking the ground under a screen point (`pick.ts`) |
-| `look/` | the course's look as uniforms; `course/` loads a course's files; `theme.ts` is the editor's own colours |
+| `look/` | the course's look as uniforms, and `diff.ts`, which says what a change of look makes the renderer redo (most is a redraw; the sun, the relief and the shape of the trees are baked); `course/` loads a course's files; `theme.ts` is the editor's own colours |
 | `shaders/` | the shared GLSL chunks and each program's finished source |
 
 ## Rules

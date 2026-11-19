@@ -8,29 +8,30 @@ const ROUGH: [number, number, number] = [0.4, 0.65, 0.24];
 const TRUNK: [number, number, number] = [0.42, 0.29, 0.18];
 
 const surface = (s: Partial<Surface> & Pick<Surface, "color" | "grain">): Surface => ({
-  color2: null, earth: null, stripe: 0, shade: 1, speckleDark: 0, specklePale: 0, mottle: 0, tuft: 0, bump: 0, bumpMap: "grass", ...s,
+  color2: null, earth: null, stripe: 0, shade: 1, speckleDark: 0, specklePale: 0, mottle: 0, tuft: 0, bump: 0, bumpMap: "grass", height: 0, tuftDensity: 1, tuftClump: 0, ...s,
 });
 
 export const testSun = solarPosition(33.5, 23.44, -36);
 
 export const testLook: Look = {
+  water: { bedColor: [0.3,0.21,0.12], tint: [0.025,0.1,0.12], shallow: [0.1,0.36,0.36], clarity: 1, ripples: 0.008, lakes: {} },
   sky: [0.62, 0.76, 0.9],
   sun: { latitude: 33.5, declination: 23.44, hourAngle: -36 },
   surfaces: {
-    rough: surface({ color: ROUGH, grain: 1, tuft: 1 }), // rough
-    fairway: surface({ color: [0.5, 0.86, 0.3], color2: [0.66, 0.95, 0.44], stripe: 2.4, grain: 0.55, bump: 0.35 }), // fairway
-    green: surface({ color: [0.6, 0.92, 0.38], grain: 0.3 }), // green
-    collar: surface({ color: [0.52, 0.82, 0.3], color2: [0.6, 0.88, 0.36], stripe: 0.9, grain: 0.35 }), // collar
-    tee: surface({ color: [0.64, 0.94, 0.42], grain: 0.35 }), // tee
+    rough: surface({ color: ROUGH, grain: 1, tuft: 1, height: 0.06 }), // rough
+    fairway: surface({ color: [0.5, 0.86, 0.3], color2: [0.66, 0.95, 0.44], stripe: 2.4, grain: 0.55, bump: 0.35, height: 0.015 }), // fairway
+    green: surface({ color: [0.6, 0.92, 0.38], grain: 0.3, height: 0.004 }), // green
+    collar: surface({ color: [0.52, 0.82, 0.3], color2: [0.6, 0.88, 0.36], stripe: 0.9, grain: 0.35, height: 0.01 }), // collar
+    tee: surface({ color: [0.64, 0.94, 0.42], grain: 0.35, height: 0.012 }), // tee
     bunker: surface({ color: [0.965, 0.93, 0.81], grain: 0.4, speckleDark: 0.1, specklePale: 0.07, bump: 0.25, bumpMap: "grain" }), // bunker
     water: surface({ color: [0.27, 0.6, 0.86], grain: 0.15 }), // water
     path: surface({ color: [0.72, 0.66, 0.52], grain: 0.4 }), // path
-    woods: surface({ color: ROUGH, earth: [0.42, 0.31, 0.2], mottle: 1.6, grain: 0.8, tuft: 0.7 }), // woods
+    woods: surface({ color: ROUGH, earth: [0.42, 0.31, 0.2], mottle: 1.6, grain: 0.8, tuft: 0.7, tuftDensity: 0.55, tuftClump: 0.7, height: 0.08 }), // woods
   },
-  relief: { smoothing: 2 },
+  relief: { smoothing: 2, exaggeration: 3, shading: 1 },
   shadows: { strength: 0.8, tint: [0.5, 0.58, 0.78], softness: 0.6, distance: 200 },
-  grass: { tile: "grass.png", tileMetres: 3, wobble: 0, speckleGrain: 0.03, smoothing: 2 },
-  tufts: { height: 0.4, width: 1.1, root: [0.16, 0.31, 0.1], tip: [0.46, 0.66, 0.24] },
+  grass: { tile: "grass.png", tileMetres: 3, wobble: 0, speckleGrain: 0.03, smoothing: 2, edgeWidth: 0.08, edgeRagged: 0.03, edgeShadow: 0.5, edgeGain: 2 },
+  tufts: { height: 0.4, spread: 1.2, bladeWidth: 0.025, blades: 32, root: [0.16, 0.31, 0.1], tip: [0.46, 0.66, 0.24] },
   trees: {
     ambient: 0.5,
     direct: 0.65,

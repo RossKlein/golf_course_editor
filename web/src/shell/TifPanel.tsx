@@ -78,7 +78,7 @@ export default function TifPanel({ view, onBaked }: Props) {
         </div>
       ) : (
         <p className="muted">
-          Baking needs a projected raster in metres with an elevation band, such as a course_stack.tif.
+          Baking needs a projected raster with an elevation band. A latitude/longitude image cannot be baked.
         </p>
       )}
     </>

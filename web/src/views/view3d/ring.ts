@@ -55,12 +55,30 @@ const stroke = (ctx: CanvasRenderingContext2D, points: Pixel[], color: string, w
  * Draw a brush's cursor on the ground: a ring at its edge and a dashed one where its core ends, each white over a dark
  * outline so it shows on any ground. `scale` is device pixels to a CSS pixel, so lines are the same width on any screen.
  */
-export function paintRing(ctx: CanvasRenderingContext2D, v: RingView, centre: Pt, ring: { radius: number; hardness: number }, height: Heights, scale = 1) {
+export function paintRing(ctx: CanvasRenderingContext2D, v: RingView, centre: Pt, ring: { radius: number; hardness: number }, height: Heights, scale = 1, color = "#ffffff") {
   const edge = ringOnScreen(v, centre, ring.radius, height);
   const core = ringOnScreen(v, centre, Math.max(0.01, ring.radius * ring.hardness), height);
   const dash = [4 * scale, 4 * scale];
   stroke(ctx, core, "rgba(0, 0, 0, 0.45)", 3 * scale, dash);
-  stroke(ctx, core, "rgba(255, 255, 255, 0.9)", scale, dash);
+  stroke(ctx, core, color, scale, dash);
   stroke(ctx, edge, "rgba(0, 0, 0, 0.6)", 4 * scale, []);
-  stroke(ctx, edge, "#ffffff", 1.5 * scale, []);
+  stroke(ctx, edge, color, 1.5 * scale, []);
+}
+
+/** A small cross on the ground at `centre`, to mark a spot (the place the clone brush copies from). */
+export function paintCross(ctx: CanvasRenderingContext2D, v: RingView, centre: Pt, height: Heights, scale = 1, color = "#ffffff") {
+  const p = toPixel(v, centre[0], (height(centre[0], centre[1]) ?? 0) + LIFT, centre[1]);
+  if (!p) return;
+  const r = 10 * scale;
+  for (const [width, style] of [[5 * scale, "rgba(0, 0, 0, 0.75)"], [2 * scale, color]] as const) {
+    ctx.beginPath();
+    ctx.moveTo(p[0] - r, p[1]);
+    ctx.lineTo(p[0] + r, p[1]);
+    ctx.moveTo(p[0], p[1] - r);
+    ctx.lineTo(p[0], p[1] + r);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
 }

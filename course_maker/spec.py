@@ -24,6 +24,7 @@ CLASSES = {
     "woods": 8,
 }
 ROUGH, FAIRWAY, GREEN, COLLAR, TEE = 0, 1, 2, 3, 4
+VOID = 255  # no ground at all: not drawn, no collision, out of bounds for every hole. Not one of CLASSES, so the look has no surface for it
 OWNED_CLASSES = (FAIRWAY, GREEN, TEE)  # the only classes that belong to a single hole
 
 DEFAULT_FILES = {
@@ -37,3 +38,4 @@ DEFAULT_FILES = {
 TREE_DTYPE = np.dtype([("x", "<f4"), ("z", "<f4"), ("height_cm", "<u2"), ("kind", "u1"), ("reserved", "u1")])
 TREE_RECORD_BYTES = 12
 assert TREE_DTYPE.itemsize == TREE_RECORD_BYTES
+MAX_TREES = 250_000  # the build thins every forest patch evenly rather than write more than this (docs/tree-editor-plan.md, 8.6)

@@ -2,7 +2,7 @@ import { Tabs } from "radix-ui";
 import type { BuildStatus, EditorState, TifView } from "../core/api/api";
 import type { BundleData } from "../scene/bundleScene";
 import type { LayerState, ReadoutLine, Scene } from "../scene/scene";
-import LayerControls, { ExaggerationSlider, TerrainControls } from "./LayerControls";
+import LayerControls, { ExaggerationSlider, TerrainControls, type ValueEdit } from "./LayerControls";
 import TifPanel from "./TifPanel";
 import type { Formatter, Units } from "../core/units/units";
 import DataTab from "./DataTab";
@@ -13,6 +13,8 @@ type Props = {
   bundle: BundleData | null;
   build: BuildStatus | null;
   editor: EditorState;
+  /** The relief exaggeration: the course's look for a bundle, the editor's own for a raster. */
+  exaggeration: ValueEdit;
   patch: (p: Partial<EditorState>) => void;
   layerState: LayerState;
   onLayer: (id: string, patch: Partial<LayerState[string]>) => void;
@@ -26,7 +28,7 @@ type Props = {
 };
 
 /** The viewer and info side: a View tab (layers, readout) and a Data tab (selection, builds, problems, bake). */
-export default function RightPanel({ scene, tif, bundle, build, editor, patch, layerState, onLayer, readout, fmt, units, onBaked, onHole, onAddHole, onAssign }: Props) {
+export default function RightPanel({ scene, tif, bundle, build, editor, exaggeration, patch, layerState, onLayer, readout, fmt, units, onBaked, onHole, onAddHole, onAssign }: Props) {
   return (
     <aside className="panel">
       <h1>{scene.title}</h1>
@@ -40,7 +42,7 @@ export default function RightPanel({ scene, tif, bundle, build, editor, patch, l
           <LayerControls layers={scene.layers} state={layerState} onChange={onLayer} />
           {scene.layers.some((l) => l.id === "hillshade") && (
             <>
-              <ExaggerationSlider value={editor.exaggeration} onCommit={(exaggeration) => patch({ exaggeration })} />
+              <ExaggerationSlider edit={exaggeration} />
               <TerrainControls editor={editor} units={units} patch={patch} />
             </>
           )}

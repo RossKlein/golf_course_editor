@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import type { EditorState } from "../core/api/api";
 import type { LayerState, SceneLayer } from "../scene/scene";
 import { contourOptions, nearestContour } from "../terrain/passes/flat/contours";
 import { makeFormatter, type Units } from "../core/units/units";
+import SliderField from "../ui/SliderField";
 
 type Props = {
   layers: SceneLayer[];
@@ -57,24 +57,10 @@ export function TerrainControls({ editor, units, patch }: { editor: EditorState;
   );
 }
 
-/** Relief exaggeration. Drawing is on the GPU, so the slider is cheap; commits are debounced because each is saved. */
-export function ExaggerationSlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
-  const [local, setLocal] = useState(value);
-  // the value can also change from elsewhere (the 3D view has this slider too); take it, or the stale local one would be written back
-  const [seen, setSeen] = useState(value);
-  if (value !== seen) {
-    setSeen(value);
-    setLocal(value);
-  }
-  useEffect(() => {
-    if (local === value) return;
-    const t = setTimeout(() => onCommit(local), 120);
-    return () => clearTimeout(t);
-  }, [local, value, onCommit]);
-  return (
-    <label>
-      Relief exaggeration ×{local}
-      <input type="range" min={1} max={20} step={0.5} value={local} onChange={(e) => setLocal(Number(e.target.value))} />
-    </label>
-  );
+/** How a number is edited: its value, and the three moments of an edit (see ui/SliderField). */
+export type ValueEdit = { value: number; onChange: (value: number) => void; onStart: () => void; onFinish: () => void };
+
+/** Relief exaggeration, shared by the map's hillshade and the 3D view. For a bundle it is part of the course's look. */
+export function ExaggerationSlider({ edit }: { edit: ValueEdit }) {
+  return <SliderField label="Relief exaggeration ×" value={edit.value} min={1} max={20} step={0.5} onChange={edit.onChange} onStart={edit.onStart} onFinish={edit.onFinish} />;
 }

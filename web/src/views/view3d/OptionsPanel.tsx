@@ -13,6 +13,8 @@ type Props = {
   /** The relief exaggeration shared with the map's hillshade, and a way to change it. */
   relief: number;
   onRelief: (value: number) => void;
+  /** The relief's exaggeration and shading are the course's look (edited in the Look editor), not this view's: no sliders for them here. */
+  lookBacked: boolean;
   /** Whether the bundle's design can be drawn over the ground. */
   hasDesign: boolean;
   /** A brush is out, so the left button sculpts. */
@@ -21,10 +23,19 @@ type Props = {
   timing: { perSecond: number; ms: number } | null;
 };
 
-/** The sliders and switches over the 3D view. */
-export default function OptionsPanel({ terrain, opts, set, counts, relief, onRelief, hasDesign, sculpting, timing }: Props) {
+/** The sliders and switches over the 3D view, in the corner of it. */
+export default function OptionsPanel(props: Props) {
   return (
     <div className="v3-panel">
+      <OptionsFields {...props} />
+    </div>
+  );
+}
+
+/** The sliders and switches themselves, to put in the corner panel or, in the Look editor, in its Viewer tab. */
+export function OptionsFields({ terrain, opts, set, counts, relief, onRelief, lookBacked, hasDesign, sculpting, timing }: Props) {
+  return (
+    <>
       {terrain.renderer.hasSurfaces && (
         <label className="check" title="Draw the ground as the game will: mown stripes on the fairways, short greens, grain from the game's grass texture">
           <input type="checkbox" checked={opts.game} onChange={(e) => set({ game: e.target.checked })} /> Game look
@@ -46,16 +57,21 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           </label>
           <label title="How many tufts to the square metre, as a multiple of the default. More costs more.">
             Grass density ×{opts.grassDensity}
-            <input type="range" min={0.25} max={5} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
+            <input type="range" min={0.25} max={20} step={0.25} value={opts.grassDensity} onChange={(e) => set({ grassDensity: Number(e.target.value) })} />
           </label>
           <div className="hint" title="Grass instances sent to the GPU this frame: the tiles of the patch that are in view, out of the whole patch. Those not on rough or woods are dropped there.">
             {counts.tufts.toLocaleString()} instances of {counts.tuftsAll.toLocaleString()}
           </div>
         </>
       )}
-      <label className="check" title={terrain.treeInfo?.preview ? "This bundle has no trees yet, so these are scattered over the woods surface to show how it will look" : "The bundle's trees"}>
-        <input type="checkbox" checked={opts.trees} onChange={(e) => set({ trees: e.target.checked })} /> Trees{terrain.treeInfo?.preview ? " (preview)" : ""}
+      <label className="check" title="The bundle's trees: the forest patches and the trees placed by hand">
+        <input type="checkbox" checked={opts.trees} onChange={(e) => set({ trees: e.target.checked })} /> Trees
       </label>
+      {opts.game && terrain.renderer.waterData?.lakes.length ? (
+        <label className="check" title="The lakes' water surfaces. Off shows the ground under them, to see the lake bed and where the banks meet the water">
+          <input type="checkbox" checked={opts.water} onChange={(e) => set({ water: e.target.checked })} /> Water surface
+        </label>
+      ) : null}
       {hasDesign && (
         <>
           <label>
@@ -76,14 +92,18 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           {counts.shadowSlices} {counts.shadowSlices === 1 ? "map" : "maps"}, {counts.shadowTrees.toLocaleString()} trees drawn
         </div>
       )}
-      <label title="How strongly the slope shows in the sun's light: 0% is flat light, 100% is as lit. Only the sun's light is shaded by the slope; the sky's is not. Relief below makes the slope look steeper.">
-        Shading {Math.round(opts.shading * 100)}%
-        <input type="range" min={0} max={3} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
-      </label>
-      <label title="Exaggerates the slopes for the shading only, as on the map, so gentle ground shows. 1 is the true slope. The ground itself keeps its shape; Height stretches it.">
-        Relief ×{relief}
-        <input type="range" min={1} max={20} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
-      </label>
+      {!lookBacked && (
+        <>
+          <label title="How strongly the slope shows in the sun's light: 0% is flat light, 100% is as lit. Only the sun's light is shaded by the slope; the sky's is not. Relief below makes the slope look steeper.">
+            Shading {Math.round(opts.shading * 100)}%
+            <input type="range" min={0} max={3} step={0.05} value={opts.shading} onChange={(e) => set({ shading: Number(e.target.value) })} />
+          </label>
+          <label title="Exaggerates the slopes for the shading only, as on the map, so gentle ground shows. 1 is the true slope. The ground itself keeps its shape; Height stretches it.">
+            Relief ×{relief}
+            <input type="range" min={1} max={20} step={0.5} value={relief} onChange={(e) => onRelief(Number(e.target.value))} />
+          </label>
+        </>
+      )}
       <label title="Stretches the ground itself upward.">
         Height ×{opts.scale}
         <input type="range" min={1} max={5} step={0.5} value={opts.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
@@ -105,6 +125,6 @@ export default function OptionsPanel({ terrain, opts, set, counts, relief, onRel
           <>Drag to orbit, right-drag to pan, wheel to zoom. <kbd>3</kbd> returns to the 2D map.</>
         )}
       </p>
-    </div>
+    </>
   );
 }

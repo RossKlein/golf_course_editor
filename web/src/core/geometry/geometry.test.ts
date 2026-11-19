@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closeRing, dedupe, nearestVertex, outlineFromPoints, ringArea, selfIntersects, snapToRings, withoutLineVertex, withoutRingVertex } from "./geometry";
+import { closeRing, dedupe, nearestVertex, outlineFromPoints, pointInPolygon, pointInRing, ringArea, roundRing, selfIntersects, snapToRings, withoutLineVertex, withoutRingVertex } from "./geometry";
 import type { Pt } from "./coords";
 
 const square: Pt[] = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]];
@@ -106,5 +106,82 @@ describe("removing vertices", () => {
   it("drops a point from a line but keeps two", () => {
     expect(withoutLineVertex([[0, 0], [1, 1], [2, 2]], 1)).toEqual([[0, 0], [2, 2]]);
     expect(withoutLineVertex([[0, 0], [1, 1]], 0)).toBeNull();
+  });
+});
+
+describe("point in polygon", () => {
+  it("is inside a ring, or not", () => {
+    expect(pointInRing(square, [5, 5])).toBe(true);
+    expect(pointInRing(square, [15, 5])).toBe(false);
+    expect(pointInRing(square, [5, -1])).toBe(false);
+  });
+
+  it("works for a concave ring", () => {
+    const ell: Pt[] = [[0, 0], [10, 0], [10, 4], [4, 4], [4, 10], [0, 10], [0, 0]];
+    expect(pointInRing(ell, [2, 8])).toBe(true);
+    expect(pointInRing(ell, [8, 8])).toBe(false);
+    expect(pointInRing(ell, [8, 2])).toBe(true);
+  });
+
+  it("is outside a hole", () => {
+    const hole: Pt[] = [[3, 3], [7, 3], [7, 7], [3, 7], [3, 3]];
+    expect(pointInPolygon(square, [hole], [5, 5])).toBe(false);
+    expect(pointInPolygon(square, [hole], [1, 1])).toBe(true);
+    expect(pointInPolygon(square, [], [5, 5])).toBe(true);
+  });
+});
+
+describe("roundRing", () => {
+  it("adds one point to every edge and keeps every corner exactly where it was", () => {
+    const out = roundRing(square)!;
+    expect(out).toHaveLength(9); // 4 corners and 4 new points, and the closing point
+    expect(out[0]).toEqual(out[out.length - 1]);
+    for (const corner of square) expect(out).toContainEqual(corner);
+  });
+
+  it("puts the new points on a smooth curve: a square becomes a rounder shape, a bit fuller but nowhere near a circle round it", () => {
+    const out = roundRing(square)!;
+    expect(ringArea(out)).toBeGreaterThan(100);
+    expect(ringArea(out)).toBeLessThan(Math.PI * 50); // its circumscribed circle
+    expect(selfIntersects(out)).toBe(false);
+    // a point beside the middle of an edge bulges out of the square, but not by much
+    const mid = out[1];
+    expect(mid[0]).toBeCloseTo(5, 5);
+    expect(mid[1]).toBeLessThan(0);
+    expect(mid[1]).toBeGreaterThan(-3);
+  });
+
+  it("leaves a straight run straight: between collinear corners the new point is on the line", () => {
+    const out = roundRing([[0, 0], [10, 0], [20, 0], [30, 0], [40, 0], [40, 40], [0, 40], [0, 0]])!;
+    const on = out.filter((p) => p[0] > 10 && p[0] < 30 && p[1] === 0 || (p[0] > 10 && p[0] < 30 && Math.abs(p[1]) < 1e-9));
+    expect(on.length).toBeGreaterThanOrEqual(2); // the new points between 10 and 20 and between 20 and 30
+    for (const p of on) expect(p[1]).toBeCloseTo(0, 9);
+  });
+
+  it("is repeatable: another call halves the segments again and still keeps the corners", () => {
+    const once = roundRing(square)!;
+    const twice = roundRing(once)!;
+    expect(twice).toHaveLength(17);
+    for (const corner of once) expect(twice).toContainEqual(corner);
+  });
+
+  it("adds nothing to an edge shorter than the minimum, and returns null when no edge is long enough", () => {
+    const tiny: Pt[] = [[0, 0], [0.3, 0], [0.3, 0.3], [0, 0.3], [0, 0]];
+    expect(roundRing(tiny)).toBeNull();
+    const mixed = roundRing([[0, 0], [10, 0], [10, 0.3], [0, 0.3], [0, 0]])!;
+    expect(mixed).toHaveLength(7); // the two long edges got a point, the two short ones did not
+  });
+
+  it("copes with a closed or open ring, repeated points, and fewer than three corners", () => {
+    expect(roundRing(square.slice(0, 4))).toEqual(roundRing(square));
+    expect(roundRing([[0, 0], [0, 0], [10, 0], [10, 10], [0, 10], [0, 0]])).toEqual(roundRing(square));
+    expect(roundRing([[0, 0], [10, 0], [0, 0]])).toBeNull();
+  });
+
+  it("does not loop or overshoot beside a long edge between short ones", () => {
+    const thin: Pt[] = [[0, 0], [100, 0], [100, 1], [0, 1], [0, 0]];
+    const out = roundRing(thin)!;
+    expect(selfIntersects(out)).toBe(false);
+    for (const [, z] of out) expect(Math.abs(z - 0.5)).toBeLessThan(3);
   });
 });

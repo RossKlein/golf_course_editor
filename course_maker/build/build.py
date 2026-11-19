@@ -22,10 +22,13 @@ from shapely.geometry import MultiPolygon, Polygon
 from .. import spec as S
 from ..compiler.codec import write_png
 from ..compiler.validate import validate_bundle
-from ..design.store import read_bounds, read_layout, read_regions
+from ..design.store import read_bounds, read_layout, read_regions, read_trees
 from .height import apply_delta, record_built
+from .cache import read_cache, sha1_bytes, sha1_file, write_cache
+from .look import bundle_lock, read_look
+from .trees import forest_for, geometry_key, plant
 from ..models import Course, Hole, Report
-from ..project.store import DIR_NAME
+from ..project.store import DIR_NAME, replace_file
 
 GENERATED = ("class.png", "bounds.png")  # replaced before course.json
 
@@ -36,6 +39,8 @@ class BuildOutcome:
     notes: list[str] = field(default_factory=list)
     regions: int = 0
     holes: int = 0
+    trees: int = 0
+    files: dict[str, str] = field(default_factory=dict)  # sha1 of each file the build wrote
     ms: dict[str, int] = field(default_factory=dict)
 
 
@@ -61,7 +66,7 @@ def rasterize_classes(regions, course: Course, notes: list[str]) -> np.ndarray:
         if geom is None:
             continue
         class_shapes.append((geom, r.class_))
-        if r.hole is not None:
+        if r.hole is not None and course.kind != "range":
             owner_shapes.append((geom, r.hole))
     klass = rasterio.features.rasterize(class_shapes, out_shape=shape, transform=transform, dtype="uint8") if class_shapes else np.zeros(shape, np.uint8)
     owner = rasterio.features.rasterize(owner_shapes, out_shape=shape, transform=transform, dtype="uint8") if owner_shapes else np.zeros(shape, np.uint8)
@@ -71,9 +76,25 @@ def rasterize_classes(regions, course: Course, notes: list[str]) -> np.ndarray:
     return out
 
 
-def rasterize_bounds(areas, course: Course, holes: int, notes: list[str]) -> np.ndarray:
+def rasterize_region_index(regions, course: Course) -> np.ndarray:
+    """uint16, the class map's size: the position in the list plus one of the last woods region painted over each cell, 0 for none.
+    The class map says whether a cell is woods; this says whose settings its forest takes. Painter's order, as for the classes."""
+    cg = course.class_
+    shape, transform = (cg.rows, cg.cols), Affine(cg.res, 0, 0, 0, cg.res, 0)
+    shapes = []
+    for n, r in enumerate(regions, start=1):
+        if r.class_ != S.CLASSES["woods"]:
+            continue
+        geom = _polygons(r, [])  # the class map's pass has already said what was wrong with it
+        if geom is not None:
+            shapes.append((geom, n))
+    return rasterio.features.rasterize(shapes, out_shape=shape, transform=transform, dtype="uint16") if shapes else np.zeros(shape, np.uint16)
+
+
+def rasterize_bounds(areas, course: Course, holes: int, notes: list[str], klass: np.ndarray | None = None) -> np.ndarray:
     """RGB bounds map: bit h-1 of the 24-bit value in R,G,B is set where hole h is in bounds. A hole's bit is set inside
-    the union of its areas, or everywhere when it has none yet (an unfinished hole is not flagged as out of bounds)."""
+    the union of its areas, or everywhere when it has none yet (an unfinished hole is not flagged as out of bounds).
+    Where there is no ground (a bounds cell whose class cells are all void) no hole is in bounds, so a reader of this map alone is right too."""
     bg = course.bounds
     shape, transform = (bg.rows, bg.cols), Affine(bg.res, 0, 0, 0, bg.res, 0)
     mask = np.zeros(shape, np.uint32)
@@ -89,6 +110,10 @@ def rasterize_bounds(areas, course: Course, holes: int, notes: list[str]) -> np.
         shapes = by_hole.get(h)
         inside = rasterio.features.rasterize(shapes, out_shape=shape, transform=transform, dtype="uint8").astype(bool) if shapes else True
         mask |= (np.broadcast_to(inside, shape).astype(np.uint32)) << (h - 1)
+    if klass is not None and (klass == S.VOID).any():
+        n = round(bg.res / course.class_.res)  # class cells across a bounds cell
+        rows, cols = shape
+        mask[(klass[:rows * n, :cols * n] == S.VOID).reshape(rows, n, cols, n).all(axis=(1, 3))] = 0
     out = np.zeros(shape + (3,), np.uint8)
     out[..., 0], out[..., 1], out[..., 2] = mask & 255, (mask >> 8) & 255, (mask >> 16) & 255
     return out
@@ -106,11 +131,23 @@ def usable_holes(layout, notes: list[str]) -> list[Hole]:
     return holes
 
 
+def _encode(bundle: Path, staging: Path, name: str, arr: np.ndarray, kept: dict | None) -> dict:
+    """Put `name` in the staging bundle. Encoding a big PNG is slow, so when the raster is the one the last build encoded, and that file is
+    still the one in the bundle, it is copied instead. Returns what to remember: the raster's key and the file's sha."""
+    key = sha1_bytes(str(arr.shape).encode(), arr.tobytes())
+    existing = bundle / name
+    if kept and kept.get("key") == key and existing.is_file() and sha1_file(existing) == kept.get("sha"):
+        shutil.copy2(existing, staging / name)
+        return {"key": key, "sha": kept["sha"]}
+    write_png(staging / name, arr)
+    return {"key": key, "sha": sha1_file(staging / name)}
+
+
 def build_bundle(bundle) -> BuildOutcome:
     bundle = Path(bundle)
     t0 = time.perf_counter()
     course = Course.read(bundle / "course.json")
-    layout, regions, bounds = read_layout(bundle), read_regions(bundle), read_bounds(bundle)  # DesignError if a design file is invalid
+    layout, regions, bounds, tree_edits = read_layout(bundle), read_regions(bundle), read_bounds(bundle), read_trees(bundle)  # DesignError if a design file is invalid
     notes: list[str] = []
     ms: dict[str, int] = {}
 
@@ -119,7 +156,7 @@ def build_bundle(bundle) -> BuildOutcome:
     staging.mkdir(parents=True)
     try:
         for entry in bundle.iterdir():  # unchanged files (height, trees, patches) are copied so the staging bundle is complete
-            if entry.name.startswith(".") or entry.name in GENERATED or entry.name == "course.json":
+            if entry.name.startswith(".") or entry.name in GENERATED or entry.name in ("course.json", course.trees.file):
                 continue
             shutil.copytree(entry, staging / entry.name) if entry.is_dir() else shutil.copy2(entry, staging / entry.name)
         ms["stage"] = round((time.perf_counter() - t0) * 1000)
@@ -131,19 +168,38 @@ def build_bundle(bundle) -> BuildOutcome:
         ms["heights"] = round((time.perf_counter() - t) * 1000)
 
         t = time.perf_counter()
-        holes = usable_holes(layout, notes)
+        if course.kind == "range":
+            holes = []
+            if layout.holes:
+                notes.append("a range has no holes, so its routes are not written into the bundle")
+        else:
+            holes = usable_holes(layout, notes)
         klass = rasterize_classes(regions.regions, course, notes)
-        bounds_img = rasterize_bounds(bounds.areas, course, len(holes), notes)
+        bounds_img = rasterize_bounds(bounds.areas, course, len(holes), notes, klass[..., 0])
         ms["rasterize"] = round((time.perf_counter() - t) * 1000)
 
         t = time.perf_counter()
-        write_png(staging / "class.png", klass)
-        write_png(staging / "bounds.png", bounds_img)
+        cache = read_cache(bundle)
+        made: dict[str, dict] = {}
+        for name, arr in (("class.png", klass), ("bounds.png", bounds_img)):
+            made[name] = _encode(bundle, staging, name, arr, cache.get(name))
         ms["encode"] = round((time.perf_counter() - t) * 1000)
+
+        t = time.perf_counter()
+        forest = forest_for(bundle, geometry_key(regions.regions, course.extent, course.class_.res, (course.class_.rows, course.class_.cols)),
+                            lambda: (klass[..., 0].copy(), rasterize_region_index(regions.regions, course)))
+        planting = plant(
+            extent=course.extent, res=course.class_.res, klass=forest.klass, region_index=forest.region_index,
+            regions=regions.regions, edits=tree_edits, kinds=course.look.trees.kinds, landmarks=course.landmarks, forest=forest,
+        )
+        notes.extend(planting.notes)
+        (staging / course.trees.file).write_bytes(planting.trees.tobytes())
+        ms["trees"] = round((time.perf_counter() - t) * 1000)
 
         data = course.model_dump(by_alias=True, exclude_none=True)
         data["hMin"], data["hMax"] = heights.h_min, heights.h_max
         data["holes"] = [h.model_dump() for h in holes]
+        data["trees"] = {"file": course.trees.file, "count": len(planting.trees)}
         if layout.name:
             data["name"] = layout.name
         if layout.attribution:
@@ -154,11 +210,30 @@ def build_bundle(bundle) -> BuildOutcome:
         report = validate_bundle(staging)
         ms["validate"] = round((time.perf_counter() - t) * 1000)
 
-        replaced = (*GENERATED, *([course.height.file] if heights.png is not None else []), "course.json")
-        for name in replaced:  # course.json last: readers see new rasters before they see new numbers
-            os.replace(staging / name, bundle / name)
+        replaced = (*GENERATED, course.trees.file, *([course.height.file] if heights.png is not None else []), "course.json")
+        with bundle_lock(bundle):
+            look = read_look(bundle)  # the look editor may have saved a new one while this build ran; it is not part of what a build changes
+            if look != course.look:
+                Course.read(staging / "course.json").model_copy(update={"look": look}).write(staging / "course.json")
+            from .water import publish_water
+            water_course = publish_water(staging, Course.read(staging / "course.json"))
+            water_course.write(staging / "course.json")
+            report = validate_bundle(staging)
+            # A half-drawn hole is a problem to show, not a reason to throw the build away. Only a broken water file refuses the publish.
+            water_errors = [e for e in report.errors if e.startswith(f"{water_course.waterMesh}:")]
+            if water_errors:
+                raise ValueError("Water bundle validation failed: " + "; ".join(water_errors))
+            replace_file(staging / water_course.waterMesh, bundle / water_course.waterMesh)
+            for name in replaced:  # course.json last: readers see new rasters before they see new numbers
+                replace_file(staging / name, bundle / name)
+            from .water import prune_water
+            prune_water(bundle, water_course)  # course.json names the new mesh now; the old ones go once they are not recent
         record_built(bundle, heights.sha)
+        files = {n: made[n]["sha"] for n in made} | {
+            course.trees.file: sha1_file(bundle / course.trees.file), "course.json": sha1_file(bundle / "course.json"), course.height.file: heights.sha, water_course.waterMesh: sha1_file(bundle / water_course.waterMesh),
+        }
+        write_cache(bundle, {**made, "heights": {"key": heights.key, "sha": heights.sha, "hMin": heights.h_min, "hMax": heights.h_max}})
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     ms["total"] = round((time.perf_counter() - t0) * 1000)
-    return BuildOutcome(report=report, notes=notes, regions=len(regions.regions), holes=len(holes), ms=ms)
+    return BuildOutcome(report=report, notes=notes, regions=len(regions.regions), holes=len(holes), trees=len(planting.trees), files=files, ms=ms)

@@ -5,6 +5,7 @@ import { compileProgram, type Program } from "../../gfx/shader/program";
 import type { Gl } from "../context";
 import type { HeightField } from "../heightfield/heightfield";
 import { SHADOW_REACH, SKY_REACH, SUN_REACH, SUN_TEXELS, SUN_TILE, SUN_TILE_MAP } from "../limits";
+import type { TreeChange } from "../scenery/treeDiff";
 import type { TreesPass } from "../passes/trees/trees";
 import { SHADERS } from "../shaders/shaders";
 import { sunDirection } from "../sun";
@@ -43,6 +44,7 @@ export class Lighting {
       format: "R16F",
       mipmaps: true,
       reach: Math.ceil(SKY_REACH / Math.min(resX, resZ)) + 1,
+      strip: SUN_TILE / SUN_TEXELS, // the same ground as a strip of the sun bake
       unit: 11,
       names: { map: "uSkyMap", on: "uSkyOn" },
       uniforms: (g, p) => {
@@ -72,6 +74,7 @@ export class Lighting {
       format: "R8",
       mipmaps: true,
       reach: Math.ceil(SUN_REACH / (Math.min(resX, resZ) / SUN_TEXELS)) + 1,
+      strip: SUN_TILE, // a row of the tiles the trees' shadows are baked in
       unit: 12,
       names: { map: "uSunMap", on: "uSunOn" },
       uniforms: (g, p) => {
@@ -155,6 +158,35 @@ export class Lighting {
   /** The trees or the look changed: everything the trees decide has to be baked again. */
   touchAll() {
     this.sky.touchAll();
+    this.sun.touchAll();
+  }
+
+  /**
+   * Some trees were added, removed or changed. Only the ground they can reach is baked again: a crown hides the sky from the ground
+   * around it, and a tree's shadow runs as far as the sun's angle makes it. A change to a large share of the forest, or one that reaches
+   * over half the course, is baked whole.
+   */
+  touchTrees(change: TreeChange) {
+    if (!change.box) return;
+    const { grid, origin, resX, resZ } = this.heights.data;
+    const [sx, sy, sz] = sunDirection(this.world().sun);
+    const shadow = sy > 0.02 ? Math.min(SHADOW_REACH, (change.tallest * Math.hypot(sx, sz)) / sy) : SHADOW_REACH;
+    const reach = Math.max(SKY_REACH, shadow) + 4; // metres
+    const x0 = Math.max(0, Math.floor((change.box.x0 - reach - origin.x) / resX)), x1 = Math.min(grid.cols - 1, Math.ceil((change.box.x1 + reach - origin.x) / resX));
+    const z0 = Math.max(0, Math.floor((change.box.z0 - reach - origin.z) / resZ)), z1 = Math.min(grid.rows - 1, Math.ceil((change.box.z1 + reach - origin.z) / resZ));
+    const covers = ((x1 - x0 + 1) * (z1 - z0 + 1)) / (grid.cols * grid.rows);
+    if (change.changed > 0.4 * change.total || covers > 0.5) return this.touchAll();
+    this.sky.touchExact({ x0, z0, x1, z1 });
+    this.sun.touchExact({ x0: x0 * SUN_TEXELS, z0: z0 * SUN_TEXELS, x1: (x1 + 1) * SUN_TEXELS - 1, z1: (z1 + 1) * SUN_TEXELS - 1 });
+  }
+
+  /** Whether a bake is part done: more of it comes with each frame that is drawn. */
+  get pending(): boolean {
+    return this.sky.pending || this.sun.pending;
+  }
+
+  /** Only the sun's lighting is out of date (the sun moved or its shadows' edge changed); the sky's is not. */
+  touchSun() {
     this.sun.touchAll();
   }
 

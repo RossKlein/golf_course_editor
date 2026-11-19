@@ -187,7 +187,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Look"
+                  "$ref": "#/components/schemas/Look-Output"
                 }
               }
             }
@@ -413,10 +413,100 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DesignDoc"
+                  "$ref": "#/components/schemas/DesignResponse"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/water-preview": {
+      "post": {
+        "summary": "Water Preview",
+        "operationId": "water_preview_api_bundle_water_preview_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Look-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/look": {
+      "put": {
+        "summary": "Look Put",
+        "description": "Replace the course's look. It changes no raster, so nothing is built.",
+        "operationId": "look_put_api_bundle_look_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Look-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -543,6 +633,96 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/design/trees": {
+      "put": {
+        "summary": "Design Put Trees",
+        "operationId": "design_put_trees_api_bundle_design_trees_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TreeEdits-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/trees/preview": {
+      "post": {
+        "summary": "Trees Preview",
+        "description": "The trees the build would write for these unsaved tree edits and forest settings, as trees.bin's bytes. Nothing is saved or built.",
+        "operationId": "trees_preview_api_bundle_trees_preview_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TreesPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -723,6 +903,135 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BackupList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/crops": {
+      "get": {
+        "summary": "Crops List",
+        "operationId": "crops_list_api_bundle_crops_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/crop": {
+      "post": {
+        "summary": "Crop Post",
+        "description": "Crop the map in place. The editor saves what it has first and reloads after; the previous map is kept so the crop can be taken back.",
+        "operationId": "crop_post_api_bundle_crop_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CropRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bundle/crop/undo": {
+      "post": {
+        "summary": "Crop Undo",
+        "description": "Put the map and design back as they were before the newest crop.",
+        "operationId": "crop_undo_api_bundle_crop_undo_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropList"
                 }
               }
             }
@@ -1007,7 +1316,94 @@
         ],
         "title": "BakeResult"
       },
-      "Blob": {
+      "Blob-Input": {
+        "properties": {
+          "shape": {
+            "type": "string",
+            "const": "blob",
+            "title": "Shape",
+            "default": "blob"
+          },
+          "cx": {
+            "type": "number",
+            "title": "Cx"
+          },
+          "cy": {
+            "type": "number",
+            "title": "Cy"
+          },
+          "cz": {
+            "type": "number",
+            "title": "Cz"
+          },
+          "rx": {
+            "type": "number",
+            "title": "Rx",
+            "gt": 0
+          },
+          "ry": {
+            "type": "number",
+            "title": "Ry",
+            "gt": 0
+          },
+          "rz": {
+            "type": "number",
+            "title": "Rz",
+            "gt": 0
+          },
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "sides": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 3.0,
+            "title": "Sides",
+            "default": 7
+          },
+          "rings": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 2.0,
+            "title": "Rings",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cx",
+          "cy",
+          "cz",
+          "rx",
+          "ry",
+          "rz",
+          "color"
+        ],
+        "title": "Blob",
+        "description": "A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz)."
+      },
+      "Blob-Output": {
         "properties": {
           "shape": {
             "type": "string",
@@ -1355,6 +1751,19 @@
             "type": "integer",
             "title": "Holes",
             "default": 0
+          },
+          "trees": {
+            "type": "integer",
+            "title": "Trees",
+            "default": 0
+          },
+          "files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Files",
+            "default": {}
           }
         },
         "additionalProperties": false,
@@ -1369,7 +1778,9 @@
           "error",
           "ms",
           "regions",
-          "holes"
+          "holes",
+          "trees",
+          "files"
         ],
         "title": "BuildStatus",
         "description": "Where the build for a bundle stands. `id` increases with every finished build; the viewer reloads on change."
@@ -1392,6 +1803,33 @@
           "name"
         ],
         "title": "BundleEntry"
+      },
+      "Clearing": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          },
+          "r": {
+            "type": "number",
+            "title": "R",
+            "gt": 0,
+            "le": 100
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "z",
+          "r"
+        ],
+        "title": "Clearing",
+        "description": "A circle drawn by hand where the forest is not planted."
       },
       "Course": {
         "properties": {
@@ -1461,8 +1899,28 @@
             "type": "array",
             "title": "Holes"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course",
+              "range"
+            ],
+            "title": "Kind",
+            "default": "course"
+          },
           "look": {
-            "$ref": "#/components/schemas/Look"
+            "$ref": "#/components/schemas/Look-Output"
+          },
+          "waterMesh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermesh"
           }
         },
         "additionalProperties": false,
@@ -1482,34 +1940,98 @@
           "trees",
           "landmarks",
           "holes",
-          "look"
+          "kind",
+          "look",
+          "waterMesh"
         ],
         "title": "Course"
       },
-      "DesignDoc": {
+      "CropList": {
         "properties": {
-          "layout": {
-            "$ref": "#/components/schemas/Layout-Output"
-          },
-          "regions": {
-            "$ref": "#/components/schemas/RegionsFile-Output"
-          },
-          "bounds": {
-            "$ref": "#/components/schemas/BoundsFile-Output",
-            "default": {
-              "areas": []
-            }
+          "crops": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Crops"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "layout",
-          "regions",
-          "bounds"
+          "crops"
         ],
-        "title": "DesignDoc",
-        "description": "Everything the editor edits."
+        "title": "CropList"
+      },
+      "CropRequest": {
+        "properties": {
+          "x0": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X0"
+          },
+          "z0": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Z0"
+          },
+          "x1": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "X1"
+          },
+          "z1": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Z1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x0",
+          "z0",
+          "x1",
+          "z1"
+        ],
+        "title": "CropRequest",
+        "description": "The part of the map to keep, in whole course metres: the samples from x0 to x1 east and z0 to z1 south, edges included."
+      },
+      "CropResponse": {
+        "properties": {
+          "cols": {
+            "type": "integer",
+            "title": "Cols"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          },
+          "crops": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Crops"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cols",
+          "rows",
+          "notes",
+          "crops"
+        ],
+        "title": "CropResponse"
       },
       "DesignHole-Input": {
         "properties": {
@@ -1623,6 +2145,51 @@
         ],
         "title": "DesignHole",
         "description": "A hole as designed. The route may still be unfinished (fewer than 2 points); the build skips such holes."
+      },
+      "DesignResponse": {
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/Layout-Output"
+          },
+          "regions": {
+            "$ref": "#/components/schemas/RegionsFile-Output"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/BoundsFile-Output",
+            "default": {
+              "areas": []
+            }
+          },
+          "trees": {
+            "$ref": "#/components/schemas/TreeEdits-Output",
+            "default": {
+              "defaults": {
+                "edgeDensity": 0.3,
+                "edgeThinning": 8.0,
+                "heightScale": 1.0,
+                "kinds": {},
+                "seed": 0,
+                "spacing": 5.0
+              },
+              "added": [],
+              "removed": []
+            }
+          },
+          "look": {
+            "$ref": "#/components/schemas/Look-Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layout",
+          "regions",
+          "bounds",
+          "trees",
+          "look"
+        ],
+        "title": "DesignResponse",
+        "description": "What the editor loads: the design, and the course's look, which is kept in course.json and edited with the rest."
       },
       "EditorResponse": {
         "properties": {
@@ -1780,12 +2347,31 @@
             "ge": 0,
             "le": 1
           },
+          "cloneRelative": {
+            "type": "boolean",
+            "title": "Clonerelative",
+            "default": true
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
             "default": 0.1,
             "ge": 0,
             "le": 10
+          },
+          "pathWidth": {
+            "type": "number",
+            "title": "Pathwidth",
+            "default": 2.5,
+            "ge": 0.5,
+            "le": 16
+          },
+          "collarThickness": {
+            "type": "number",
+            "title": "Collarthickness",
+            "default": 1.5,
+            "ge": 0.3,
+            "le": 5
           },
           "leftCollapsed": {
             "type": "boolean",
@@ -1800,6 +2386,27 @@
             ],
             "title": "Righttab",
             "default": "view"
+          },
+          "view3d": {
+            "type": "boolean",
+            "title": "View3D",
+            "default": false
+          },
+          "viewer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Viewer-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lookTab": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Looktab",
+            "default": "sky"
           }
         },
         "additionalProperties": false,
@@ -1940,12 +2547,31 @@
             "ge": 0,
             "le": 1
           },
+          "cloneRelative": {
+            "type": "boolean",
+            "title": "Clonerelative",
+            "default": true
+          },
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
             "default": 0.1,
             "ge": 0,
             "le": 10
+          },
+          "pathWidth": {
+            "type": "number",
+            "title": "Pathwidth",
+            "default": 2.5,
+            "ge": 0.5,
+            "le": 16
+          },
+          "collarThickness": {
+            "type": "number",
+            "title": "Collarthickness",
+            "default": 1.5,
+            "ge": 0.3,
+            "le": 5
           },
           "leftCollapsed": {
             "type": "boolean",
@@ -1960,6 +2586,27 @@
             ],
             "title": "Righttab",
             "default": "view"
+          },
+          "view3d": {
+            "type": "boolean",
+            "title": "View3D",
+            "default": false
+          },
+          "viewer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Viewer-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lookTab": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Looktab",
+            "default": "sky"
           }
         },
         "additionalProperties": false,
@@ -1984,9 +2631,15 @@
           "brushRadius",
           "brushStrength",
           "brushHardness",
+          "cloneRelative",
           "smoothing",
+          "pathWidth",
+          "collarThickness",
           "leftCollapsed",
-          "rightTab"
+          "rightTab",
+          "view3d",
+          "viewer",
+          "lookTab"
         ],
         "title": "EditorState",
         "description": "`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."
@@ -2021,7 +2674,203 @@
         "title": "ElevationLayer",
         "description": "16-bit heights in R/G of a PNG, as in the bundle format; A = 0 marks no data."
       },
-      "Frustum": {
+      "ForestSettings-Input": {
+        "properties": {
+          "spacing": {
+            "type": "number",
+            "title": "Spacing",
+            "default": 5.0,
+            "ge": 2,
+            "le": 20
+          },
+          "kinds": {
+            "patternProperties": {
+              "\\S": {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            },
+            "type": "object",
+            "maxProperties": 8,
+            "title": "Kinds",
+            "default": {}
+          },
+          "heightScale": {
+            "type": "number",
+            "title": "Heightscale",
+            "default": 1.0,
+            "ge": 0.5,
+            "le": 2
+          },
+          "edgeThinning": {
+            "type": "number",
+            "title": "Edgethinning",
+            "default": 8.0,
+            "ge": 0,
+            "le": 30
+          },
+          "edgeDensity": {
+            "type": "number",
+            "title": "Edgedensity",
+            "default": 0.3,
+            "ge": 0,
+            "le": 1
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ForestSettings",
+        "description": "How a forest patch (a woods region) is planted. docs/tree-editor-plan.md, section 3."
+      },
+      "ForestSettings-Output": {
+        "properties": {
+          "spacing": {
+            "type": "number",
+            "title": "Spacing",
+            "default": 5.0,
+            "ge": 2,
+            "le": 20
+          },
+          "kinds": {
+            "patternProperties": {
+              "\\S": {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            },
+            "type": "object",
+            "maxProperties": 8,
+            "title": "Kinds",
+            "default": {}
+          },
+          "heightScale": {
+            "type": "number",
+            "title": "Heightscale",
+            "default": 1.0,
+            "ge": 0.5,
+            "le": 2
+          },
+          "edgeThinning": {
+            "type": "number",
+            "title": "Edgethinning",
+            "default": 8.0,
+            "ge": 0,
+            "le": 30
+          },
+          "edgeDensity": {
+            "type": "number",
+            "title": "Edgedensity",
+            "default": 0.3,
+            "ge": 0,
+            "le": 1
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "spacing",
+          "kinds",
+          "heightScale",
+          "edgeThinning",
+          "edgeDensity",
+          "seed"
+        ],
+        "title": "ForestSettings",
+        "description": "How a forest patch (a woods region) is planted. docs/tree-editor-plan.md, section 3."
+      },
+      "Frustum-Input": {
+        "properties": {
+          "shape": {
+            "type": "string",
+            "const": "frustum",
+            "title": "Shape",
+            "default": "frustum"
+          },
+          "y0": {
+            "type": "number",
+            "title": "Y0"
+          },
+          "r0": {
+            "type": "number",
+            "title": "R0",
+            "ge": 0
+          },
+          "y1": {
+            "type": "number",
+            "title": "Y1"
+          },
+          "r1": {
+            "type": "number",
+            "title": "R1",
+            "ge": 0
+          },
+          "sides": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 3.0,
+            "title": "Sides"
+          },
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "shade": {
+            "type": "number",
+            "title": "Shade",
+            "default": 0.12,
+            "ge": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "y0",
+          "r0",
+          "y1",
+          "r1",
+          "sides",
+          "color"
+        ],
+        "title": "Frustum",
+        "description": "A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's."
+      },
+      "Frustum-Output": {
         "properties": {
           "shape": {
             "type": "string",
@@ -2099,7 +2948,7 @@
         "title": "Frustum",
         "description": "A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's."
       },
-      "Grass": {
+      "Grass-Input": {
         "properties": {
           "tile": {
             "type": "string",
@@ -2129,6 +2978,96 @@
             "title": "Smoothing",
             "ge": 1,
             "le": 3
+          },
+          "edgeWidth": {
+            "type": "number",
+            "title": "Edgewidth",
+            "gt": 0,
+            "le": 0.5
+          },
+          "edgeRagged": {
+            "type": "number",
+            "title": "Edgeragged",
+            "ge": 0,
+            "le": 0.3
+          },
+          "edgeShadow": {
+            "type": "number",
+            "title": "Edgeshadow",
+            "ge": 0,
+            "le": 1
+          },
+          "edgeGain": {
+            "type": "number",
+            "title": "Edgegain",
+            "ge": 1,
+            "le": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tile",
+          "tileMetres",
+          "wobble",
+          "speckleGrain"
+        ],
+        "title": "Grass"
+      },
+      "Grass-Output": {
+        "properties": {
+          "tile": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Tile"
+          },
+          "tileMetres": {
+            "type": "number",
+            "title": "Tilemetres",
+            "gt": 0,
+            "le": 100
+          },
+          "wobble": {
+            "type": "number",
+            "title": "Wobble",
+            "ge": 0,
+            "le": 4
+          },
+          "speckleGrain": {
+            "type": "number",
+            "title": "Specklegrain",
+            "gt": 0,
+            "le": 1
+          },
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "ge": 1,
+            "le": 3
+          },
+          "edgeWidth": {
+            "type": "number",
+            "title": "Edgewidth",
+            "gt": 0,
+            "le": 0.5
+          },
+          "edgeRagged": {
+            "type": "number",
+            "title": "Edgeragged",
+            "ge": 0,
+            "le": 0.3
+          },
+          "edgeShadow": {
+            "type": "number",
+            "title": "Edgeshadow",
+            "ge": 0,
+            "le": 1
+          },
+          "edgeGain": {
+            "type": "number",
+            "title": "Edgegain",
+            "ge": 1,
+            "le": 10
           }
         },
         "additionalProperties": false,
@@ -2138,7 +3077,11 @@
           "tileMetres",
           "wobble",
           "speckleGrain",
-          "smoothing"
+          "smoothing",
+          "edgeWidth",
+          "edgeRagged",
+          "edgeShadow",
+          "edgeGain"
         ],
         "title": "Grass"
       },
@@ -2278,6 +3221,122 @@
         ],
         "title": "Index"
       },
+      "LakeSettings-Input": {
+        "properties": {
+          "anchor": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Anchor"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "offset": {
+            "type": "number",
+            "title": "Offset",
+            "default": 0,
+            "ge": -50,
+            "le": 50
+          },
+          "curvature": {
+            "type": "number",
+            "title": "Curvature",
+            "default": 0,
+            "ge": 0,
+            "le": 1
+          },
+          "excess": {
+            "type": "number",
+            "title": "Excess",
+            "default": 0,
+            "ge": 0,
+            "le": 30
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "anchor"
+        ],
+        "title": "LakeSettings"
+      },
+      "LakeSettings-Output": {
+        "properties": {
+          "anchor": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Anchor"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "offset": {
+            "type": "number",
+            "title": "Offset",
+            "default": 0,
+            "ge": -50,
+            "le": 50
+          },
+          "curvature": {
+            "type": "number",
+            "title": "Curvature",
+            "default": 0,
+            "ge": 0,
+            "le": 1
+          },
+          "excess": {
+            "type": "number",
+            "title": "Excess",
+            "default": 0,
+            "ge": 0,
+            "le": 30
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "anchor",
+          "level",
+          "offset",
+          "curvature",
+          "excess"
+        ],
+        "title": "LakeSettings"
+      },
       "Landmark": {
         "properties": {
           "name": {
@@ -2319,6 +3378,19 @@
               }
             ],
             "title": "Y"
+          },
+          "clearance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "gt": 0,
+                "le": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clearance"
           }
         },
         "additionalProperties": false,
@@ -2330,7 +3402,8 @@
           "z",
           "rotation",
           "scale",
-          "y"
+          "y",
+          "clearance"
         ],
         "title": "Landmark"
       },
@@ -2442,8 +3515,11 @@
         "title": "Layout",
         "description": "Course metadata and holes. `name` and `attribution`, when set, override what the bake wrote."
       },
-      "Look": {
+      "Look-Input": {
         "properties": {
+          "water": {
+            "$ref": "#/components/schemas/WaterLook-Input"
+          },
           "sky": {
             "prefixItems": [
               {
@@ -2472,30 +3548,97 @@
           },
           "surfaces": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/Surface"
+              "$ref": "#/components/schemas/Surface-Input"
             },
             "type": "object",
             "title": "Surfaces"
           },
           "grass": {
-            "$ref": "#/components/schemas/Grass"
+            "$ref": "#/components/schemas/Grass-Input"
           },
           "tufts": {
-            "$ref": "#/components/schemas/Tufts"
+            "$ref": "#/components/schemas/Tufts-Input"
           },
           "trees": {
-            "$ref": "#/components/schemas/Trees"
+            "$ref": "#/components/schemas/Trees-Input"
           },
           "shadows": {
             "$ref": "#/components/schemas/Shadows"
           },
           "relief": {
-            "$ref": "#/components/schemas/ReliefLook"
+            "$ref": "#/components/schemas/ReliefLook-Input"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "sky",
+          "sun",
+          "surfaces",
+          "grass",
+          "tufts",
+          "trees"
+        ],
+        "title": "Look"
+      },
+      "Look-Output": {
+        "properties": {
+          "water": {
+            "$ref": "#/components/schemas/WaterLook-Output"
+          },
+          "sky": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Sky"
+          },
+          "sun": {
+            "$ref": "#/components/schemas/Sun"
+          },
+          "surfaces": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Surface-Output"
+            },
+            "type": "object",
+            "title": "Surfaces"
+          },
+          "grass": {
+            "$ref": "#/components/schemas/Grass-Output"
+          },
+          "tufts": {
+            "$ref": "#/components/schemas/Tufts-Output"
+          },
+          "trees": {
+            "$ref": "#/components/schemas/Trees-Output"
+          },
+          "shadows": {
+            "$ref": "#/components/schemas/Shadows"
+          },
+          "relief": {
+            "$ref": "#/components/schemas/ReliefLook-Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "water",
           "sky",
           "sun",
           "surfaces",
@@ -2544,6 +3687,40 @@
         ],
         "title": "Patch"
       },
+      "PlacedTree": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          },
+          "height": {
+            "type": "number",
+            "title": "Height",
+            "gt": 0,
+            "le": 60
+          },
+          "kind": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "z",
+          "height",
+          "kind"
+        ],
+        "title": "PlacedTree",
+        "description": "A tree put down by hand. It is a plain tree in trees.bin, and the forest does not grow within its crown."
+      },
       "RasterLayer": {
         "properties": {
           "width": {
@@ -2574,7 +3751,7 @@
           },
           "class": {
             "type": "integer",
-            "maximum": 8.0,
+            "maximum": 255.0,
             "minimum": 0.0,
             "title": "Class"
           },
@@ -2644,6 +3821,16 @@
               }
             ],
             "title": "Note"
+          },
+          "trees": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForestSettings-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -2667,7 +3854,7 @@
           },
           "class": {
             "type": "integer",
-            "maximum": 8.0,
+            "maximum": 255.0,
             "minimum": 0.0,
             "title": "Class"
           },
@@ -2737,6 +3924,16 @@
               }
             ],
             "title": "Note"
+          },
+          "trees": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForestSettings-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -2747,7 +3944,8 @@
           "hole",
           "outer",
           "inner",
-          "note"
+          "note",
+          "trees"
         ],
         "title": "Region",
         "description": "A surface polygon. Order in the file is painter's order: later regions are drawn over earlier ones."
@@ -2787,19 +3985,62 @@
         ],
         "title": "RegionsFile"
       },
-      "ReliefLook": {
+      "ReliefLook-Input": {
         "properties": {
           "smoothing": {
             "type": "number",
             "title": "Smoothing",
             "ge": 1,
             "le": 6
+          },
+          "exaggeration": {
+            "type": "number",
+            "title": "Exaggeration",
+            "ge": 1,
+            "le": 20
+          },
+          "shading": {
+            "type": "number",
+            "title": "Shading",
+            "ge": 0,
+            "le": 3
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "smoothing"
+        ],
+        "title": "ReliefLook",
+        "description": "How the ground's slope is worked out for lighting."
+      },
+      "ReliefLook-Output": {
+        "properties": {
+          "smoothing": {
+            "type": "number",
+            "title": "Smoothing",
+            "ge": 1,
+            "le": 6
+          },
+          "exaggeration": {
+            "type": "number",
+            "title": "Exaggeration",
+            "ge": 1,
+            "le": 20
+          },
+          "shading": {
+            "type": "number",
+            "title": "Shading",
+            "ge": 0,
+            "le": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "smoothing",
+          "exaggeration",
+          "shading"
         ],
         "title": "ReliefLook",
         "description": "How the ground's slope is worked out for lighting."
@@ -2939,7 +4180,7 @@
         "title": "Sun",
         "description": "Where the sun is: a place, a time of year and a time of day."
       },
-      "Surface": {
+      "Surface-Input": {
         "properties": {
           "color": {
             "prefixItems": [
@@ -3072,6 +4313,20 @@
             "ge": 0,
             "le": 4
           },
+          "tuftDensity": {
+            "type": "number",
+            "title": "Tuftdensity",
+            "default": 1.0,
+            "ge": 0,
+            "le": 1
+          },
+          "tuftClump": {
+            "type": "number",
+            "title": "Tuftclump",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
           "bump": {
             "type": "number",
             "title": "Bump",
@@ -3087,6 +4342,193 @@
             ],
             "title": "Bumpmap",
             "default": "grass"
+          },
+          "height": {
+            "type": "number",
+            "title": "Height",
+            "default": 0.0,
+            "ge": 0,
+            "le": 0.5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "color",
+          "grain"
+        ],
+        "title": "Surface",
+        "description": "How one surface class is coloured, and what grows on it. The look has one for each class, in class order."
+      },
+      "Surface-Output": {
+        "properties": {
+          "color": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Color"
+          },
+          "color2": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  }
+                ],
+                "type": "array",
+                "maxItems": 3,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color2"
+          },
+          "stripe": {
+            "type": "number",
+            "title": "Stripe",
+            "default": 0.0,
+            "ge": 0,
+            "le": 100
+          },
+          "grain": {
+            "type": "number",
+            "title": "Grain",
+            "ge": 0,
+            "le": 1
+          },
+          "shade": {
+            "type": "number",
+            "title": "Shade",
+            "default": 1.0,
+            "ge": 0,
+            "le": 2
+          },
+          "speckleDark": {
+            "type": "number",
+            "title": "Speckledark",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "specklePale": {
+            "type": "number",
+            "title": "Specklepale",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "earth": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  },
+                  {
+                    "type": "number",
+                    "ge": 0,
+                    "le": 1
+                  }
+                ],
+                "type": "array",
+                "maxItems": 3,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earth"
+          },
+          "mottle": {
+            "type": "number",
+            "title": "Mottle",
+            "default": 0.0,
+            "ge": 0,
+            "le": 10
+          },
+          "tuft": {
+            "type": "number",
+            "title": "Tuft",
+            "default": 0.0,
+            "ge": 0,
+            "le": 4
+          },
+          "tuftDensity": {
+            "type": "number",
+            "title": "Tuftdensity",
+            "default": 1.0,
+            "ge": 0,
+            "le": 1
+          },
+          "tuftClump": {
+            "type": "number",
+            "title": "Tuftclump",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "bump": {
+            "type": "number",
+            "title": "Bump",
+            "default": 0.0,
+            "ge": 0,
+            "le": 3
+          },
+          "bumpMap": {
+            "type": "string",
+            "enum": [
+              "grass",
+              "grain"
+            ],
+            "title": "Bumpmap",
+            "default": "grass"
+          },
+          "height": {
+            "type": "number",
+            "title": "Height",
+            "default": 0.0,
+            "ge": 0,
+            "le": 0.5
           }
         },
         "additionalProperties": false,
@@ -3102,8 +4544,11 @@
           "earth",
           "mottle",
           "tuft",
+          "tuftDensity",
+          "tuftClump",
           "bump",
-          "bumpMap"
+          "bumpMap",
+          "height"
         ],
         "title": "Surface",
         "description": "How one surface class is coloured, and what grows on it. The look has one for each class, in class order."
@@ -3253,7 +4698,86 @@
         "title": "TifView",
         "description": "A GeoTIFF rendered for the viewer. Rendered pixels may be decimated from the source."
       },
-      "TreeKind": {
+      "TreeEdits-Input": {
+        "properties": {
+          "defaults": {
+            "$ref": "#/components/schemas/ForestSettings-Input",
+            "default": {
+              "spacing": 5.0,
+              "kinds": {},
+              "heightScale": 1.0,
+              "edgeThinning": 8.0,
+              "edgeDensity": 0.3,
+              "seed": 0
+            }
+          },
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/PlacedTree"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Added",
+            "default": []
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/components/schemas/Clearing"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Removed",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TreeEdits",
+        "description": "`.course_maker/design/trees.json`: the woods defaults and the hand edits. Clearings around placed trees and landmarks are derived at build time, not stored."
+      },
+      "TreeEdits-Output": {
+        "properties": {
+          "defaults": {
+            "$ref": "#/components/schemas/ForestSettings-Output",
+            "default": {
+              "spacing": 5.0,
+              "kinds": {},
+              "heightScale": 1.0,
+              "edgeThinning": 8.0,
+              "edgeDensity": 0.3,
+              "seed": 0
+            }
+          },
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/PlacedTree"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Added",
+            "default": []
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/components/schemas/Clearing"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Removed",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "defaults",
+          "added",
+          "removed"
+        ],
+        "title": "TreeEdits",
+        "description": "`.course_maker/design/trees.json`: the woods defaults and the hand edits. Clearings around placed trees and landmarks are derived at build time, not stored."
+      },
+      "TreeKind-Input": {
         "properties": {
           "name": {
             "type": "string",
@@ -3280,17 +4804,17 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/Frustum"
+                  "$ref": "#/components/schemas/Frustum-Input"
                 },
                 {
-                  "$ref": "#/components/schemas/Blob"
+                  "$ref": "#/components/schemas/Blob-Input"
                 }
               ],
               "discriminator": {
                 "propertyName": "shape",
                 "mapping": {
-                  "blob": "#/components/schemas/Blob",
-                  "frustum": "#/components/schemas/Frustum"
+                  "blob": "#/components/schemas/Blob-Input",
+                  "frustum": "#/components/schemas/Frustum-Input"
                 }
               }
             },
@@ -3310,11 +4834,68 @@
         "title": "TreeKind",
         "description": "One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last."
       },
-      "Trees": {
+      "TreeKind-Output": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "height": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "gt": 0
+              },
+              {
+                "type": "number",
+                "gt": 0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Height"
+          },
+          "parts": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Frustum-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Blob-Output"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "shape",
+                "mapping": {
+                  "blob": "#/components/schemas/Blob-Output",
+                  "frustum": "#/components/schemas/Frustum-Output"
+                }
+              }
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Parts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "height",
+          "parts"
+        ],
+        "title": "TreeKind",
+        "description": "One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last."
+      },
+      "Trees-Input": {
         "properties": {
           "kinds": {
             "items": {
-              "$ref": "#/components/schemas/TreeKind"
+              "$ref": "#/components/schemas/TreeKind-Input"
             },
             "type": "array",
             "maxItems": 8,
@@ -3350,6 +4931,75 @@
         ],
         "title": "Trees"
       },
+      "Trees-Output": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/TreeKind-Output"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Kinds"
+          },
+          "ambient": {
+            "type": "number",
+            "title": "Ambient",
+            "ge": 0,
+            "le": 1
+          },
+          "direct": {
+            "type": "number",
+            "title": "Direct",
+            "ge": 0,
+            "le": 2
+          },
+          "base": {
+            "type": "number",
+            "title": "Base",
+            "ge": 0,
+            "le": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kinds",
+          "ambient",
+          "direct",
+          "base"
+        ],
+        "title": "Trees"
+      },
+      "TreesPreview": {
+        "properties": {
+          "edits": {
+            "$ref": "#/components/schemas/TreeEdits-Input"
+          },
+          "settings": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ForestSettings-Input"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Settings",
+            "default": {}
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edits"
+        ],
+        "title": "TreesPreview",
+        "description": "What the editor sends to see trees before saving them: the tree edits, and the forest settings of the woods patches that have their own\n(by region id; null for a patch on the woods defaults). The outlines are the saved ones."
+      },
       "TreesRef": {
         "properties": {
           "file": {
@@ -3371,7 +5021,7 @@
         ],
         "title": "TreesRef"
       },
-      "Tufts": {
+      "Tufts-Input": {
         "properties": {
           "height": {
             "type": "number",
@@ -3379,11 +5029,23 @@
             "gt": 0,
             "le": 5
           },
-          "width": {
+          "spread": {
             "type": "number",
-            "title": "Width",
+            "title": "Spread",
             "gt": 0,
-            "le": 5
+            "le": 2
+          },
+          "bladeWidth": {
+            "type": "number",
+            "title": "Bladewidth",
+            "gt": 0,
+            "le": 0.1
+          },
+          "blades": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 3.0,
+            "title": "Blades"
           },
           "root": {
             "prefixItems": [
@@ -3436,12 +5098,97 @@
         "type": "object",
         "required": [
           "height",
-          "width",
           "root",
           "tip"
         ],
         "title": "Tufts",
-        "description": "The standing grass in the rough, drawn as billboards."
+        "description": "The standing grass in the rough: clumps of blades, each blade a thin tapered strip that leans out from the middle of its clump."
+      },
+      "Tufts-Output": {
+        "properties": {
+          "height": {
+            "type": "number",
+            "title": "Height",
+            "gt": 0,
+            "le": 5
+          },
+          "spread": {
+            "type": "number",
+            "title": "Spread",
+            "gt": 0,
+            "le": 2
+          },
+          "bladeWidth": {
+            "type": "number",
+            "title": "Bladewidth",
+            "gt": 0,
+            "le": 0.1
+          },
+          "blades": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 3.0,
+            "title": "Blades"
+          },
+          "root": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Root"
+          },
+          "tip": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Tip"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "height",
+          "spread",
+          "bladeWidth",
+          "blades",
+          "root",
+          "tip"
+        ],
+        "title": "Tufts",
+        "description": "The standing grass in the rough: clumps of blades, each blade a thin tapered strip that leans out from the middle of its clump."
       },
       "ValidationError": {
         "properties": {
@@ -3483,6 +5230,197 @@
         ],
         "title": "ValidationError"
       },
+      "Viewer-Input": {
+        "properties": {
+          "aerial": {
+            "type": "boolean",
+            "title": "Aerial",
+            "default": true
+          },
+          "game": {
+            "type": "boolean",
+            "title": "Game",
+            "default": true
+          },
+          "tufts": {
+            "type": "boolean",
+            "title": "Tufts",
+            "default": true
+          },
+          "grassRange": {
+            "type": "number",
+            "title": "Grassrange",
+            "default": 200.0,
+            "ge": 1,
+            "le": 1000
+          },
+          "grassDensity": {
+            "type": "number",
+            "title": "Grassdensity",
+            "default": 1.0,
+            "ge": 0.01,
+            "le": 100
+          },
+          "trees": {
+            "type": "boolean",
+            "title": "Trees",
+            "default": true
+          },
+          "water": {
+            "type": "boolean",
+            "title": "Water",
+            "default": true
+          },
+          "surfaces": {
+            "type": "number",
+            "title": "Surfaces",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "outlines": {
+            "type": "boolean",
+            "title": "Outlines",
+            "default": true
+          },
+          "scale": {
+            "type": "number",
+            "title": "Scale",
+            "default": 1.0,
+            "ge": 1,
+            "le": 20
+          },
+          "shading": {
+            "type": "number",
+            "title": "Shading",
+            "default": 1.0,
+            "ge": 0,
+            "le": 3
+          },
+          "shadows": {
+            "type": "string",
+            "enum": [
+              "off",
+              "low",
+              "high"
+            ],
+            "title": "Shadows",
+            "default": "low"
+          },
+          "leanStrokes": {
+            "type": "boolean",
+            "title": "Leanstrokes",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Viewer",
+        "description": "The 3D view's own settings: what it draws and how far. The viewer's, not the course's look (that is in course.json)."
+      },
+      "Viewer-Output": {
+        "properties": {
+          "aerial": {
+            "type": "boolean",
+            "title": "Aerial",
+            "default": true
+          },
+          "game": {
+            "type": "boolean",
+            "title": "Game",
+            "default": true
+          },
+          "tufts": {
+            "type": "boolean",
+            "title": "Tufts",
+            "default": true
+          },
+          "grassRange": {
+            "type": "number",
+            "title": "Grassrange",
+            "default": 200.0,
+            "ge": 1,
+            "le": 1000
+          },
+          "grassDensity": {
+            "type": "number",
+            "title": "Grassdensity",
+            "default": 1.0,
+            "ge": 0.01,
+            "le": 100
+          },
+          "trees": {
+            "type": "boolean",
+            "title": "Trees",
+            "default": true
+          },
+          "water": {
+            "type": "boolean",
+            "title": "Water",
+            "default": true
+          },
+          "surfaces": {
+            "type": "number",
+            "title": "Surfaces",
+            "default": 0.0,
+            "ge": 0,
+            "le": 1
+          },
+          "outlines": {
+            "type": "boolean",
+            "title": "Outlines",
+            "default": true
+          },
+          "scale": {
+            "type": "number",
+            "title": "Scale",
+            "default": 1.0,
+            "ge": 1,
+            "le": 20
+          },
+          "shading": {
+            "type": "number",
+            "title": "Shading",
+            "default": 1.0,
+            "ge": 0,
+            "le": 3
+          },
+          "shadows": {
+            "type": "string",
+            "enum": [
+              "off",
+              "low",
+              "high"
+            ],
+            "title": "Shadows",
+            "default": "low"
+          },
+          "leanStrokes": {
+            "type": "boolean",
+            "title": "Leanstrokes",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "aerial",
+          "game",
+          "tufts",
+          "grassRange",
+          "grassDensity",
+          "trees",
+          "water",
+          "surfaces",
+          "outlines",
+          "scale",
+          "shading",
+          "shadows",
+          "leanStrokes"
+        ],
+        "title": "Viewer",
+        "description": "The 3D view's own settings: what it draws and how far. The viewer's, not the course's look (that is in course.json)."
+      },
       "Viewport": {
         "properties": {
           "x": {
@@ -3509,6 +5447,238 @@
         ],
         "title": "Viewport",
         "description": "The map view: centre in course metres, and pixels per metre. Independent of the window size."
+      },
+      "WaterLook-Input": {
+        "properties": {
+          "bedColor": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Bedcolor",
+            "default": [
+              0.3,
+              0.21,
+              0.12
+            ]
+          },
+          "tint": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Tint",
+            "default": [
+              0.025,
+              0.1,
+              0.12
+            ]
+          },
+          "shallow": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Shallow",
+            "default": [
+              0.1,
+              0.36,
+              0.36
+            ]
+          },
+          "clarity": {
+            "type": "number",
+            "title": "Clarity",
+            "default": 1.0,
+            "gt": 0,
+            "le": 20
+          },
+          "ripples": {
+            "type": "number",
+            "title": "Ripples",
+            "default": 0.008,
+            "ge": 0,
+            "le": 0.05
+          },
+          "lakes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LakeSettings-Input"
+            },
+            "type": "object",
+            "title": "Lakes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WaterLook"
+      },
+      "WaterLook-Output": {
+        "properties": {
+          "bedColor": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Bedcolor",
+            "default": [
+              0.3,
+              0.21,
+              0.12
+            ]
+          },
+          "tint": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Tint",
+            "default": [
+              0.025,
+              0.1,
+              0.12
+            ]
+          },
+          "shallow": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              },
+              {
+                "type": "number",
+                "ge": 0,
+                "le": 1
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Shallow",
+            "default": [
+              0.1,
+              0.36,
+              0.36
+            ]
+          },
+          "clarity": {
+            "type": "number",
+            "title": "Clarity",
+            "default": 1.0,
+            "gt": 0,
+            "le": 20
+          },
+          "ripples": {
+            "type": "number",
+            "title": "Ripples",
+            "default": 0.008,
+            "ge": 0,
+            "le": 0.05
+          },
+          "lakes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LakeSettings-Output"
+            },
+            "type": "object",
+            "title": "Lakes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bedColor",
+          "tint",
+          "shallow",
+          "clarity",
+          "ripples",
+          "lakes"
+        ],
+        "title": "WaterLook"
       }
     }
   }

@@ -1,16 +1,19 @@
 import { applyPatches, enablePatches, produceWithPatches, type Patch } from "immer";
 import { useSyncExternalStore } from "react";
 import { createStore } from "zustand/vanilla";
-import type { BoundsArea, DesignDoc, DesignHole, Layout, Region } from "../../core/api/api";
+import type { BoundsArea, DesignDoc, DesignHole, Layout, Look, Region, TreeEdits } from "../../core/api/api";
 import { MAX_HOLES } from "./holes";
+import { emptyTreeEdits } from "./forestDefaults";
 
 enablePatches();
 
 /**
  * The document the editor edits: regions in painter's order, each hole's in-bounds areas (order does not matter: a hole's
- * ground is their union), plus course metadata and holes.
+ * ground is their union), plus course metadata and holes, the tree edits (the woods defaults, placed trees and hand-drawn clearings;
+ * a patch's own forest settings are on its region), and the course's look. The look is null where there is nothing to
+ * save it into (a GeoTIFF). It lives in course.json, not with the design files, and is saved on its own (see scene/useLookBinding).
  */
-export type Doc = { order: string[]; regions: Record<string, Region>; bounds: Record<string, BoundsArea>; layout: Layout };
+export type Doc = { order: string[]; regions: Record<string, Region>; bounds: Record<string, BoundsArea>; layout: Layout; look: Look | null; trees: TreeEdits };
 
 /** One undo step: document patches, or (for edits that live outside the document, like sculpting) a pair of functions. */
 type Entry = { label: string; patches: Patch[]; inverse: Patch[]; external?: { undo: () => void; redo: () => void } };
@@ -35,7 +38,7 @@ type State = {
 };
 
 export const emptyLayout = (): Layout => ({ name: null, attribution: null, holes: [] });
-export const emptyDoc = (): Doc => ({ order: [], regions: {}, bounds: {}, layout: emptyLayout() });
+export const emptyDoc = (): Doc => ({ order: [], regions: {}, bounds: {}, layout: emptyLayout(), look: null, trees: emptyTreeEdits() });
 
 export function docFromApi(d: DesignDoc): Doc {
   const doc = emptyDoc();
@@ -45,6 +48,8 @@ export function docFromApi(d: DesignDoc): Doc {
   }
   for (const a of d.bounds.areas) doc.bounds[a.id] = a;
   doc.layout = d.layout;
+  doc.look = d.look;
+  doc.trees = d.trees;
   return doc;
 }
 
@@ -122,7 +127,7 @@ export function useDesign<T>(select: (s: State) => T): T {
 
 // ---- actions ------------------------------------------------------------------------------------------------------
 
-const newId = (prefix: string, taken: Record<string, unknown>) => {
+export const newId = (prefix: string, taken: Record<string, unknown>) => {
   let id: string;
   do id = `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   while (taken[id]);
@@ -130,10 +135,10 @@ const newId = (prefix: string, taken: Record<string, unknown>) => {
 };
 export const newRegionId = () => newId("r", designStore.getState().doc.regions);
 
-export function addRegion(label: string, region: Omit<Region, "id" | "note"> & { note?: string | null }): string {
+export function addRegion(label: string, region: Omit<Region, "id" | "note" | "trees"> & { note?: string | null; trees?: Region["trees"] }): string {
   const id = newRegionId();
   designStore.getState().commit(label, (d) => {
-    d.regions[id] = { note: null, ...region, id };
+    d.regions[id] = { note: null, trees: null, ...region, id };
     d.order.push(id);
   });
   return id;

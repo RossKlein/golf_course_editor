@@ -8,7 +8,8 @@ export const EDITORS: EditorMeta[] = [
   { id: "patches", label: "Hi-res patches", goto: "g p", enabled: false, hint: "0.25 m height patches" },
   { id: "greens", label: "Greens", goto: "g r", enabled: false, hint: "Contour greens" },
   { id: "heightmap", label: "Heightmap", goto: "g h", enabled: true, hint: "Sculpt the 1 m terrain with brushes" },
-  { id: "trees", label: "Trees", goto: "g t", enabled: false, hint: "Forest zones and trees" },
+  { id: "look", label: "Look", goto: "g k", enabled: true, hint: "Colours, light, shadows and trees: how the course is drawn" },
+  { id: "trees", label: "Trees", goto: "g t", enabled: true, hint: "Plant forests, place trees, clear ground" },
   { id: "landmarks", label: "Landmarks", goto: "g l", enabled: false, hint: "Place special objects" },
 ];
 

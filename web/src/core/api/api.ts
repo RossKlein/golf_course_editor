@@ -8,11 +8,12 @@ export type TifEntry = Schemas["TifEntry"];
 export type BundleEntry = Schemas["BundleEntry"];
 export type TifView = Schemas["TifView"];
 export type Course = Schemas["Course"];
-export type Look = Schemas["Look"];
-export type Surface = Schemas["Surface"];
-export type TreeKind = Schemas["TreeKind"];
-export type Frustum = Schemas["Frustum"];
-export type Blob = Schemas["Blob"];
+export type Look = Schemas["Look-Output"];
+export type Surface = Schemas["Surface-Output"];
+export type TreeKind = Schemas["TreeKind-Output"];
+export type Landmark = Schemas["Landmark"];
+export type Frustum = Schemas["Frustum-Output"];
+export type Blob = Schemas["Blob-Output"];
 export type Report = Schemas["Report"];
 export type AerialMeta = Schemas["AerialMeta"];
 export type HeightBase = Schemas["HeightBase"];
@@ -28,7 +29,11 @@ export type Region = Schemas["Region-Output"];
 export type BoundsArea = Schemas["BoundsArea-Output"];
 export type Layout = Schemas["Layout-Output"];
 export type DesignHole = Schemas["DesignHole-Output"];
-export type DesignDoc = Schemas["DesignDoc"];
+export type DesignDoc = Schemas["DesignResponse"];
+export type TreeEdits = Schemas["TreeEdits-Output"];
+export type ForestSettings = Schemas["ForestSettings-Output"];
+export type PlacedTree = Schemas["PlacedTree"];
+export type Clearing = Schemas["Clearing"];
 export type BuildStatus = Schemas["BuildStatus"];
 
 export class ApiError extends Error {
@@ -55,6 +60,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export async function previewWater(path: string, look: Look) {
+  return request<unknown>(`/api/bundle/water-preview?path=${encodeURIComponent(path)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(look) });
+}
 const q = encodeURIComponent;
 
 async function put(url: string, body: unknown, keepalive = false) {
@@ -123,6 +131,20 @@ export const api = {
   saveRegions: (bundle: string, regions: Region[], keepalive = false) => put(`/api/bundle/design/regions?path=${q(bundle)}`, { regions }, keepalive),
   saveLayout: (bundle: string, layout: Layout, keepalive = false) => put(`/api/bundle/design/layout?path=${q(bundle)}`, layout, keepalive),
   saveBounds: (bundle: string, areas: BoundsArea[], keepalive = false) => put(`/api/bundle/design/bounds?path=${q(bundle)}`, { areas }, keepalive),
+  /** The trees the build would write for these unsaved tree edits and forest settings, as trees.bin's bytes. Nothing is saved or built. */
+  previewTrees: async (bundle: string, body: Schemas["TreesPreview"]): Promise<ArrayBuffer> => {
+    const res = await fetch(`/api/bundle/trees/preview?path=${q(bundle)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.arrayBuffer();
+  },
+  saveTrees: (bundle: string, trees: TreeEdits, keepalive = false) => put(`/api/bundle/design/trees?path=${q(bundle)}`, trees, keepalive),
+  saveLook: (bundle: string, look: Look, keepalive = false) => put(`/api/bundle/look?path=${q(bundle)}`, look, keepalive),
+  /** The crops of this bundle that can be taken back, newest first. */
+  crops: (bundle: string) => request<Schemas["CropList"]>(`/api/bundle/crops?path=${q(bundle)}`),
+  /** Keep only this part of the map (whole course metres). The server saves a copy first; the caller reloads the page afterwards. */
+  crop: (bundle: string, box: { x0: number; z0: number; x1: number; z1: number }) =>
+    request<Schemas["CropResponse"]>(`/api/bundle/crop?path=${q(bundle)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(box) }),
+  undoCrop: (bundle: string) => request<Schemas["CropList"]>(`/api/bundle/crop/undo?path=${q(bundle)}`, { method: "POST" }),
   buildStatus: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`),
   buildNow: (bundle: string) => request<BuildStatus>(`/api/bundle/build?path=${q(bundle)}`, { method: "POST" }),
   bake: (req: BakeRequest) =>

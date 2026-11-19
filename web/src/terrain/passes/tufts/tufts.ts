@@ -1,22 +1,32 @@
 import { boxVisible, type Frustum } from "../../../gfx/math/frustum";
 import { compileProgram, tryProgram, type Program } from "../../../gfx/shader/program";
 import type { Gl } from "../../context";
-import { TUFT_TILE } from "../../limits";
+import { BLADE_VERTS, TUFT_TILE } from "../../limits";
 import { setLookUniforms } from "../../look/look";
 import { SHADERS } from "../../shaders/shaders";
 import type { Cull, World } from "../../world";
 
-// Tufts of grass in the rough, drawn as billboards on top of the ground. They have no data on the CPU at all: a tuft's place,
-// size and whether it exists are worked out in the vertex shader from its number, the class map and the heights, so there
-// is nothing to build or update. The patch is drawn in tiles, and a tile that is out of view is never sent.
+// Tufts of grass in the rough: clumps of blades drawn on top of the ground. They have no data on the CPU at all: a clump's place,
+// size and whether it exists, and each blade's shape, are worked out in the vertex shader from the instance's and the vertex's number,
+// the class map and the heights, so there is nothing to build or update. The patch is drawn in tiles, and a tile that is out of view
+// is never sent. A tile far from the eye is drawn with fewer, wider blades in each clump (bladesAt), so the cost is spent where it shows.
 
 /** The tufts' defaults: how far from the camera's target they grow, and the spacing that gives "density 1". */
 export const TUFT_RANGE = 200;
-const TUFT_CELL = 0.5;
+const TUFT_CELL = 1;
 /** Most tufts across the patch, a bound on the work however far or dense the sliders go (only the tiles in view are drawn). */
-const MAX_ACROSS = 3072;
+const MAX_ACROSS = 6144;
 
-/** The grid of tufts for a range (metres) and a density (1 is the default, 2 is twice as many to the square metre). */
+/** Metres from the eye within which a clump has all its blades; between this and the next it has half, and beyond the next a quarter. */
+export const BLADE_LOD = [40, 100] as const;
+
+/** How many blades to draw in each clump of a tile `distance` metres from the eye, when a clump has `full` close up (never fewer than 3). */
+export function bladesAt(distance: number, full: number): number {
+  const share = distance < BLADE_LOD[0] ? 1 : distance < BLADE_LOD[1] ? 0.5 : 0.25;
+  return Math.min(full, Math.max(3, Math.round(full * share)));
+}
+
+/** The grid of clumps for a range (metres) and a density (1 is the default, 2 is twice as many to the square metre). */
 export function tuftGrid(range: number, density: number): { cell: number; across: number } {
   const cell = Math.max(TUFT_CELL / Math.sqrt(Math.max(density, 0.01)), (2 * range) / MAX_ACROSS);
   return { cell, across: Math.ceil((2 * range) / cell) };
@@ -24,21 +34,32 @@ export function tuftGrid(range: number, density: number): { cell: number; across
 
 /**
  * The tiles of the tuft patch worth drawing: those within `range` of the patch's centre and in view. Each is the first
- * tuft of the tile, in tufts from the patch's corner. `y0`..`y1` bound the ground's height, tufts' height included.
+ * tuft of the tile, in tufts from the patch's corner, and how far the tile is from `eye` in metres (for how many blades to draw).
+ * `y0`..`y1` bound the ground's height, tufts' height included.
  */
-export function tuftTiles(target: readonly [number, number], range: number, density: number, f: Frustum, y0: number, y1: number): [number, number][] {
+export function tuftTiles(
+  target: readonly [number, number],
+  range: number,
+  density: number,
+  f: Frustum,
+  y0: number,
+  y1: number,
+  eye: readonly [number, number, number] = [target[0], y1, target[1]],
+): [number, number, number][] {
   const { cell, across } = tuftGrid(range, density);
   const cx = Math.round(target[0] / cell), cz = Math.round(target[1] / cell);
   const cornerX = cx - across / 2, cornerZ = cz - across / 2; // in tufts, as in the shader
-  const out: [number, number][] = [];
-  const margin = 1; // metres: a tuft sits up to a cell from its grid point and is as wide as it is tall
+  const out: [number, number, number][] = [];
+  const margin = 0.5 * cell + 1.5; // metres: a clump stands up to half a cell outside its cell, is at most 1.3 m in radius (2 m across, the look's limit, and up to 30% wider) and its blades lean a little past that
   for (let ty = 0; ty < across; ty += TUFT_TILE) {
     for (let tx = 0; tx < across; tx += TUFT_TILE) {
       const x0 = (cornerX + tx) * cell - margin, x1 = (cornerX + tx + TUFT_TILE + 1) * cell + margin;
       const z0 = (cornerZ + ty) * cell - margin, z1 = (cornerZ + ty + TUFT_TILE + 1) * cell + margin;
       const near = Math.hypot(Math.max(x0 - cx * cell, 0, cx * cell - x1), Math.max(z0 - cz * cell, 0, cz * cell - z1));
       if (near > range) continue;
-      if (boxVisible(f, x0, y0, z0, x1, y1, z1)) out.push([tx, ty]);
+      if (!boxVisible(f, x0, y0, z0, x1, y1, z1)) continue;
+      const away = Math.hypot(Math.max(x0 - eye[0], 0, eye[0] - x1), Math.max(y0 - eye[1], 0, eye[1] - y1), Math.max(z0 - eye[2], 0, eye[2] - z1));
+      out.push([tx, ty, away]);
     }
   }
   return out;
@@ -51,7 +72,7 @@ export type TuftView = {
   target: [number, number];
   /** Vertical exaggeration of the geometry. */
   scale: number;
-  /** How far from the target tufts grow, in metres, and how many (1 is the default density). */
+  /** How far from the target clumps grow, in metres, and how many (1 is the default density). */
   range: number;
   density: number;
   /** Shade the grass from the baked lighting where there is one (false when shadows are off). */
@@ -97,16 +118,19 @@ export class TuftsPass {
     world.shadow.bind(g, t);
     world.lighting.bind(g, t, v.baked);
     gl.bindVertexArray(quad);
-    const tiles = tuftTiles(v.target, v.range, v.density, cull.frustum, cull.y0, cull.y1 + 1);
+    const tiles = tuftTiles(v.target, v.range, v.density, cull.frustum, cull.y0, cull.y1 + 1, v.eye);
+    const full = world.look.tufts.blades ?? 32; // missing when the server that sent the look is older than this page
     this.stats = {
       tiles: tiles.length,
       tilesAll: Math.ceil(across / TUFT_TILE) ** 2,
       tufts: tiles.length * TUFT_TILE * TUFT_TILE, // sent to the GPU; those off the rough are dropped there
       tuftsAll: across * across,
     };
-    for (const [tx, ty] of tiles) {
+    for (const [tx, ty, away] of tiles) {
+      const blades = bladesAt(away, full);
       gl.uniform2i(t.u.uTile, tx, ty);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, TUFT_TILE * TUFT_TILE);
+      gl.uniform1i(t.u.uBlades, blades);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, blades * BLADE_VERTS, TUFT_TILE * TUFT_TILE);
     }
     gl.bindVertexArray(null);
   }

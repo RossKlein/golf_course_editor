@@ -8,3 +8,4 @@ uvicorn
 httpx
 pystac-client
 planetary-computer
+scipy

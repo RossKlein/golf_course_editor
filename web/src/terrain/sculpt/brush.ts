@@ -1,7 +1,7 @@
 // What a brush does, as numbers. The GPU runs the same formulas per sample (terrain/sculptor.ts); these are the reference
 // the tests pin, and the part that decides how a drag turns into stamps.
 
-export type BrushKind = "raise" | "lower" | "smooth" | "flatten" | "restore";
+export type BrushKind = "raise" | "lower" | "smooth" | "flatten" | "restore" | "clone";
 
 export const BRUSHES: { id: BrushKind; label: string; key: string; hint: string }[] = [
   { id: "raise", label: "Raise", key: "r", hint: "Hold and drag to build the ground up. Shift lowers instead" },
@@ -9,6 +9,7 @@ export const BRUSHES: { id: BrushKind; label: string; key: string; hint: string 
   { id: "smooth", label: "Smooth", key: "s", hint: "Evens out bumps and rough edits" },
   { id: "flatten", label: "Flatten", key: "f", hint: "Levels the ground to the height where the stroke began, for a tee or a platform" },
   { id: "restore", label: "Restore", key: "e", hint: "Brushes your edits away, back to the original terrain" },
+  { id: "clone", label: "Clone", key: "d", hint: "Ctrl+click a hill or hollow to copy from, then paint where you want it: its shape is stamped there, rising out of the ground where you start. Each stroke starts again from the spot you picked" },
 ];
 
 export type Brush = {
@@ -40,7 +41,8 @@ export function falloff(d: number, radius: number, hardness: number): number {
 /**
  * The effect of one stamp on one sample: the new offset from the original terrain, given the sample's `base` height, its
  * current `offset`, the brush weight `w` there, and for each kind the strength of the stamp: `amount` metres for raise
- * and lower, a pull of `k` (0..1) towards `target` for smooth and flatten and towards zero for restore.
+ * and lower, a pull of `k` (0..1) towards `target` for smooth, flatten and clone and towards zero for restore. (The target of a clone is
+ * `cloneTarget`.)
  */
 export function stampSample(kind: BrushKind, base: number, offset: number, w: number, amount: number, k: number, target: number): number {
   if (w <= 0) return offset;
@@ -52,7 +54,8 @@ export function stampSample(kind: BrushKind, base: number, offset: number, w: nu
     case "lower":
       return clamp(offset - amount * w);
     case "smooth":
-    case "flatten": {
+    case "flatten":
+    case "clone": {
       const height = base + offset;
       return clamp(height + (target - height) * Math.min(1, k * w) - base);
     }
@@ -60,6 +63,13 @@ export function stampSample(kind: BrushKind, base: number, offset: number, w: nu
       return offset * (1 - Math.min(1, k * w));
   }
 }
+
+/**
+ * The height a clone stamp pulls the ground towards: the source's height `src`. Copying the shape only (`relative`), it is how far the source
+ * is above or below the spot it was picked at (`srcLevel`), added to the ground where the stroke began (`level`), so a hill on the source sits
+ * on the new ground instead of standing at the old one's height. Copying exactly, it is just `src`. (The sculpt shader does the same.)
+ */
+export const cloneTarget = (src: number, srcLevel: number, level: number, relative: boolean) => (relative ? src - srcLevel + level : src);
 
 /** Strength of one stamp when `stamps` of them share a frame of `dt` seconds. */
 export function perStamp(brush: Brush, dt: number, stamps: number): { amount: number; k: number } {

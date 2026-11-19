@@ -1,3 +1,5 @@
+// DepthArray has one mip level. Explicit zero gradients preserve filtered depth comparisons
+// after per-fragment exits without relying on implicit derivatives in divergent control flow.
 // Looking a point up in the sun's shadow maps. The maps are slices of the view, nearest first, each its own orthographic map
 // along the sun; the hardware compares a depth with the map and filters 2x2 texels, and the high quality takes 3 x 3 of those
 // across the look's soft edge. A shadow fades out at the end of the last slice. See shadow.ts for what fills these.
@@ -31,10 +33,10 @@ float shadowMapAt(vec3 world, vec3 normal, bool soft) {
   if (soft && uShadowMode.y > 0.5) {
     float spread = max(1.0, uShadowLook.y / texel) / uShadowMode.z; // the look's soft edge, in map coordinates
     lit = 0.0;
-    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) lit += texture(uShadowMap, vec4(t.xy + vec2(i, j) * spread, float(c), ref));
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) lit += textureGrad(uShadowMap, vec4(t.xy + vec2(i, j) * spread, float(c), ref), vec2(0.0), vec2(0.0));
     lit /= 9.0;
   } else {
-    lit = texture(uShadowMap, vec4(t.xy, float(c), ref));
+    lit = textureGrad(uShadowMap, vec4(t.xy, float(c), ref), vec2(0.0), vec2(0.0));
   }
   return (1.0 - lit) * (1.0 - smoothstep(0.85 * last, last, depth));
 }

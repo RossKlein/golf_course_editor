@@ -201,6 +201,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bundle/water-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Water Preview */
+        post: operations["water_preview_api_bundle_water_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/look": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Look Put
+         * @description Replace the course's look. It changes no raster, so nothing is built.
+         */
+        put: operations["look_put_api_bundle_look_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bundle/design/layout": {
         parameters: {
             query?: never;
@@ -246,6 +283,43 @@ export interface paths {
         /** Design Put Bounds */
         put: operations["design_put_bounds_api_bundle_design_bounds_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/design/trees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Design Put Trees */
+        put: operations["design_put_trees_api_bundle_design_trees_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/trees/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trees Preview
+         * @description The trees the build would write for these unsaved tree edits and forest settings, as trees.bin's bytes. Nothing is saved or built.
+         */
+        post: operations["trees_preview_api_bundle_trees_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -318,6 +392,63 @@ export interface paths {
         get: operations["design_backups_api_bundle_design_backups_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/crops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Crops List */
+        get: operations["crops_list_api_bundle_crops_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/crop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crop Post
+         * @description Crop the map in place. The editor saves what it has first and reloads after; the previous map is kept so the crop can be taken back.
+         */
+        post: operations["crop_post_api_bundle_crop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bundle/crop/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crop Undo
+         * @description Put the map and design back as they were before the newest crop.
+         */
+        post: operations["crop_undo_api_bundle_crop_undo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -438,7 +569,46 @@ export interface components {
          * Blob
          * @description A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz).
          */
-        Blob: {
+        "Blob-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            shape: "blob";
+            /** Cx */
+            cx: number;
+            /** Cy */
+            cy: number;
+            /** Cz */
+            cz: number;
+            /** Rx */
+            rx: number;
+            /** Ry */
+            ry: number;
+            /** Rz */
+            rz: number;
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Sides
+             * @default 7
+             */
+            sides?: number;
+            /**
+             * Rings
+             * @default 3
+             */
+            rings?: number;
+        };
+        /**
+         * Blob
+         * @description A faceted ball, for a tree's crown, squashed to radii (rx, ry, rz) about (cx, cy, cz).
+         */
+        "Blob-Output": {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -582,6 +752,18 @@ export interface components {
              * @default 0
              */
             holes: number;
+            /**
+             * Trees
+             * @default 0
+             */
+            trees: number;
+            /**
+             * Files
+             * @default {}
+             */
+            files: {
+                [key: string]: string;
+            };
         };
         /** BundleEntry */
         BundleEntry: {
@@ -589,6 +771,18 @@ export interface components {
             path: string;
             /** Name */
             name: string;
+        };
+        /**
+         * Clearing
+         * @description A circle drawn by hand where the forest is not planted.
+         */
+        Clearing: {
+            /** X */
+            x: number;
+            /** Z */
+            z: number;
+            /** R */
+            r: number;
         };
         /** Course */
         Course: {
@@ -622,21 +816,48 @@ export interface components {
             landmarks: components["schemas"]["Landmark"][];
             /** Holes */
             holes: components["schemas"]["Hole"][];
-            look: components["schemas"]["Look"];
+            /**
+             * Kind
+             * @default course
+             * @enum {string}
+             */
+            kind: "course" | "range";
+            look: components["schemas"]["Look-Output"];
+            /** Watermesh */
+            waterMesh: string | null;
+        };
+        /** CropList */
+        CropList: {
+            /** Crops */
+            crops: string[];
         };
         /**
-         * DesignDoc
-         * @description Everything the editor edits.
+         * CropRequest
+         * @description The part of the map to keep, in whole course metres: the samples from x0 to x1 east and z0 to z1 south, edges included.
          */
-        DesignDoc: {
-            layout: components["schemas"]["Layout-Output"];
-            regions: components["schemas"]["RegionsFile-Output"];
+        CropRequest: {
+            /** X0 */
+            x0: number;
+            /** Z0 */
+            z0: number;
+            /** X1 */
+            x1: number;
+            /** Z1 */
+            z1: number;
+        };
+        /** CropResponse */
+        CropResponse: {
+            /** Cols */
+            cols: number;
+            /** Rows */
+            rows: number;
             /**
-             * @default {
-             *       "areas": []
-             *     }
+             * Notes
+             * @default []
              */
-            bounds: components["schemas"]["BoundsFile-Output"];
+            notes: string[];
+            /** Crops */
+            crops: string[];
         };
         /**
          * DesignHole
@@ -683,6 +904,36 @@ export interface components {
                 number,
                 number
             ][];
+        };
+        /**
+         * DesignResponse
+         * @description What the editor loads: the design, and the course's look, which is kept in course.json and edited with the rest.
+         */
+        DesignResponse: {
+            layout: components["schemas"]["Layout-Output"];
+            regions: components["schemas"]["RegionsFile-Output"];
+            /**
+             * @default {
+             *       "areas": []
+             *     }
+             */
+            bounds: components["schemas"]["BoundsFile-Output"];
+            /**
+             * @default {
+             *       "defaults": {
+             *         "edgeDensity": 0.3,
+             *         "edgeThinning": 8,
+             *         "heightScale": 1,
+             *         "kinds": {},
+             *         "seed": 0,
+             *         "spacing": 5
+             *       },
+             *       "added": [],
+             *       "removed": []
+             *     }
+             */
+            trees: components["schemas"]["TreeEdits-Output"];
+            look: components["schemas"]["Look-Output"];
         };
         /** EditorResponse */
         EditorResponse: {
@@ -794,10 +1045,25 @@ export interface components {
              */
             brushHardness?: number;
             /**
+             * Clonerelative
+             * @default true
+             */
+            cloneRelative?: boolean;
+            /**
              * Smoothing
              * @default 0.1
              */
             smoothing?: number;
+            /**
+             * Pathwidth
+             * @default 2.5
+             */
+            pathWidth?: number;
+            /**
+             * Collarthickness
+             * @default 1.5
+             */
+            collarThickness?: number;
             /**
              * Leftcollapsed
              * @default false
@@ -809,6 +1075,17 @@ export interface components {
              * @enum {string}
              */
             rightTab?: "view" | "data";
+            /**
+             * View3D
+             * @default false
+             */
+            view3d?: boolean;
+            viewer?: components["schemas"]["Viewer-Input"] | null;
+            /**
+             * Looktab
+             * @default sky
+             */
+            lookTab?: string;
         };
         /**
          * EditorState
@@ -911,10 +1188,25 @@ export interface components {
              */
             brushHardness: number;
             /**
+             * Clonerelative
+             * @default true
+             */
+            cloneRelative: boolean;
+            /**
              * Smoothing
              * @default 0.1
              */
             smoothing: number;
+            /**
+             * Pathwidth
+             * @default 2.5
+             */
+            pathWidth: number;
+            /**
+             * Collarthickness
+             * @default 1.5
+             */
+            collarThickness: number;
             /**
              * Leftcollapsed
              * @default false
@@ -926,6 +1218,17 @@ export interface components {
              * @enum {string}
              */
             rightTab: "view" | "data";
+            /**
+             * View3D
+             * @default false
+             */
+            view3d: boolean;
+            viewer: components["schemas"]["Viewer-Output"] | null;
+            /**
+             * Looktab
+             * @default sky
+             */
+            lookTab: string;
         };
         /**
          * ElevationLayer
@@ -942,10 +1245,118 @@ export interface components {
             hMax: number;
         };
         /**
+         * ForestSettings
+         * @description How a forest patch (a woods region) is planted. docs/tree-editor-plan.md, section 3.
+         */
+        "ForestSettings-Input": {
+            /**
+             * Spacing
+             * @default 5
+             */
+            spacing?: number;
+            /**
+             * Kinds
+             * @default {}
+             */
+            kinds?: {
+                [key: string]: number;
+            };
+            /**
+             * Heightscale
+             * @default 1
+             */
+            heightScale?: number;
+            /**
+             * Edgethinning
+             * @default 8
+             */
+            edgeThinning?: number;
+            /**
+             * Edgedensity
+             * @default 0.3
+             */
+            edgeDensity?: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+        };
+        /**
+         * ForestSettings
+         * @description How a forest patch (a woods region) is planted. docs/tree-editor-plan.md, section 3.
+         */
+        "ForestSettings-Output": {
+            /**
+             * Spacing
+             * @default 5
+             */
+            spacing: number;
+            /**
+             * Kinds
+             * @default {}
+             */
+            kinds: {
+                [key: string]: number;
+            };
+            /**
+             * Heightscale
+             * @default 1
+             */
+            heightScale: number;
+            /**
+             * Edgethinning
+             * @default 8
+             */
+            edgeThinning: number;
+            /**
+             * Edgedensity
+             * @default 0.3
+             */
+            edgeDensity: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed: number;
+        };
+        /**
          * Frustum
          * @description A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's.
          */
-        Frustum: {
+        "Frustum-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            shape: "frustum";
+            /** Y0 */
+            y0: number;
+            /** R0 */
+            r0: number;
+            /** Y1 */
+            y1: number;
+            /** R1 */
+            r1: number;
+            /** Sides */
+            sides: number;
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Shade
+             * @default 0.12
+             */
+            shade?: number;
+        };
+        /**
+         * Frustum
+         * @description A cone or a frustum, for a tree: `sides` faces from a ring at y0 to a ring at y1. Heights are fractions of the tree's.
+         */
+        "Frustum-Output": {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -974,7 +1385,28 @@ export interface components {
             shade: number;
         };
         /** Grass */
-        Grass: {
+        "Grass-Input": {
+            /** Tile */
+            tile: string;
+            /** Tilemetres */
+            tileMetres: number;
+            /** Wobble */
+            wobble: number;
+            /** Specklegrain */
+            speckleGrain: number;
+            /** Smoothing */
+            smoothing?: number;
+            /** Edgewidth */
+            edgeWidth?: number;
+            /** Edgeragged */
+            edgeRagged?: number;
+            /** Edgeshadow */
+            edgeShadow?: number;
+            /** Edgegain */
+            edgeGain?: number;
+        };
+        /** Grass */
+        "Grass-Output": {
             /** Tile */
             tile: string;
             /** Tilemetres */
@@ -985,6 +1417,14 @@ export interface components {
             speckleGrain: number;
             /** Smoothing */
             smoothing: number;
+            /** Edgewidth */
+            edgeWidth: number;
+            /** Edgeragged */
+            edgeRagged: number;
+            /** Edgeshadow */
+            edgeShadow: number;
+            /** Edgegain */
+            edgeGain: number;
         };
         /** Grid */
         Grid: {
@@ -1033,6 +1473,56 @@ export interface components {
             /** Bundles */
             bundles: components["schemas"]["BundleEntry"][];
         };
+        /** LakeSettings */
+        "LakeSettings-Input": {
+            /** Anchor */
+            anchor: [
+                number,
+                number
+            ];
+            /** Level */
+            level?: number | null;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset?: number;
+            /**
+             * Curvature
+             * @default 0
+             */
+            curvature?: number;
+            /**
+             * Excess
+             * @default 0
+             */
+            excess?: number;
+        };
+        /** LakeSettings */
+        "LakeSettings-Output": {
+            /** Anchor */
+            anchor: [
+                number,
+                number
+            ];
+            /** Level */
+            level: number | null;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /**
+             * Curvature
+             * @default 0
+             */
+            curvature: number;
+            /**
+             * Excess
+             * @default 0
+             */
+            excess: number;
+        };
         /** Landmark */
         Landmark: {
             /** Name */
@@ -1055,6 +1545,8 @@ export interface components {
             scale: number;
             /** Y */
             y: number | null;
+            /** Clearance */
+            clearance: number | null;
         };
         /** LayerPref */
         LayerPref: {
@@ -1094,7 +1586,8 @@ export interface components {
             holes: components["schemas"]["DesignHole-Output"][];
         };
         /** Look */
-        Look: {
+        "Look-Input": {
+            water?: components["schemas"]["WaterLook-Input"];
             /** Sky */
             sky: [
                 number,
@@ -1104,13 +1597,33 @@ export interface components {
             sun: components["schemas"]["Sun"];
             /** Surfaces */
             surfaces: {
-                [key: string]: components["schemas"]["Surface"];
+                [key: string]: components["schemas"]["Surface-Input"];
             };
-            grass: components["schemas"]["Grass"];
-            tufts: components["schemas"]["Tufts"];
-            trees: components["schemas"]["Trees"];
+            grass: components["schemas"]["Grass-Input"];
+            tufts: components["schemas"]["Tufts-Input"];
+            trees: components["schemas"]["Trees-Input"];
+            shadows?: components["schemas"]["Shadows"];
+            relief?: components["schemas"]["ReliefLook-Input"];
+        };
+        /** Look */
+        "Look-Output": {
+            water: components["schemas"]["WaterLook-Output"];
+            /** Sky */
+            sky: [
+                number,
+                number,
+                number
+            ];
+            sun: components["schemas"]["Sun"];
+            /** Surfaces */
+            surfaces: {
+                [key: string]: components["schemas"]["Surface-Output"];
+            };
+            grass: components["schemas"]["Grass-Output"];
+            tufts: components["schemas"]["Tufts-Output"];
+            trees: components["schemas"]["Trees-Output"];
             shadows: components["schemas"]["Shadows"];
-            relief: components["schemas"]["ReliefLook"];
+            relief: components["schemas"]["ReliefLook-Output"];
         };
         /** Patch */
         Patch: {
@@ -1124,6 +1637,20 @@ export interface components {
             cellsX: number;
             /** Cellsz */
             cellsZ: number;
+        };
+        /**
+         * PlacedTree
+         * @description A tree put down by hand. It is a plain tree in trees.bin, and the forest does not grow within its crown.
+         */
+        PlacedTree: {
+            /** X */
+            x: number;
+            /** Z */
+            z: number;
+            /** Height */
+            height: number;
+            /** Kind */
+            kind: number;
         };
         /** RasterLayer */
         RasterLayer: {
@@ -1158,6 +1685,7 @@ export interface components {
             ][][];
             /** Note */
             note?: string | null;
+            trees?: components["schemas"]["ForestSettings-Input"] | null;
         };
         /**
          * Region
@@ -1185,6 +1713,7 @@ export interface components {
             ][][];
             /** Note */
             note: string | null;
+            trees: components["schemas"]["ForestSettings-Output"] | null;
         };
         /** RegionsFile */
         "RegionsFile-Input": {
@@ -1206,9 +1735,25 @@ export interface components {
          * ReliefLook
          * @description How the ground's slope is worked out for lighting.
          */
-        ReliefLook: {
+        "ReliefLook-Input": {
             /** Smoothing */
             smoothing: number;
+            /** Exaggeration */
+            exaggeration?: number;
+            /** Shading */
+            shading?: number;
+        };
+        /**
+         * ReliefLook
+         * @description How the ground's slope is worked out for lighting.
+         */
+        "ReliefLook-Output": {
+            /** Smoothing */
+            smoothing: number;
+            /** Exaggeration */
+            exaggeration: number;
+            /** Shading */
+            shading: number;
         };
         /**
          * Report
@@ -1271,7 +1816,89 @@ export interface components {
          * Surface
          * @description How one surface class is coloured, and what grows on it. The look has one for each class, in class order.
          */
-        Surface: {
+        "Surface-Input": {
+            /** Color */
+            color: [
+                number,
+                number,
+                number
+            ];
+            /** Color2 */
+            color2?: [
+                number,
+                number,
+                number
+            ] | null;
+            /**
+             * Stripe
+             * @default 0
+             */
+            stripe?: number;
+            /** Grain */
+            grain: number;
+            /**
+             * Shade
+             * @default 1
+             */
+            shade?: number;
+            /**
+             * Speckledark
+             * @default 0
+             */
+            speckleDark?: number;
+            /**
+             * Specklepale
+             * @default 0
+             */
+            specklePale?: number;
+            /** Earth */
+            earth?: [
+                number,
+                number,
+                number
+            ] | null;
+            /**
+             * Mottle
+             * @default 0
+             */
+            mottle?: number;
+            /**
+             * Tuft
+             * @default 0
+             */
+            tuft?: number;
+            /**
+             * Tuftdensity
+             * @default 1
+             */
+            tuftDensity?: number;
+            /**
+             * Tuftclump
+             * @default 0
+             */
+            tuftClump?: number;
+            /**
+             * Bump
+             * @default 0
+             */
+            bump?: number;
+            /**
+             * Bumpmap
+             * @default grass
+             * @enum {string}
+             */
+            bumpMap?: "grass" | "grain";
+            /**
+             * Height
+             * @default 0
+             */
+            height?: number;
+        };
+        /**
+         * Surface
+         * @description How one surface class is coloured, and what grows on it. The look has one for each class, in class order.
+         */
+        "Surface-Output": {
             /** Color */
             color: [
                 number,
@@ -1323,6 +1950,16 @@ export interface components {
              */
             tuft: number;
             /**
+             * Tuftdensity
+             * @default 1
+             */
+            tuftDensity: number;
+            /**
+             * Tuftclump
+             * @default 0
+             */
+            tuftClump: number;
+            /**
              * Bump
              * @default 0
              */
@@ -1333,6 +1970,11 @@ export interface components {
              * @enum {string}
              */
             bumpMap: "grass" | "grain";
+            /**
+             * Height
+             * @default 0
+             */
+            height: number;
         };
         /** TifEntry */
         TifEntry: {
@@ -1381,10 +2023,64 @@ export interface components {
             bakeable: boolean;
         };
         /**
+         * TreeEdits
+         * @description `.course_maker/design/trees.json`: the woods defaults and the hand edits. Clearings around placed trees and landmarks are derived at build time, not stored.
+         */
+        "TreeEdits-Input": {
+            /**
+             * @default {
+             *       "spacing": 5,
+             *       "kinds": {},
+             *       "heightScale": 1,
+             *       "edgeThinning": 8,
+             *       "edgeDensity": 0.3,
+             *       "seed": 0
+             *     }
+             */
+            defaults?: components["schemas"]["ForestSettings-Input"];
+            /**
+             * Added
+             * @default []
+             */
+            added?: components["schemas"]["PlacedTree"][];
+            /**
+             * Removed
+             * @default []
+             */
+            removed?: components["schemas"]["Clearing"][];
+        };
+        /**
+         * TreeEdits
+         * @description `.course_maker/design/trees.json`: the woods defaults and the hand edits. Clearings around placed trees and landmarks are derived at build time, not stored.
+         */
+        "TreeEdits-Output": {
+            /**
+             * @default {
+             *       "spacing": 5,
+             *       "kinds": {},
+             *       "heightScale": 1,
+             *       "edgeThinning": 8,
+             *       "edgeDensity": 0.3,
+             *       "seed": 0
+             *     }
+             */
+            defaults: components["schemas"]["ForestSettings-Output"];
+            /**
+             * Added
+             * @default []
+             */
+            added: components["schemas"]["PlacedTree"][];
+            /**
+             * Removed
+             * @default []
+             */
+            removed: components["schemas"]["Clearing"][];
+        };
+        /**
          * TreeKind
          * @description One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last.
          */
-        TreeKind: {
+        "TreeKind-Input": {
             /** Name */
             name: string;
             /** Height */
@@ -1393,18 +2089,59 @@ export interface components {
                 number
             ];
             /** Parts */
-            parts: (components["schemas"]["Frustum"] | components["schemas"]["Blob"])[];
+            parts: (components["schemas"]["Frustum-Input"] | components["schemas"]["Blob-Input"])[];
+        };
+        /**
+         * TreeKind
+         * @description One tree model, 1 unit tall standing on the ground; trees.bin's kind picks which, wrapping past the last.
+         */
+        "TreeKind-Output": {
+            /** Name */
+            name: string;
+            /** Height */
+            height: [
+                number,
+                number
+            ];
+            /** Parts */
+            parts: (components["schemas"]["Frustum-Output"] | components["schemas"]["Blob-Output"])[];
         };
         /** Trees */
-        Trees: {
+        "Trees-Input": {
             /** Kinds */
-            kinds: components["schemas"]["TreeKind"][];
+            kinds: components["schemas"]["TreeKind-Input"][];
             /** Ambient */
             ambient: number;
             /** Direct */
             direct: number;
             /** Base */
             base: number;
+        };
+        /** Trees */
+        "Trees-Output": {
+            /** Kinds */
+            kinds: components["schemas"]["TreeKind-Output"][];
+            /** Ambient */
+            ambient: number;
+            /** Direct */
+            direct: number;
+            /** Base */
+            base: number;
+        };
+        /**
+         * TreesPreview
+         * @description What the editor sends to see trees before saving them: the tree edits, and the forest settings of the woods patches that have their own
+         *     (by region id; null for a patch on the woods defaults). The outlines are the saved ones.
+         */
+        TreesPreview: {
+            edits: components["schemas"]["TreeEdits-Input"];
+            /**
+             * Settings
+             * @default {}
+             */
+            settings?: {
+                [key: string]: components["schemas"]["ForestSettings-Input"] | null;
+            };
         };
         /** TreesRef */
         TreesRef: {
@@ -1415,13 +2152,43 @@ export interface components {
         };
         /**
          * Tufts
-         * @description The standing grass in the rough, drawn as billboards.
+         * @description The standing grass in the rough: clumps of blades, each blade a thin tapered strip that leans out from the middle of its clump.
          */
-        Tufts: {
+        "Tufts-Input": {
             /** Height */
             height: number;
-            /** Width */
-            width: number;
+            /** Spread */
+            spread?: number;
+            /** Bladewidth */
+            bladeWidth?: number;
+            /** Blades */
+            blades?: number;
+            /** Root */
+            root: [
+                number,
+                number,
+                number
+            ];
+            /** Tip */
+            tip: [
+                number,
+                number,
+                number
+            ];
+        };
+        /**
+         * Tufts
+         * @description The standing grass in the rough: clumps of blades, each blade a thin tapered strip that leans out from the middle of its clump.
+         */
+        "Tufts-Output": {
+            /** Height */
+            height: number;
+            /** Spread */
+            spread: number;
+            /** Bladewidth */
+            bladeWidth: number;
+            /** Blades */
+            blades: number;
             /** Root */
             root: [
                 number,
@@ -1449,6 +2216,150 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * Viewer
+         * @description The 3D view's own settings: what it draws and how far. The viewer's, not the course's look (that is in course.json).
+         */
+        "Viewer-Input": {
+            /**
+             * Aerial
+             * @default true
+             */
+            aerial?: boolean;
+            /**
+             * Game
+             * @default true
+             */
+            game?: boolean;
+            /**
+             * Tufts
+             * @default true
+             */
+            tufts?: boolean;
+            /**
+             * Grassrange
+             * @default 200
+             */
+            grassRange?: number;
+            /**
+             * Grassdensity
+             * @default 1
+             */
+            grassDensity?: number;
+            /**
+             * Trees
+             * @default true
+             */
+            trees?: boolean;
+            /**
+             * Water
+             * @default true
+             */
+            water?: boolean;
+            /**
+             * Surfaces
+             * @default 0
+             */
+            surfaces?: number;
+            /**
+             * Outlines
+             * @default true
+             */
+            outlines?: boolean;
+            /**
+             * Scale
+             * @default 1
+             */
+            scale?: number;
+            /**
+             * Shading
+             * @default 1
+             */
+            shading?: number;
+            /**
+             * Shadows
+             * @default low
+             * @enum {string}
+             */
+            shadows?: "off" | "low" | "high";
+            /**
+             * Leanstrokes
+             * @default true
+             */
+            leanStrokes?: boolean;
+        };
+        /**
+         * Viewer
+         * @description The 3D view's own settings: what it draws and how far. The viewer's, not the course's look (that is in course.json).
+         */
+        "Viewer-Output": {
+            /**
+             * Aerial
+             * @default true
+             */
+            aerial: boolean;
+            /**
+             * Game
+             * @default true
+             */
+            game: boolean;
+            /**
+             * Tufts
+             * @default true
+             */
+            tufts: boolean;
+            /**
+             * Grassrange
+             * @default 200
+             */
+            grassRange: number;
+            /**
+             * Grassdensity
+             * @default 1
+             */
+            grassDensity: number;
+            /**
+             * Trees
+             * @default true
+             */
+            trees: boolean;
+            /**
+             * Water
+             * @default true
+             */
+            water: boolean;
+            /**
+             * Surfaces
+             * @default 0
+             */
+            surfaces: number;
+            /**
+             * Outlines
+             * @default true
+             */
+            outlines: boolean;
+            /**
+             * Scale
+             * @default 1
+             */
+            scale: number;
+            /**
+             * Shading
+             * @default 1
+             */
+            shading: number;
+            /**
+             * Shadows
+             * @default low
+             * @enum {string}
+             */
+            shadows: "off" | "low" | "high";
+            /**
+             * Leanstrokes
+             * @default true
+             */
+            leanStrokes: boolean;
+        };
+        /**
          * Viewport
          * @description The map view: centre in course metres, and pixels per metre. Independent of the window size.
          */
@@ -1459,6 +2370,118 @@ export interface components {
             z: number;
             /** Scale */
             scale: number;
+        };
+        /** WaterLook */
+        "WaterLook-Input": {
+            /**
+             * Bedcolor
+             * @default [
+             *       0.3,
+             *       0.21,
+             *       0.12
+             *     ]
+             */
+            bedColor?: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Tint
+             * @default [
+             *       0.025,
+             *       0.1,
+             *       0.12
+             *     ]
+             */
+            tint?: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Shallow
+             * @default [
+             *       0.1,
+             *       0.36,
+             *       0.36
+             *     ]
+             */
+            shallow?: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Clarity
+             * @default 1
+             */
+            clarity?: number;
+            /**
+             * Ripples
+             * @default 0.008
+             */
+            ripples?: number;
+            /** Lakes */
+            lakes?: {
+                [key: string]: components["schemas"]["LakeSettings-Input"];
+            };
+        };
+        /** WaterLook */
+        "WaterLook-Output": {
+            /**
+             * Bedcolor
+             * @default [
+             *       0.3,
+             *       0.21,
+             *       0.12
+             *     ]
+             */
+            bedColor: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Tint
+             * @default [
+             *       0.025,
+             *       0.1,
+             *       0.12
+             *     ]
+             */
+            tint: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Shallow
+             * @default [
+             *       0.1,
+             *       0.36,
+             *       0.36
+             *     ]
+             */
+            shallow: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Clarity
+             * @default 1
+             */
+            clarity: number;
+            /**
+             * Ripples
+             * @default 0.008
+             */
+            ripples: number;
+            /** Lakes */
+            lakes: {
+                [key: string]: components["schemas"]["LakeSettings-Output"];
+            };
         };
     };
     responses: never;
@@ -1628,7 +2651,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Look"];
+                    "application/json": components["schemas"]["Look-Output"];
                 };
             };
         };
@@ -1807,8 +2830,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DesignDoc"];
+                    "application/json": components["schemas"]["DesignResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    water_preview_api_bundle_water_preview_post: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Look-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    look_put_api_bundle_look_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Look-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1908,6 +2999,74 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_put_trees_api_bundle_design_trees_put: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TreeEdits-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trees_preview_api_bundle_trees_preview_post: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TreesPreview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {
@@ -2060,6 +3219,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackupList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crops_list_api_bundle_crops_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CropList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crop_post_api_bundle_crop_post: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CropRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CropResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crop_undo_api_bundle_crop_undo_post: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CropList"];
                 };
             };
             /** @description Validation Error */

@@ -49,6 +49,13 @@ bundles, skipping hidden folders and `.venv`.
   hillshade, surface class, hole ownership and out-of-bounds layers, patches, trees, routes, landmarks, and the
   validation report.
 
+## Trees
+
+`trees.bin` is written by the build, not drawn by hand. A woods region is a forest patch: the **Trees** editor (`g t`) sets how each is planted
+(spacing, which tree models, height, how it thins at the border), places single trees, and clears ground with a brush. Landmarks and placed
+trees keep the forest out of their way automatically; a hole's line of play is never cleared for you. A bundle built before this gets its forest
+the first time it is opened. See `docs/tree-editor-plan.md`.
+
 ## Develop the web app
 
 Run the server as above, then in `web/`:
@@ -92,3 +99,5 @@ Neither is part of the game bundle, and neither is served to the browser as a bu
 .\.venv\Scripts\python.exe -m unittest discover -s course_maker/tests -t .
 cd web; npm run typecheck
 ```
+
+Water authoring is available in **Look > Water**: per-lake height, water beyond the outline and optional curvature, and course-wide bed color, deep and shallow water colours, clarity and ripples. Saves and builds publish a separate mesh consumed by the game. See `docs/water-editor.md`.

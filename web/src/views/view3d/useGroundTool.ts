@@ -4,7 +4,10 @@ import type { GroundTool } from "../../scene/groundTool";
 import type { TerrainSource } from "../../scene/scene";
 import { matricesOf, type Camera } from "../../terrain/camera/camera";
 import { ndcOf, pickGround, pickPlane, rayThrough } from "../../terrain/camera/pick";
-import { paintRing } from "./ring";
+import { paintCross, paintRing } from "./ring";
+
+/** The colour of the places a tool marks besides its own ring. */
+const MARK = "#ffd24a";
 
 type Args = {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -71,9 +74,14 @@ export function useGroundTool({ canvasRef, cursorRef, cameraRef, read, tool, spa
     const t = toolRef.current;
     if (!t || !canvas.clientWidth) return;
     const at = groundAt();
-    if (!at) return;
     const v = view();
-    paintRing(ctx, { viewProj: v.viewProj, width: cursor.width, height: cursor.height }, at, t.ring, v.heightAt, canvas.width / canvas.clientWidth);
+    const picture = { viewProj: v.viewProj, width: cursor.width, height: cursor.height };
+    const scale = canvas.width / canvas.clientWidth;
+    for (const m of t.marks?.(at) ?? []) {
+      paintRing(ctx, picture, m.at, m.ring, v.heightAt, scale, MARK);
+      paintCross(ctx, picture, m.at, v.heightAt, scale, MARK);
+    }
+    if (at) paintRing(ctx, picture, at, t.ring, v.heightAt, scale);
   };
 
   const finish = () => {
@@ -82,6 +90,7 @@ export function useGroundTool({ canvasRef, cursorRef, cameraRef, read, tool, spa
     level.current = null;
     toolRef.current?.end();
     onStroke(false);
+    paint(); // a mark that followed the pointer goes back to where it was picked
   };
 
   // a tool taken away mid-stroke ends the stroke
@@ -109,7 +118,8 @@ export function useGroundTool({ canvasRef, cursorRef, cameraRef, read, tool, spa
         e.currentTarget.setPointerCapture(e.pointerId);
         going.current = true;
         onStroke(true);
-        t.begin(groundAt, e.shiftKey);
+        t.begin(groundAt, e.shiftKey, e.ctrlKey);
+        paint(); // a source just picked shows at once, with the pointer standing still
       }
       return true;
     },

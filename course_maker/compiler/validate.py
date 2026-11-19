@@ -5,6 +5,7 @@ module adds the checks that need the files: image modes and sizes, pixel values,
 """
 from __future__ import annotations
 
+import json
 from collections import deque
 from pathlib import Path
 
@@ -90,6 +91,28 @@ def _check_trees(c: Course, root: Path, r: Report) -> None:
         r.warn(f"{c.trees.file}: tree with zero height")
 
 
+def _component_count(mask: np.ndarray) -> int:
+    """How many 4-connected groups of True cells the mask holds."""
+    count = 0
+    seen = np.zeros(mask.shape, dtype=bool)
+    for r, c in zip(*np.nonzero(mask)):
+        r, c = int(r), int(c)
+        if seen[r, c]:
+            continue
+        count += 1
+        stack = [(r, c)]
+        seen[r, c] = True
+        while stack:
+            rr, cc = stack.pop()
+            for nr, nc in ((rr + 1, cc), (rr - 1, cc), (rr, cc + 1), (rr, cc - 1)):
+                if nr < 0 or nc < 0 or nr >= mask.shape[0] or nc >= mask.shape[1]:
+                    continue
+                if mask[nr, nc] and not seen[nr, nc]:
+                    seen[nr, nc] = True
+                    stack.append((nr, nc))
+    return count
+
+
 def _green_connected(cells: np.ndarray) -> bool:
     """4-connectivity over an (n, 2) array of (row, col) cells."""
     todo = {tuple(x) for x in cells.tolist()}
@@ -106,15 +129,29 @@ def _green_connected(cells: np.ndarray) -> bool:
 
 def _check_holes(c: Course, cls: np.ndarray, bounds: np.ndarray, r: Report) -> None:
     klass, owner = cls[..., 0], cls[..., 1]
-    if np.isin(klass, list(S.CLASSES.values()), invert=True).any():
+    if np.isin(klass, [*S.CLASSES.values(), S.VOID], invert=True).any():
         r.error("class.png: contains values (R) that are not a defined class")
     if ((owner != 0) & ~np.isin(klass, S.OWNED_CLASSES)).any():
         r.error("class.png: hole number (G) set on a class that is not fairway, green or tee")
+    if cls[..., 2].any() or (cls[..., 3] != 255).any():
+        r.error("class.png: B must be 0 and A must be 255")
+
+    if c.kind == "range":
+        # Greens and fairways are targets and lanes, not holes, so the green channel stays 0 and greens need not touch.
+        if owner.any():
+            r.error("class.png: a range does not number its tee, fairways or greens by hole")
+        tees = _component_count(klass == S.TEE)
+        if tees > 1:
+            r.error(f"class.png: a range has {tees} tees; it can have one")
+        elif tees == 0:
+            r.warn("class.png: a range has no tee yet")
+        if not (klass == S.GREEN).any():
+            r.warn("class.png: a range has no green yet")
+        return
+
     numbers = {h.number for h in c.holes}
     if not set(np.unique(owner).tolist()) <= numbers | {0}:
         r.error("class.png: hole number (G) that is not listed in holes")
-    if cls[..., 2].any() or (cls[..., 3] != 255).any():
-        r.error("class.png: B must be 0 and A must be 255")
 
     mask = bounds[..., 0].astype(np.int32) | (bounds[..., 1].astype(np.int32) << 8) | (bounds[..., 2].astype(np.int32) << 16)
     if len(c.holes) < 24 and (mask >> len(c.holes)).any():
@@ -175,6 +212,29 @@ def validate_bundle(path) -> Report:
     _check_trees(course, root, r)
     if class_img is not None and bounds_img is not None and r.ok:
         _check_holes(course, class_img, bounds_img, r)
+
+    if course.waterMesh:
+        path = _inside(root, course.waterMesh)
+        try:
+            if path is None:
+                raise ValueError("path escapes the bundle")
+            r.sizes[course.waterMesh] = path.stat().st_size
+            mesh = json.loads(path.read_text(encoding="utf-8"))
+            if mesh.get("version") != 1 or not isinstance(mesh.get("lakes"), list):
+                raise ValueError("unsupported water mesh")
+            ids = set()
+            for lake in mesh["lakes"]:
+                if lake["id"] in ids:
+                    raise ValueError("duplicate lake id")
+                ids.add(lake["id"])
+                pos, normals = np.asarray(lake["positions"]), np.asarray(lake["normals"])
+                ix = np.asarray(lake["indices"])
+                if pos.ndim != 1 or normals.shape != pos.shape or pos.size % 3 or ix.ndim != 1 or ix.size % 3 or not np.isfinite(pos).all() or not np.isfinite(normals).all():
+                    raise ValueError("invalid water vertices")
+                if ix.size and (not np.issubdtype(ix.dtype, np.integer) or ix.min() < 0 or ix.max() >= pos.size // 3):
+                    raise ValueError("invalid water indices")
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            r.error(f"{course.waterMesh}: {exc}")
 
     if r.total_bytes > S.BUNDLE_BUDGET_BYTES:
         r.warn(f"bundle is {r.total_bytes / 1e6:.1f} MB, over the {S.BUNDLE_BUDGET_BYTES / 1e6:.0f} MB budget")

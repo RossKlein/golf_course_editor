@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -25,6 +26,24 @@ def project_dir(bundle: Path) -> Path:
     return Path(bundle) / DIR_NAME
 
 
+REPLACE_ATTEMPTS = 40
+REPLACE_DELAY = 0.025  # seconds between tries: about a second in all
+
+
+def replace_file(src, dst) -> None:
+    """`os.replace`, retried briefly on Windows. There a rename onto a file that another thread has open for reading (a build reading the
+    sculpting, a backup copying the design, the server sending a bundle file) is refused with "Access is denied", though the reader is done
+    in a moment. Anywhere else, and for any other error, it is just `os.replace`."""
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if os.name != "nt" or attempt == REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(REPLACE_DELAY)
+
+
 def atomic_write(path: Path, text: str) -> None:
     """Write via a temporary file in the same folder, so a crash never leaves half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -35,7 +54,7 @@ def atomic_write(path: Path, text: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
-        os.replace(tmp, path)
+        replace_file(tmp, path)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)

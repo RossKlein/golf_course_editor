@@ -93,3 +93,52 @@ export function withoutLineVertex(line: readonly Pt[], index: number): Pt[] | nu
   if (line.length <= 2 || index < 0 || index >= line.length) return null;
   return line.filter((_, i) => i !== index);
 }
+
+/** Edges shorter than this, in metres, get no new point from `roundRing`: they are already finer than anything drawn by hand, and repeating would only pile up points. */
+export const ROUND_MIN_EDGE = 0.5;
+
+/**
+ * A closed ring with a point added on the smooth curve between every pair of neighbouring corners: a centripetal Catmull-Rom spline through
+ * the corners (Barry and Goldman's pyramid), taken half way along each edge. Every existing corner stays exactly where it is, so a border
+ * shared with a neighbouring region still meets it. The centripetal form does not loop or overshoot at a sharp corner or beside a long
+ * edge. One call adds one point per edge, so calling it again on its result halves the segments again and the outline gets rounder to
+ * look at; the curve itself, passing through the same corners, does not change. Null when nothing was added (every edge is shorter than
+ * `minEdge`, or the ring has fewer than three corners).
+ */
+export function roundRing(ring: Pt[], minEdge: number = ROUND_MIN_EDGE): Pt[] | null {
+  const pts = dedupe(closeRing(ring)).slice(0, -1);
+  const n = pts.length;
+  if (n < 3) return null;
+  const knot = (a: Pt, b: Pt) => Math.sqrt(Math.max(Math.hypot(b[0] - a[0], b[1] - a[1]), 1e-6));
+  const lerp = (a: Pt, b: Pt, ta: number, tb: number, t: number): Pt => {
+    const w = (t - ta) / (tb - ta);
+    return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w];
+  };
+  const out: Pt[] = [];
+  let added = 0;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    out.push(p1);
+    if (Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) < minEdge) continue;
+    const t0 = 0, t1 = t0 + knot(p0, p1), t2 = t1 + knot(p1, p2), t3 = t2 + knot(p2, p3);
+    const t = (t1 + t2) / 2;
+    const a1 = lerp(p0, p1, t0, t1, t), a2 = lerp(p1, p2, t1, t2, t), a3 = lerp(p2, p3, t2, t3, t);
+    const b1 = lerp(a1, a2, t0, t2, t), b2 = lerp(a2, a3, t1, t3, t);
+    out.push(lerp(b1, b2, t1, t2, t));
+    added++;
+  }
+  return added ? closeRing(out) : null;
+}
+
+/** Whether `p` is inside a closed ring (even-odd rule). On the boundary it may be either. */
+export function pointInRing(ring: readonly Pt[], p: Pt): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, zi] = ring[i], [xj, zj] = ring[j];
+    if (zi > p[1] !== zj > p[1] && p[0] < ((xj - xi) * (p[1] - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Whether `p` is inside a polygon: inside its outer ring and outside every hole. */
+export const pointInPolygon = (outer: readonly Pt[], holes: readonly (readonly Pt[])[], p: Pt) => pointInRing(outer, p) && !holes.some((h) => pointInRing(h, p));

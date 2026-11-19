@@ -80,6 +80,8 @@ class Landmark(Model):
     rotation: Number = 0.0
     scale: Annotated[Number, Field(gt=0)] = 1.0
     y: Number | None = None
+    # metres around it where the editor's build plants no forest trees. The game ignores it. Unset is a few metres times the scale
+    clearance: Annotated[Number, Field(gt=0, le=200)] | None = None
 
 
 class Hole(Model):
@@ -114,13 +116,21 @@ class Surface(Model):
     shade: Annotated[Number, Field(ge=0, le=2)] = 1.0  # how much the relief shading applies; 1 as for grass
     speckleDark: Unit = 0.0  # salt and pepper: how much a dark grain darkens
     specklePale: Unit = 0.0  # and how much a pale one lightens
-    earth: Color | None = None  # a second colour the surface is mottled with (the forest floor's soil)
-    mottle: Annotated[Number, Field(ge=0, le=10)] = 0.0  # how strongly the earth shows through; 0 for none
+    earth: Color | None = None  # a second colour the surface is flecked with (the forest floor's soil)
+    mottle: Annotated[Number, Field(ge=0, le=10)] = 0.0  # how much of the surface is earth, in crisp specks, not a blend: 1 - exp(-0.4 * mottle), about half at 1.6; 0 for none
     tuft: Annotated[Number, Field(ge=0, le=4)] = 0.0  # height of standing grass as a multiple of tufts.height; 0 for none
+    # how many of the clumps the renderer would grow here do grow (0 to 1; the viewer's or the game's own grass level sets how many that is
+    # to start with), and how much they gather into patches with bare ground between (0 for an even spread, 1 for tussocks). A look written
+    # before these gets the default of its surface
+    tuftDensity: Annotated[Number, Field(ge=0, le=1)] = 1.0
+    tuftClump: Annotated[Number, Field(ge=0, le=1)] = 0.0
     # normal-map detail on the surface: how steep it is (a root-mean-square slope, 0.3 about 17 degrees; 0 for none), and where it
     # comes from: the grass tile's own light and dark (blades and clumps) or noise (grains, for sand and paths)
     bump: Annotated[Number, Field(ge=0, le=3)] = 0.0
     bumpMap: Literal["grass", "grain"] = "grass"
+    # how tall the grass is, in metres (a green 3 mm, a fairway 15 mm, rough 6 cm): where two surfaces meet, the ground steps from one
+    # height to the other, and the sun lights the step. A look written before this gets the default height of its surface
+    height: Annotated[Number, Field(ge=0, le=0.5)] = 0.0
 
 
 class Grass(Model):
@@ -131,6 +141,15 @@ class Grass(Model):
     # metres either side of a surface edge that are averaged to draw it as a smooth curve: more gives bigger, rounder curves and
     # loses thin features; 1 is the least the renderer can do. A look written before this gets the default
     smoothing: Annotated[Number, Field(ge=1, le=3)] = Field(default_factory=lambda: _default_look().grass.smoothing)
+    # where two surfaces of different heights meet: the metres across the wall of the step, on the taller surface's side of the line, how far in metres the grass texture pushes
+    # the line about so it is not a perfect curve, and how much the shorter grass at the foot of the taller is darkened (0 to 1)
+    edgeWidth: Annotated[Number, Field(gt=0, le=0.5)] = Field(default_factory=lambda: _default_look().grass.edgeWidth)
+    edgeRagged: Annotated[Number, Field(ge=0, le=0.3)] = Field(default_factory=lambda: _default_look().grass.edgeRagged)
+    edgeShadow: Annotated[Number, Field(ge=0, le=1)] = Field(default_factory=lambda: _default_look().grass.edgeShadow)
+    # how much taller the grass looks at a step than it is (1 is true), so small differences show: it scales the difference between two
+    # surfaces' heights when the step is lit and shaded, and the surfaces' own heights are not changed. The foot's shade falls on the
+    # side away from the sun
+    edgeGain: Annotated[Number, Field(ge=1, le=10)] = Field(default_factory=lambda: _default_look().grass.edgeGain)
 
 
 class ReliefLook(Model):
@@ -139,15 +158,32 @@ class ReliefLook(Model):
     # metres either side of a point over which the heights are averaged by a cubic B-spline before the slope is taken: more
     # gives smoother, broader shading and ignores smaller bumps. The height grid is 1 m, so 2 is the least that makes sense
     smoothing: Annotated[Number, Field(ge=1, le=6)]
+    # how much steeper the slope looks in the shading than it is (1 is true), so gentle ground shows; the ground itself keeps its shape
+    exaggeration: Annotated[Number, Field(ge=1, le=20)] = Field(default_factory=lambda: _default_look().relief.exaggeration)
+    # how strongly the slope shades the sun's light: 0 is flat light, 1 as lit, more is harsher (the sky's light is not shaded)
+    shading: Annotated[Number, Field(ge=0, le=3)] = Field(default_factory=lambda: _default_look().relief.shading)
 
 
 class Tufts(Model):
-    """The standing grass in the rough, drawn as billboards."""
+    """The standing grass in the rough: clumps of blades, each blade a thin tapered strip that leans out from the middle of its clump."""
 
-    height: Annotated[Number, Field(gt=0, le=5)]  # metres, for a surface with tuft = 1
-    width: Annotated[Number, Field(gt=0, le=5)]  # as a multiple of the height
+    height: Annotated[Number, Field(gt=0, le=5)]  # metres, the tallest blade of a clump on a surface with tuft = 1
+    # how wide a clump is across, in metres, and how thick the blades are at their base. A clump is its own size whatever its height, so a
+    # tall clump is not a fat one. A look written before these gets the default
+    spread: Annotated[Number, Field(gt=0, le=2)] = Field(default_factory=lambda: _default_look().tufts.spread)
+    bladeWidth: Annotated[Number, Field(gt=0, le=0.1)] = Field(default_factory=lambda: _default_look().tufts.bladeWidth)
+    # blades in a clump seen close up; further off a clump is drawn with fewer, wider blades, so the number is what the best view costs
+    blades: Annotated[Int, Field(ge=3, le=64)] = Field(default_factory=lambda: _default_look().tufts.blades)
     root: Color
     tip: Color
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_the_old_width(cls, data):
+        # tufts used to be flat cards with a width that was a multiple of their height; a look that still has it is read and the width let go
+        if isinstance(data, dict) and "width" in data:
+            data = {k: v for k, v in data.items() if k != "width"}
+        return data
 
 
 class Frustum(Model):
@@ -192,6 +228,16 @@ class Trees(Model):
     direct: Annotated[Number, Field(ge=0, le=2)]  # and from the sun, on faces turned towards it
     base: Unit  # brightness at the foot of a tree, rising to full at the top
 
+    @field_validator("kinds")
+    @classmethod
+    def _unique_names(cls, kinds: list[TreeKind]) -> list[TreeKind]:
+        # forest settings weight a kind by its name, so two kinds with one name would be one weight for both
+        names = [k.name for k in kinds]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
+            raise ValueError(f"tree kinds must have different names; repeated: {', '.join(dupes)}")
+        return kinds
+
 
 class Shadows(Model):
     """How the sun's shadows look. How crisp they are (map size, slices) is a quality setting of the viewer, not the course's."""
@@ -202,7 +248,25 @@ class Shadows(Model):
     distance: Annotated[Number, Field(gt=0, le=2000)]  # metres from the camera where shadows have faded out
 
 
+class LakeSettings(Model):
+    anchor: tuple[Number, Number]
+    level: Number | None = None
+    offset: Annotated[Number, Field(ge=-50, le=50)] = 0
+    curvature: Unit = 0
+    excess: Annotated[Number, Field(ge=0, le=30)] = 0  # metres past the painted outline that the water may spread, where the ground is lower than it
+
+
+class WaterLook(Model):
+    bedColor: Color = (0.30, 0.21, 0.12)
+    tint: Color = (0.025, 0.10, 0.12)  # the water where it is deep
+    shallow: Color = (0.10, 0.36, 0.36)  # and where it is shallow, which is also where it is clearer
+    clarity: Annotated[Number, Field(gt=0, le=20)] = 1.0  # metres of depth in which the water goes from the shallow colour and clear to the tint and dark
+    ripples: Annotated[Number, Field(ge=0, le=0.05)] = 0.008
+    lakes: dict[str, LakeSettings] = Field(default_factory=dict)
+
+
 class Look(Model):
+    water: WaterLook = Field(default_factory=WaterLook)
     sky: Color
     sun: Sun
     # one for each surface class, by its name: rough, fairway, green, collar, tee, bunker, water, path, woods
@@ -220,7 +284,17 @@ class Look(Model):
         unknown = [n for n in surfaces if n not in spec.CLASSES]
         if missing or unknown:
             raise ValueError(f"surfaces must be one for each class ({', '.join(spec.CLASSES)}); missing: {missing or 'none'}, not a class: {unknown or 'none'}")
-        return {name: surfaces[name] for name in spec.CLASSES}  # in class order, however it was written
+        # a surface written before it had these has its class's default, so older courses get edges and forest floors like new ones
+        out = {}
+        for name in spec.CLASSES:
+            s = surfaces[name]
+            # the defaults themselves give every surface all of them, so this never asks for them while they are being made
+            missing_fields = [f for f in ("height", "tuftDensity", "tuftClump") if f not in s.model_fields_set]
+            if missing_fields:
+                fallback = _default_look().surfaces[name]
+                s = s.model_copy(update={f: getattr(fallback, f) for f in missing_fields})
+            out[name] = s
+        return out  # in class order, however it was written
 
 
 def _default_look() -> "Look":
@@ -244,7 +318,10 @@ class Course(Model):
     trees: TreesRef
     landmarks: list[Landmark] = []
     holes: list[Hole]
+    # course: numbered holes, each with its own tee and one green. range: one tee, any number of separate greens and fairways, no holes.
+    kind: Literal["course", "range"] = "course"
     look: Look = Field(default_factory=_default_look)
+    waterMesh: str | None = None
 
     @property
     def extent(self) -> tuple[float, float]:
@@ -275,6 +352,8 @@ class Course(Model):
         inside = lambda x, z: 0 <= x <= ex and 0 <= z <= ez  # noqa: E731
         if [h.number for h in self.holes] != list(range(1, len(self.holes) + 1)):
             bad.append("hole numbers must be 1-based and contiguous, in order")
+        if self.kind == "range" and self.holes:
+            bad.append("a range has no holes")
         if len(self.holes) > spec.MAX_HOLES:
             bad.append(f"at most {spec.MAX_HOLES} holes are supported")
         for h in self.holes:
@@ -337,6 +416,24 @@ class LayerPref(Model):
     opacity: Annotated[Number, Field(ge=0, le=1)]
 
 
+class Viewer(Model):
+    """The 3D view's own settings: what it draws and how far. The viewer's, not the course's look (that is in course.json)."""
+
+    aerial: bool = True  # the aerial photo under the ground, when the game's look is off
+    game: bool = True  # the ground in the game's look
+    tufts: bool = True  # standing grass ("Rough grass")
+    grassRange: Annotated[Number, Field(ge=1, le=1000)] = 200.0  # metres from where it looks that grass grows
+    grassDensity: Annotated[Number, Field(ge=0.01, le=100)] = 1.0  # clumps to the square metre, as a multiple of the default
+    trees: bool = True
+    water: bool = True  # the lakes' water surfaces (off shows the lake bed)
+    surfaces: Annotated[Number, Field(ge=0, le=1)] = 0.0  # how strongly the design's surfaces are painted on the ground
+    outlines: bool = True  # the design's outlines on the ground
+    scale: Annotated[Number, Field(ge=1, le=20)] = 1.0  # vertical exaggeration of the shape of the ground
+    shading: Annotated[Number, Field(ge=0, le=3)] = 1.0  # slope shading, for a course with no look to take it from
+    shadows: Literal["off", "low", "high"] = "low"
+    leanStrokes: bool = True  # while a brush stroke goes, draw only the ground
+
+
 class EditorState(Model):
     """`.course_maker/editor.json`: UI state, per user. Safe to delete; never needed to rebuild a bundle."""
 
@@ -359,9 +456,15 @@ class EditorState(Model):
     brushRadius: Annotated[Number, Field(ge=1, le=120)] = 10.0  # Heightmap editor: brush radius in metres
     brushStrength: Annotated[Number, Field(ge=0.02, le=1)] = 0.3
     brushHardness: Annotated[Number, Field(ge=0, le=1)] = 0.5
+    cloneRelative: bool = True  # Heightmap editor, clone brush: copy the source's shape onto the ground where the stroke starts, not its exact heights
     smoothing: Annotated[Number, Field(ge=0, le=10)] = 0.1  # freehand simplify tolerance in screen pixels; 0 keeps every point
+    pathWidth: Annotated[Number, Field(ge=0.5, le=16)] = 2.5  # Course editor, Path tool: how wide the path is made, in metres
+    collarThickness: Annotated[Number, Field(ge=0.3, le=5)] = 1.5  # Course editor: how thick a collar made round a green is, in metres
     leftCollapsed: bool = False
     rightTab: Literal["view", "data"] = "view"
+    view3d: bool = False  # the 3D view was open
+    viewer: Viewer | None = None  # the 3D view's settings; None until they are first saved, so the view starts as its terrain suits
+    lookTab: Annotated[str, Field(max_length=32)] = "sky"  # the Look editor's open tab
 
 
 class HeightBase(Model):
@@ -425,7 +528,7 @@ class TifView(Model):
     resZ: float
     rgb: RasterLayer | None
     elevation: ElevationLayer | None
-    bakeable: bool  # projected, metres, has elevation
+    bakeable: bool  # projected (metres or feet), has elevation
 
 
 class AerialMeta(Model):

@@ -1,6 +1,7 @@
 import type { Device } from "../../gfx/device/device";
 import { compileProgram, type Program } from "../../gfx/shader/program";
 import { context, currentContext, type Gl } from "../context";
+import { takeStrip } from "./strips";
 
 /** A box of texels, corners included. */
 export type Box = { x0: number; z0: number; x1: number; z1: number };
@@ -31,6 +32,12 @@ export type BakeSpec = {
   uniforms: (g: Gl, p: Program) => void;
   /** Draws more into the same texels, in the same framebuffer and viewport, after the pass (blending is off and may be switched on). It may draw elsewhere meanwhile, and calls `restore` to come back to the bake's framebuffer. */
   after?: (g: Gl, box: Box, restore: () => void) => void;
+  /**
+   * Rows baked in one frame, cut at multiples of it (see strips.ts). A big box takes several frames, one strip each, so the GPU is
+   * never held for long enough to freeze the screen; the texture is part old and part new until the last strip. Without it a box is
+   * baked whole, in one frame.
+   */
+  strip?: number;
 };
 
 type Target = { generation: number; texture: WebGLTexture; framebuffer: WebGLFramebuffer };
@@ -71,6 +78,18 @@ export class Bake {
     this.all = true;
   }
 
+  /** Exactly these texels are out of date, with no reach added: for a change whose reach the caller has already worked out. */
+  touchExact(box: Box) {
+    if (this.all) return;
+    const d = this.dirty;
+    this.dirty = d ? { x0: Math.min(d.x0, box.x0), z0: Math.min(d.z0, box.z0), x1: Math.max(d.x1, box.x1), z1: Math.max(d.z1, box.z1) } : box;
+  }
+
+  /** Whether there is more to bake: a strip of a big box was done and the rest waits for the next frame. False where this GPU cannot bake. */
+  get pending(): boolean {
+    return !this.failed && this.supported() && (this.all || this.dirty !== null);
+  }
+
   private ensureTarget(g: Gl): Target | null {
     if (this.target && this.target.generation === g.generation) return this.target;
     const { gl } = g;
@@ -107,9 +126,10 @@ export class Bake {
     if (!target) return;
     if (!this.all && !this.dirty) return;
     const { cols, rows } = this.spec;
-    const box = this.all || !this.dirty ? { x0: 0, z0: 0, x1: cols - 1, z1: rows - 1 } : this.dirty;
+    const whole = this.all || !this.dirty ? { x0: 0, z0: 0, x1: cols - 1, z1: rows - 1 } : this.dirty;
+    const { now: box, rest } = this.spec.strip ? takeStrip(whole, this.spec.strip) : { now: whole, rest: null };
     this.all = false;
-    this.dirty = null;
+    this.dirty = rest; // what is left of a big box, for the next frame
     const { gl } = g;
     if (!this.program || this.program.generation !== g.generation) {
       this.program = { generation: g.generation, p: compileProgram(gl, this.spec.source.vertex, this.spec.source.fragment, this.spec.name) };

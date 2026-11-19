@@ -5,7 +5,7 @@ import { holeExtent, holeView, routeLength, suggestHoles, unassignedCount, visib
 import { addBoundsArea, addHole, addRegion, assignHoles, designStore, emptyDoc, removeBoundsAreas, removeHole, setRoute, updateBoundsArea, updateHole } from "./store";
 
 const box = (x: number, z: number, w = 10, h = 10): Pt[] => [[x, z], [x + w, z], [x + w, z + h], [x, z + h], [x, z]];
-const region = (cls: number, outer: Pt[], hole: number | null = null): Omit<Region, "id" | "note"> => ({ class: cls, hole, outer, inner: [] });
+const region = (cls: number, outer: Pt[], hole: number | null = null): Omit<Region, "id" | "note" | "trees"> => ({ class: cls, hole, outer, inner: [] });
 
 beforeEach(() => designStore.getState().reset(emptyDoc()));
 

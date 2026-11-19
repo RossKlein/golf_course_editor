@@ -28,7 +28,11 @@ export class FreehandInteraction extends PointerInteraction {
   private readonly source = new VectorSource();
   private readonly sketch = new VectorLayer({ source: this.source, style: sketchStyle, zIndex: 200, updateWhileInteracting: true });
 
-  constructor(private readonly options: { snap: (c: Coord) => Coord; onChange: () => void }) {
+  /**
+   * `open` is for a line that is not going to be closed (a path): the dashed line back to the first point is not drawn. `onChange` is called when
+   * the strokes change, and `onDraw` as a stroke grows.
+   */
+  constructor(private readonly options: { snap: (c: Coord) => Coord; onChange: () => void; open?: boolean; onDraw?: () => void }) {
     super();
   }
 
@@ -97,6 +101,7 @@ export class FreehandInteraction extends PointerInteraction {
       cur.push(e.coordinate as Coord);
       this.cursor = e.coordinate as Coord;
       this.render();
+      this.options.onDraw?.();
     }
   }
 
@@ -127,7 +132,7 @@ export class FreehandInteraction extends PointerInteraction {
     if (pts.length > 1) this.source.addFeature(new Feature({ geometry: new LineString(pts), kind: "line" }));
     const last = pts[pts.length - 1];
     if (!this.current && this.cursor) this.source.addFeature(new Feature({ geometry: new LineString([last, this.cursor]), kind: "next" }));
-    if (pts.length > 2) this.source.addFeature(new Feature({ geometry: new LineString([last, pts[0]]), kind: "close" }));
+    if (pts.length > 2 && !this.options.open) this.source.addFeature(new Feature({ geometry: new LineString([last, pts[0]]), kind: "close" }));
   }
 }
 

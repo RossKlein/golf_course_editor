@@ -16,7 +16,7 @@ from course_maker.compiler.bake import bake
 from course_maker.compiler.codec import read_png
 from course_maker.design import store
 from course_maker.design.models import BoundsArea, BoundsFile, DesignHole, Layout, Region, RegionsFile
-from course_maker.models import Course
+from course_maker.models import Course, Hole
 from course_maker.server.app import create_app
 from course_maker.tests.test_bundle import make_stack
 
@@ -394,6 +394,44 @@ class EndpointTests(BundleCase):
     def test_files_does_not_serve_the_design(self):
         self.client.put("/api/bundle/design/layout", params=self.q, json={})
         self.assertEqual(self.client.get("/files/b/.course_maker/design/layout.json").status_code, 404)
+
+
+class RangeBuildTests(BundleCase):
+    def as_range(self):
+        path = self.bundle / "course.json"
+        Course.read(path).model_copy(update={"kind": "range"}).write(path)
+
+    def test_several_greens_and_one_tee_validate(self):
+        self.as_range()
+        # hole numbers are set on purpose: a range build must ignore them
+        self.regions(
+            region("tee", 4, rect(10, 10, 20, 16), hole=1),
+            region("fair", 1, rect(10, 16, 30, 50), hole=1),
+            region("near", 2, rect(12, 50, 22, 58), hole=1),
+            region("far", 2, rect(40, 50, 50, 58), hole=1),
+        )
+        out = build_bundle(self.bundle)
+        self.assertEqual(out.report.errors, [])
+        saved = Course.read(self.bundle / "course.json")
+        self.assertEqual((saved.kind, saved.holes), ("range", []))
+        klass = self.klass()
+        self.assertFalse(klass[..., 1].any())
+        self.assertGreater(int((klass[..., 0] == 2).sum()), 0)
+        self.assertGreater(int((klass[..., 0] == 4).sum()), 0)
+
+    def test_two_tees_are_reported_and_the_build_is_kept(self):
+        self.as_range()
+        self.regions(region("a", 4, rect(10, 10, 16, 16)), region("b", 4, rect(40, 10, 46, 16)))
+        out = build_bundle(self.bundle)
+        self.assertTrue(any("tees" in e for e in out.report.errors))
+
+    def test_a_range_cannot_list_holes(self):
+        course = Course.read(self.bundle / "course.json")
+        data = course.model_dump()
+        data["kind"] = "range"
+        data["holes"] = [Hole(number=1, par=3, route=[(1.0, 1.0), (2.0, 2.0)]).model_dump()]
+        with self.assertRaises(ValidationError):
+            Course.model_validate(data)
 
 
 if __name__ == "__main__":

@@ -1,35 +1,5 @@
-// Where trees are: a bundle's trees.bin, a scatter over the woods where there is none yet, and the grouping the renderer
-// draws them in. A tree is x, z, height (metres) and kind, packed four to a tree.
-
-import type { TreeKind } from "../../core/api/api";
-import { hash2 } from "./hash";
-
-export const WOODS_CLASS = 8;
-
-export type ClassImage ={ data: ArrayLike<number>; width: number; height: number };
-
-/**
- * Trees to show where a bundle has none yet: one in each cell of a jittered grid wherever the class map says woods. The
- * same spacing and look the tree editor will build from, so what you see is roughly what you will get. A tree's kind is
- * one of the look's, and its height is within that kind's range. Returns x, z, height (metres) and kind for each tree,
- * packed four to a tree.
- */
-export function scatterWoods(img: ClassImage, res: number, kinds: readonly TreeKind[], spacing = 5, seed = 1): Float32Array {
-  const out: number[] = [];
-  const nx = Math.ceil((img.width * res) / spacing), nz = Math.ceil((img.height * res) / spacing);
-  for (let j = 0; j < nz; j++) {
-    for (let i = 0; i < nx; i++) {
-      const x = (i + 0.15 + 0.7 * hash2(i, j, seed)) * spacing;
-      const z = (j + 0.15 + 0.7 * hash2(i, j, seed + 1)) * spacing;
-      const c = Math.min(img.width - 1, Math.floor(x / res)), r = Math.min(img.height - 1, Math.floor(z / res));
-      if (img.data[(r * img.width + c) * 4] !== WOODS_CLASS) continue;
-      const kind = Math.min(kinds.length - 1, Math.floor(hash2(i, j, seed + 2) * kinds.length));
-      const [low, high] = kinds[kind].height;
-      out.push(x, z, low + (high - low) * hash2(i, j, seed + 3), kind);
-    }
-  }
-  return new Float32Array(out);
-}
+// Where trees are: a bundle's trees.bin (which the build writes from the forest patches and the tree edits), and the grouping the
+// renderer draws them in. A tree is x, z, height (metres) and kind, packed four to a tree.
 
 /** Trees from a bundle's trees.bin as x, z, height (metres), kind. */
 export function treesFromBin(bytes: ArrayBuffer): Float32Array {

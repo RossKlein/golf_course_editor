@@ -5,10 +5,12 @@ import type Interaction from "ol/interaction/Interaction";
 import Modify from "ol/interaction/Modify";
 import Select from "ol/interaction/Select";
 import Snap from "ol/interaction/Snap";
+import Translate from "ol/interaction/Translate";
 import type Layer from "ol/layer/Layer";
 import type Map from "ol/Map";
+import type { StyleLike } from "ol/style/Style";
 import type VectorSource from "ol/source/Vector";
-import { shiftKeyOnly } from "ol/events/condition";
+import { platformModifierKeyOnly, shiftKeyOnly } from "ol/events/condition";
 import type { Command } from "../../commands/keymap";
 import { closeRing, dedupe, nearestVertex, outlineFromPoints, selfIntersects, snapToRings, withoutRingVertex } from "../../core/geometry/geometry";
 import { mapRings, ringsOf } from "../../views/map2d/design/olRegions";
@@ -56,12 +58,14 @@ export type ToolOptions = {
   /** Freehand simplification in screen pixels, read when an outline is finished. */
   smoothing: () => number;
   say: (text: string) => void;
+  /** How the outline looks while it is being drawn (a cut is drawn in red). */
+  sketch?: StyleLike;
 };
 
 const PX = 10; // how close, in screen pixels, counts as on a corner or an edge
 
 /** Install the interactions of the Select, Polygon or Freehand tool. Returns what to call to remove them again. */
-export function installPolygonTools({ map, tool, target, snap, smoothing, say }: ToolOptions): { controls: PolygonControls; dispose: () => void } {
+export function installPolygonTools({ map, tool, target, snap, smoothing, say, sketch }: ToolOptions): { controls: PolygonControls; dispose: () => void } {
   const interactions: Interaction[] = [];
   const cleanups: (() => void)[] = [];
   const add = (i: Interaction) => {
@@ -76,6 +80,7 @@ export function installPolygonTools({ map, tool, target, snap, smoothing, say }:
     target.create(closeRing(ring));
   };
 
+  let translating = false; // a polygon is being dragged, so snapping must leave the pointer alone
   let controls: PolygonControls = { drawing: () => false, finish: () => undefined, cancel: () => undefined, back: () => undefined };
 
   if (tool === "select") {
@@ -105,6 +110,24 @@ export function installPolygonTools({ map, tool, target, snap, smoothing, say }:
       s.end();
     });
     add(modify);
+
+    // Ctrl+drag (Cmd on a Mac) on a selected polygon moves it, and every other selected one with it, as one undo step. Added after
+    // Modify so it sees the press first: a press near a corner or an edge moves the polygon instead of reshaping it.
+    const translate = new Translate({ features: select.getFeatures(), layers: [target.layer], hitTolerance: 4, condition: platformModifierKeyOnly });
+    translate.on("translatestart", () => (translating = true));
+    translate.on("translateend", (e) => {
+      translating = false;
+      const moved = e.features.getArray().filter((f) => !!target.find(f.getId() as string));
+      if (!moved.length || (e.coordinate[0] === e.startCoordinate[0] && e.coordinate[1] === e.startCoordinate[1])) return;
+      const s = designStore.getState();
+      s.begin(moved.length > 1 ? "Move regions" : "Move region");
+      for (const f of moved) {
+        const { outer, inner } = ringsOf(f as Feature<Polygon>);
+        target.update("Move", f.getId() as string, { outer, inner });
+      }
+      s.end();
+    });
+    add(translate);
 
     // A right-click (no drag: a right-drag still pans) removes the corner under the pointer, or, away from every
     // corner, deletes the polygon under it.
@@ -177,7 +200,7 @@ export function installPolygonTools({ map, tool, target, snap, smoothing, say }:
     };
   } else {
     let drawing = false;
-    const draw = new Draw({ type: "Polygon", snapTolerance: 12 });
+    const draw = new Draw({ type: "Polygon", snapTolerance: 12, style: sketch });
     draw.on("drawstart", () => (drawing = true));
     draw.on("drawabort", () => (drawing = false));
     draw.on("drawend", (e) => {
@@ -190,8 +213,18 @@ export function installPolygonTools({ map, tool, target, snap, smoothing, say }:
 
   // select and polygon snap through OpenLayers; freehand snaps its stroke ends itself
   if (snap && tool !== "freehand") {
-    add(new Snap({ source: target.source, pixelTolerance: PX }));
-    for (const source of target.snapSources ?? []) add(new Snap({ source, pixelTolerance: PX }));
+    // Snap moves the pointer onto the nearest corner, which would make a dragged polygon jump to its own corners
+    const addSnap = (source: VectorSource<Feature<Polygon>>) => {
+      const s = new Snap({ source, pixelTolerance: PX });
+      const handle = s.handleEvent.bind(s);
+      s.handleEvent = (e) => {
+        const o = e.originalEvent as MouseEvent | undefined;
+        return translating || o?.ctrlKey || o?.metaKey ? true : handle(e); // including the press that starts a drag
+      };
+      add(s);
+    };
+    addSnap(target.source);
+    for (const source of target.snapSources ?? []) addSnap(source);
   }
 
   return {
@@ -214,12 +247,14 @@ export function polygonCommands(o: {
   setTool: (id: string) => void;
   hasSelection: () => boolean;
   deleteSelected: () => void;
+  /** Tools that are drawn as a polygon (clicked point by point) but are not the Polygon tool, such as the Course editor's Cut. */
+  alsoPolygon?: readonly string[];
 }): Command[] {
   const { editor } = o;
   const scope = (tool: string) => `tool:${editor}/${tool}` as const;
   const busy = () => !!o.controls()?.drawing();
   const cmds: Command[] = [];
-  for (const [t, what, unit] of [["draw", "outline", "point"], ["freehand", "outline", "stroke"]] as const) {
+  for (const [t, what, unit] of [["draw", "outline", "point"], ["freehand", "outline", "stroke"], ...(o.alsoPolygon ?? []).map((t) => [t, "outline", "point"] as const)] as readonly (readonly [string, string, string])[]) {
     cmds.push(
       { id: `${editor}.${t}.cancel`, label: `Cancel the ${what}`, scope: scope(t), keys: ["Escape"], group: "Drawing", when: busy, run: () => o.controls()?.cancel() },
       { id: `${editor}.${t}.finish`, label: `Finish the ${what}`, scope: scope(t), keys: ["Enter"], group: "Drawing", when: busy, run: () => o.controls()?.finish() },

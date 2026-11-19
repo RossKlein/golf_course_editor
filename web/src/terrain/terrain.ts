@@ -1,3 +1,5 @@
+import { WaterPass } from "./water/water";
+import type { WaterMesh } from "./water/data";
 import type { Look } from "../core/api/api";
 import type { HeightGrid } from "../core/decode/decode";
 import { resizeCanvas } from "../gfx/device/device";
@@ -7,6 +9,8 @@ import type { Rect } from "../core/geometry/coords";
 import { context, currentContext } from "./context";
 import { HeightField, type TerrainGrid } from "./heightfield/heightfield";
 import { Lighting } from "./lighting/lighting";
+import { diffLook, type LookChange } from "./look/diff";
+import { diffTrees } from "./scenery/treeDiff";
 import { Overlays } from "./passes/drape/overlays";
 import { drawFlat, type TerrainStyle } from "./passes/flat/flat";
 import { drawGround, type GroundView } from "./passes/ground/ground";
@@ -26,6 +30,8 @@ export type View3d = Omit<GroundView, "baked"> & {
   tufts: boolean;
   tuftDensity: number;
   trees: boolean;
+  /** Draw the lakes' water surfaces (in the game look); off shows the lake bed. */
+  water: boolean;
   /** The camera, for the things that face it and for fitting the shadow maps to what it sees. */
   eye: [number, number, number];
   /** How good the sun's shadows are: off, low, or high. */
@@ -51,6 +57,9 @@ export function terrainSupported(grid?: HeightGrid): boolean {
  */
 export class TerrainRenderer {
   private readonly world: World;
+  private readonly water = new WaterPass();
+  setWater(data: WaterMesh) { this.water.set(data); }
+  get waterData() { return this.water.data; }
   private readonly tufts = new TuftsPass();
   private readonly trees = new TreesPass();
   private readonly shadows = new ShadowPass();
@@ -59,15 +68,23 @@ export class TerrainRenderer {
   constructor(data: TerrainGrid, look: Look, theme: TerrainTheme = DEFAULT_THEME) {
     const height = new HeightField(data);
     this.world = { height, lighting: new Lighting(height, this.trees, () => this.world), surfaces: new Surfaces(), overlays: new Overlays(), look, sun: sunOfLook(look), theme, shadow: { bind: () => {} } };
-    this.setLook(look);
+    if (look.relief) height.relief.setSmoothing(look.relief.smoothing); // missing when the server that sent the look is older than this page
   }
 
-  /** Use a new look (the course was rebuilt, or its look edited): the sun, sky, surfaces, tufts and trees all follow it. */
-  setLook(look: Look) {
+  /**
+   * Use a new look (the course was rebuilt, or its look edited): the sun, sky, surfaces, tufts and trees all follow it. Only what
+   * differs from the look in use is redone: most fields are uniforms and cost a redraw; the sun, the relief and the shape of the
+   * trees are baked, and the tree models are rebuilt. Returns what differed, for whoever must redo more (regroup the trees).
+   */
+  setLook(look: Look): LookChange {
+    const change = diffLook(this.world.look, look);
     this.world.look = look;
     this.world.sun = sunOfLook(look);
-    this.world.lighting.touchAll(); // the trees may be different
-    if (look.relief) this.world.height.relief.setSmoothing(look.relief.smoothing); // missing when the server that sent the look is older than this page
+    if (change.treeShape) this.world.lighting.touchAll();
+    else if (change.sunBake) this.world.lighting.touchSun();
+    if (change.treeModels) this.trees.invalidateModels();
+    if (look.relief) this.world.height.relief.setSmoothing(look.relief.smoothing); // a change bakes the relief again; the same value does nothing
+    return change;
   }
 
   setTheme(theme: TerrainTheme) {
@@ -77,6 +94,11 @@ export class TerrainRenderer {
   /** Make the terrain editable. `effective` is the CPU copy of base + sculpting that the sculptor keeps up to date. */
   enableSculpt(effective: HeightGrid): Sculptor {
     return this.world.height.enableSculpt(effective);
+  }
+
+  /** Call after the height grid's `valid` marks change (a void came or went), to draw the ground as it is now. */
+  refreshGround() {
+    this.world.height.refreshGround();
   }
 
   /**
@@ -94,8 +116,14 @@ export class TerrainRenderer {
 
   /** Trees to draw, packed four to a tree (x, z, height, kind) and grouped by the look's model kinds. */
   setTrees(groups: Float32Array[]) {
+    const change = diffTrees(this.trees.packed, groups);
     this.trees.setTrees(groups);
-    this.world.lighting.touchAll();
+    this.world.lighting.touchTrees(change); // only the ground the changed trees reach is baked again
+  }
+
+  /** The lighting is part baked, a strip a frame: the view should keep drawing frames until this is false. */
+  get baking(): boolean {
+    return this.world.lighting.pending;
   }
 
   /** The imagery draped over the 3D view, covering `rect` (course metres, top-left corner and size). */
@@ -153,6 +181,7 @@ export class TerrainRenderer {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     drawGround(g, this.world, { ...v, baked: v.shadows !== "off" });
 
+    if (v.water) this.water.draw(g, this.world, v);
     if (v.trees) this.trees.draw(g, this.world, { viewProj: v.viewProj, scale: v.scale }, cull);
     else this.trees.stats = { chunks: 0, chunksAll: 0, trees: 0, treesAll: this.trees.count };
     if (v.tufts && this.world.surfaces.has) this.tufts.draw(g, this.world, { viewProj: v.viewProj, eye: v.eye, target: v.target, scale: v.scale, range: v.tuftRange, density: v.tuftDensity, baked: v.shadows !== "off" }, cull);
@@ -170,5 +199,6 @@ export class TerrainRenderer {
     this.tufts.free(g);
     this.trees.free(g);
     this.shadows.free(g);
+    this.water.free(g);
   }
 }

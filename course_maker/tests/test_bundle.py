@@ -12,7 +12,7 @@ from rasterio.transform import from_origin
 from pydantic import ValidationError
 
 from course_maker import spec as S
-from course_maker.compiler.bake import bake
+from course_maker.compiler.bake import bake, macro_grid_from_stack
 from course_maker.compiler.codec import decode_height, encode_height, read_png, sample_bilinear, write_png
 from course_maker.compiler.validate import validate_bundle
 from course_maker.models import Course, Landmark
@@ -130,6 +130,40 @@ class BundleTests(unittest.TestCase):
             ds.write(np.ones((1, 4, 4), np.float32))
         with self.assertRaises(ValueError):
             bake(self.tmp / "geo.tif", self.tmp / "geo_out", "Geo")
+
+    def test_a_us_survey_foot_grid_is_sampled_every_metre(self):
+        # NAD83(2011) / New Jersey (ftUS). Pixels are 0.3 m of ground, written in survey feet.
+        ft = rasterio.crs.CRS.from_epsg(6527).linear_units_factor[1]
+        res_m = 0.3
+        res_ft = res_m / ft
+        width, height = 40, 30  # 12 m by 9 m
+        left, top = 5000.0, 8000.0
+        cols, rows = np.meshgrid(np.arange(width), np.arange(height))
+        easting = left + (cols + 0.5) * res_ft
+        northing = top - (rows + 0.5) * res_ft
+        data = np.zeros((4, height, width), np.float32)
+        data[3] = 40 + 0.1 * (easting - left) * ft + 0.2 * (top - northing) * ft
+        path = self.tmp / "feet.tif"
+        with rasterio.open(path, "w", driver="GTiff", count=4, dtype="float32", width=width, height=height,
+                           crs="EPSG:6527", transform=from_origin(left, top, res_ft, res_ft)) as ds:
+            ds.write(data)
+            for i, name in enumerate(["Red", "Green", "Blue", "Elevation_m"], 1):
+                ds.set_band_description(i, name)
+        elev, _, _, crs = macro_grid_from_stack(path)
+        self.assertEqual(crs, "EPSG:6527")
+        self.assertEqual(elev.shape, (8, 11))  # 1 m samples over 9 m by 12 m, inset 1 m
+        c, r = np.meshgrid(np.arange(elev.shape[1]), np.arange(elev.shape[0]))
+        self.assertLess(np.abs(elev - (40 + 0.1 * (1 + c) + 0.2 * (1 + r))).max(), 0.002)  # float32 bilinear
+        course = bake(path, self.tmp / "feet_bundle", "Feet")
+        self.assertEqual(validate_bundle(self.tmp / "feet_bundle").errors, [])
+        from course_maker.server.aerial import aerial_meta
+        from course_maker.server.rasters import render
+        view, _ = render(path, self.tmp / "tif_cache")
+        self.assertTrue(view.bakeable)
+        self.assertAlmostEqual(view.resX, res_m, places=6)
+        meta = aerial_meta("feet.tif", view, course)
+        self.assertAlmostEqual(meta.x0, -1.0, places=5)
+        self.assertAlmostEqual(meta.z0, -1.0, places=5)
 
     def test_heights_land_on_the_right_ground(self):
         img, _ = read_png(self.dir / "height.png")

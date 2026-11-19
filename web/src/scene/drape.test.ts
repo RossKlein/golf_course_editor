@@ -25,9 +25,9 @@ const box = (x: number, z: number, s = 10): [number, number][] => [[x, z], [x + 
 const doc = (): Doc => {
   const d = emptyDoc();
   d.regions = {
-    a: { id: "a", class: 1, hole: 1, outer: box(0, 0), inner: [], note: null },
-    far: { id: "far", class: 5, hole: null, outer: box(5000, 5000), inner: [], note: null },
-    b: { id: "b", class: 2, hole: 1, outer: box(2, 2, 4), inner: [], note: null },
+    a: { id: "a", class: 1, hole: 1, outer: box(0, 0), inner: [], note: null, trees: null },
+    far: { id: "far", class: 5, hole: null, outer: box(5000, 5000), inner: [], note: null, trees: null },
+    b: { id: "b", class: 2, hole: 1, outer: box(2, 2, 4), inner: [], note: null, trees: null },
   } as Doc["regions"];
   d.order = ["a", "far", "b"];
   d.layout.holes = [{ number: 1, par: 4, name: null, route: [[0, 0], [20, 20]] }] as Doc["layout"]["holes"];

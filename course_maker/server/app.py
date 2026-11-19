@@ -16,10 +16,13 @@ from pydantic import ValidationError
 from rasterio.errors import RasterioError
 
 from ..compiler.bake import BUILDING_SUFFIX, REPLACED_SUFFIX, BakeError, bake
+from ..build.crop import CropError, crop_bundle, list_crops, undo_crop
 from ..build.height import base_dir, delta_path, refresh_base, write_delta_bytes
+from ..build.look import read_look, write_look
 from ..build.manager import BuildManager
+from ..build.preview import preview_trees
 from ..compiler.validate import validate_bundle
-from ..design.models import BackupList, BoundsFile, BuildStatus, DesignDoc, Layout, RegionsFile
+from ..design.models import BackupList, BoundsFile, BuildStatus, CropList, CropRequest, CropResponse, DesignResponse, Layout, RegionsFile, TreeEdits, TreesPreview
 from ..design.store import DesignError, list_backups, read_design, write_design_file
 from ..models import (
     AerialMeta,
@@ -37,7 +40,7 @@ from ..models import (
     TifView,
 )
 from ..look_defaults import default_look
-from ..project.store import read_editor, stack_for, write_editor
+from ..project.store import read_editor, replace_file, stack_for, write_editor
 from . import rasters
 from .aerial import aerial_meta, relative_to
 
@@ -148,7 +151,7 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
                     pass
             except RasterioError as exc:
                 raise HTTPException(400, f"not a readable GeoTIFF: {exc}") from exc
-            os.replace(tmp, target)
+            replace_file(tmp, target)
         finally:
             if os.path.exists(tmp):
                 os.remove(tmp)
@@ -198,11 +201,31 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     # --- design (the editable source) and builds ---
 
     @app.get("/api/bundle/design")
-    def design_get(path: str = Query()) -> DesignDoc:
+    def design_get(path: str = Query()) -> DesignResponse:
+        folder = bundle(path)
         try:
-            return read_design(bundle(path))
+            doc = read_design(folder)
+            return DesignResponse(**dict(doc), look=read_look(folder))
         except DesignError as exc:
             raise HTTPException(422, str(exc)) from exc
+        except ValidationError as exc:
+            raise HTTPException(422, "course.json is invalid; see /api/bundle/validate") from exc
+
+    @app.post("/api/bundle/water-preview")
+    def water_preview(look: Look, path: str = Query()):
+        from ..build.water import generate_water
+        from ..build.look import bundle_lock
+        folder = bundle(path)
+        with bundle_lock(folder):
+            try:
+                return generate_water(folder, Course.read(folder / "course.json"), look)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+
+    @app.put("/api/bundle/look", status_code=204)
+    def look_put(look: Look, path: str = Query()) -> None:
+        """Replace the course's look. It changes no raster, so nothing is built."""
+        write_look(bundle(path), look)
 
     @app.put("/api/bundle/design/layout", status_code=204)
     def design_put_layout(layout: Layout, path: str = Query()) -> None:
@@ -221,6 +244,24 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
         folder = bundle(path)
         write_design_file(folder, "bounds", bounds)
         builds.schedule(folder)
+
+    @app.put("/api/bundle/design/trees", status_code=204)
+    def design_put_trees(trees: TreeEdits, path: str = Query()) -> None:
+        folder = bundle(path)
+        write_design_file(folder, "trees", trees)
+        builds.schedule(folder)
+
+    @app.post("/api/bundle/trees/preview")
+    def trees_preview(body: TreesPreview, path: str = Query()) -> Response:
+        """The trees the build would write for these unsaved tree edits and forest settings, as trees.bin's bytes. Nothing is saved or built."""
+        folder = bundle(path)
+        try:
+            planting = preview_trees(folder, body.edits, body.settings)
+        except DesignError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except ValidationError as exc:
+            raise HTTPException(422, "course.json is invalid; see /api/bundle/validate") from exc
+        return Response(planting.trees.tobytes(), media_type="application/octet-stream", headers={"X-Tree-Count": str(len(planting.trees))})
 
     # terrain sculpting: base + delta (see build/height.py)
 
@@ -258,6 +299,40 @@ def create_app(data_dir, cache_dir=None) -> FastAPI:
     @app.get("/api/bundle/design/backups")
     def design_backups(path: str = Query()) -> BackupList:
         return BackupList(backups=list_backups(bundle(path)))
+
+    # cropping: keep a rectangle of the map (see build/crop.py)
+
+    @app.get("/api/bundle/crops")
+    def crops_list(path: str = Query()) -> CropList:
+        return CropList(crops=list_crops(bundle(path)))
+
+    @app.post("/api/bundle/crop")
+    def crop_post(req: CropRequest, path: str = Query()) -> CropResponse:
+        """Crop the map in place. The editor saves what it has first and reloads after; the previous map is kept so the crop can be taken back."""
+        folder = bundle(path)
+        try:
+            with builds.exclusive(folder):
+                result = crop_bundle(folder, req.x0, req.z0, req.x1, req.z1)
+        except CropError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except (DesignError, ValidationError, TimeoutError) as exc:
+            raise HTTPException(409, f"cannot crop now: {exc}") from exc
+        builds.schedule(folder, delay=0)
+        return CropResponse(cols=result.cols, rows=result.rows, notes=result.notes, crops=list_crops(folder))
+
+    @app.post("/api/bundle/crop/undo")
+    def crop_undo(path: str = Query()) -> CropList:
+        """Put the map and design back as they were before the newest crop."""
+        folder = bundle(path)
+        try:
+            with builds.exclusive(folder):
+                undo_crop(folder)
+        except CropError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except TimeoutError as exc:
+            raise HTTPException(409, f"cannot undo the crop now: {exc}") from exc
+        builds.schedule(folder, delay=0)
+        return CropList(crops=list_crops(folder))
 
     @app.get("/api/bundle/build")
     def build_status(path: str = Query()) -> BuildStatus:

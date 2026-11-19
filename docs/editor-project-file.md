@@ -21,6 +21,7 @@ bundles/augusta/
     project.json     Durable settings that reproduce the bundle: source stack, bake settings. Worth versioning.
     .gitignore       contains "editor.json", so UI state is never committed
     annotations/     (later slice) the editable source of the painted data; reserved, not part of this plan
+    crops/<time>/    a copy of the bundle, base heights and design made before each crop (the last five), which Undo crop puts back
 ```
 
 The rule that keeps this safe: **the game bundle is complete without `.course_maker/`**. The game only fetches the
@@ -42,6 +43,10 @@ bug: the sidecar stores a Windows path (`..\augusta\course_stack.tif`), which wo
 | `exaggeration` | Relief exaggeration, 1 to 10. |
 | `hole` | Hole selected for the out-of-bounds layer, and later the hole being edited. |
 | later | Active tool, class brush, brush size, smoothing, snapping, grid. They join the same file as fields. |
+| `view3d` | Whether the 3D view was open. A bundle left in 3D opens in it, looking at the place the map was showing. |
+| `viewer` | The 3D view's own settings, as a block: `tufts` (Rough grass), `grassRange`, `grassDensity`, `trees`, `water` (the lakes' water surfaces), `outlines`, `surfaces` (how strongly the design's surfaces are painted), `aerial`, `game` (the game's look), `scale`, `shading`, `shadows` and `leanStrokes`. Absent (null) until first saved, so a bundle that never saved them starts as its terrain suits (the game's look where it has the surfaces). `game` is never kept on for a terrain that cannot show it. |
+| `lookTab` | The Look editor's open tab (`sky`, `surfaces`, `grass`, `light`, `trees` or `viewer`); anything else opens the first. |
+| `rightTab`, `leftCollapsed`, `editor`, `tool` and the rest | As in the model: the right panel's tab, whether the file list is collapsed, the open editor and its tool settings. |
 
 Not saved: the cursor position and readout, loading status, anything derived from the files. The hover point and
 other transient things stay out.

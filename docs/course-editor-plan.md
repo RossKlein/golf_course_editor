@@ -165,6 +165,30 @@ build follows each save.
 - **Tools**: select, polygon, freehand (simplified and smoothed as drawn), edit vertices, erase (subtract a shape),
   hole route, assign hole, snap. Hotkeys per class (G green, F fairway, T tee, B bunker, W water, C collar, P path,
   O woods, R rough); `H` then a number sets the active hole; `Esc` cancels; `Enter` closes a polygon.
+  **Cut** (`X`, built as the "erase (subtract a shape)" tool): draw an outline and it is taken out of the selected regions, or out of every region it
+  touches when none is selected, as one undo step. A cut inside a region leaves a hole in it; across it, two regions (the larger keeps the id, the other
+  is a new region with the same surface, hole, note and forest settings, right after it in painter's order); a region cut away entirely is deleted.
+  The ground cut away is left to what is under it, rough if nothing. Pieces under 0.05 m² are dropped as slivers (`model/design/cut.ts`).
+- **Round** (Select tool: the Round button, or Shift+O): adds a point on a smooth curve between every pair of neighbouring corners of the selected regions, in
+  the outline and in each hole, as one undo step. The curve is a centripetal Catmull-Rom spline through the corners (`core/geometry/geometry.ts`, `roundRing`), so
+  the corners stay where they are and a border shared with a neighbour still meets it. Each press halves the segments again (edges under 0.5 m get nothing); the
+  curve itself does not change, only how finely it is drawn. A region whose curve would cross itself is left alone (`model/design/round.ts`).
+- **Path** (`Shift+P`): draw the line a path follows (click points, drag freehand, or both) and Enter makes a Path-surface region of the **Width** set in the bar
+  (0.5-16 m, saved in the editor state as `pathWidth`). The line is thinned to the Simplify setting (at least one screen pixel, so a shaky hand is smoothed),
+  a centripetal Catmull-Rom spline is run through what is left, and it is grown to the width with round ends (`core/geometry/pathShape.ts`: a union of a stadium
+  along each segment, so a path that loops back over itself is one clean region, with a hole if it encloses ground). While drawing, the final curve and width
+  are shown under the line. Width is not stored: the result is an ordinary region, edited with Select.
+  One undo step (`model/design/path.ts`). **Changing the width afterwards**: with the Select tool, a selected Path region shows a **Path width** slider
+  (0.3-16 m). Dragging it moves the whole edge in or out by half the change, live (`offsetShape` in `pathShape.ts`: the outline joined with, or taken out
+  of by, a stadium along every edge), always from the outline as it was when the drag began, so dragging back and forth does not drift; one drag is one undo
+  step. The starting width is read from the outline (twice its area over its perimeter), so it is approximate for a short path. Several selected paths move by
+  the same amount, none below 0.3 m. If narrowing splits a path in two, the larger piece is kept and the editor says so
+  (`model/design/pathWidth.ts`, `SelectedPathWidth` in `shell/SubBar.tsx`).
+- **Collar** (Select tool: the Collar button and its Thickness slider, or Shift+K): gives each selected green, or every green when none is selected, a Collar region
+  that is the green's outline grown outward by the thickness (0.3-5 m, `collarThickness`), placed directly under the green in painter's order, so the green's
+  own outline is the collar's inner edge exactly and things painted above the green stay above its collar. A green that already has collar over 85% of the ring
+  round it is skipped, so pressing again does not stack copies. A green's holes are ignored. Collars belong to no hole, like any hand-drawn collar. One undo
+  step (`model/design/collar.ts`).
 - **Hole association**: a new fairway, green or tee takes the active hole. "Assign by nearest route" fixes a
   selection in bulk (the spec's default). Unassigned owned regions are listed as Problems and drawn hatched.
 - **Course metadata** (Data tab): name, attribution, holes table with par, name and computed yardage.
@@ -178,6 +202,9 @@ build follows each save.
 - Pick a hole; the map dims everything out of bounds for it. Tools: edit the course boundary, add or remove an
   include/exclude polygon for the hole, copy another hole's bounds, "auto" (a corridor around the hole's route and
   owned surfaces, clipped by the boundary). Problem check: owned cells outside the hole's bounds.
+- **Subtract** (built): click a surface such as a lake, shown as reference by the Hole or Course features, and its outline is
+  taken out of the active hole's areas (`cutBounds` in `model/design/cut.ts`). One undo step per click; a bite across an
+  area splits it, one inside leaves an inner ring. A surface's own inner rings (islands) are cut too.
 - **Output**: `bounds.png`. Shares the polygon tools with the Course editor, so it is small once that exists.
 
 ### Hi-res patch editor

@@ -1,41 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testLook } from "../look/look.fixture";
-import { chunkTrees, scatterWoods, splitByKind, treesFromBin, type ClassImage } from "./trees";
-
-/** A class map `w` x `h` cells where `fn(col, row)` gives the class. */
-function classes(w: number, h: number, fn: (c: number, r: number) => number): ClassImage {
-  const data = new Uint8ClampedArray(w * h * 4);
-  for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) data[(r * w + c) * 4] = fn(c, r);
-  return { data, width: w, height: h };
-}
-
-const KINDS = testLook.trees.kinds;
-
-describe("woods scatter", () => {
-  const img = classes(200, 200, (c) => (c >= 100 ? 8 : 1)); // 100 x 100 m at 0.5 m cells, woods in the east half
-
-  it("puts trees only in woods", () => {
-    const t = scatterWoods(img, 0.5, KINDS);
-    expect(t.length).toBeGreaterThan(0);
-    for (let i = 0; i < t.length; i += 4) expect(t[i]).toBeGreaterThanOrEqual(50 - 0.01);
-  });
-
-  it("is deterministic, one tree to a cell of the grid, and gives plausible heights and kinds", () => {
-    const a = scatterWoods(img, 0.5, KINDS), b = scatterWoods(img, 0.5, KINDS);
-    expect(Array.from(a)).toEqual(Array.from(b));
-    expect(a.length / 4).toBeLessThanOrEqual(10 * 20); // 5 m cells over the 50 x 100 m of woods
-    expect(a.length / 4).toBeGreaterThan(150);
-    for (let i = 0; i < a.length; i += 4) {
-      expect(a[i + 2]).toBeGreaterThan(8);
-      expect(a[i + 2]).toBeLessThan(25);
-      expect([0, 1, 2]).toContain(a[i + 3]);
-    }
-  });
-
-  it("no woods, no trees", () => {
-    expect(scatterWoods(classes(50, 50, () => 0), 0.5, KINDS).length).toBe(0);
-  });
-});
+import { chunkTrees, splitByKind, treesFromBin } from "./trees";
 
 describe("trees.bin", () => {
   it("reads the 12-byte records", () => {

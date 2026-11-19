@@ -1,8 +1,36 @@
 // Limits of the renderer: what keeps the frame rate and the shaders safe, not how the course looks. (How it looks is the
 // course's look, in the bundle.) Each is used by a pass and, where a shader needs it, injected as a #define.
 
-/** Tufts are drawn in square tiles of this many across, so a tile that is out of view is never sent to the GPU. */
-export const TUFT_TILE = 32;
+/** Tufts are drawn in square tiles of this many clumps across (16 m of ground at the default spacing), so a tile that is out of view is never sent to the GPU. */
+export const TUFT_TILE = 16;
+/** A tuft's blade is two quads and a tip, nine vertices, built in the vertex shader from the vertex's number. */
+export const BLADE_VERTS = 9;
+/** Metres across the patches the grass gathers into where a surface's clumping is up (a size of the engine's noise, not of the course's look). */
+export const TUFT_PATCH_METRES = 1.5;
+/**
+ * A forest floor's soil is two thresholded noises: chunks of soil and grass (layers 30 and 12 cm across) and, flipping the colour wherever they
+ * are on, holes (layers 5 and 2 cm across, plus the grass texture's own light and dark), a share of the ground, so each kind of chunk has holes
+ * of the other kind in it. The sums are stretched by a contrast so they spread over 0 to 1 and a threshold can pick a share of them. Engine
+ * settings, not the course's look; how much of the ground is soil is the surface's `mottle`.
+ */
+export const SOIL_GRAIN_METRES = 0.3;
+export const SOIL_FINE_METRES = 0.12;
+export const SOIL_FINER_METRES = 0.05;
+export const SOIL_FINEST_METRES = 0.02;
+export const SOIL_CONTRAST = 2;
+/** The share of the ground, 0 to 1, that is a hole in its chunk. */
+export const SOIL_HOLE_SHARE = 0.27;
+/**
+ * Where a lake's bed meets the ground beside it, the bed's colour comes in through the forest floor's soil noise (a lake edge's distance in
+ * place of the coverage), so the grass crumbles into the bed. Engine settings, not the course's look. The blend is LAKE_EDGE_METRES wide,
+ * measured from the painted outline into the lake. LAKE_EDGE_SOFTEN widens the soil noise's own edges (0 is as crisp as the forest floor,
+ * 1 is a haze), and LAKE_EDGE_SMOOTH is the share of the smooth ramp mixed in with the noise (0 is the noise alone).
+ */
+export const LAKE_EDGE_METRES = 1.0;
+export const LAKE_EDGE_SOFTEN = 0.2;
+export const LAKE_EDGE_SMOOTH = 0.4;
+/** Metres beyond a clump's own radius that must be the same grass for it to grow whole; closer to an edge it shrinks (a blade leans a little past its root). */
+export const TUFT_EDGE_MARGIN = 0.25;
 
 /**
  * Surface classes in the bundle format, in class order (spec.CLASSES; a test in the Python suite checks they agree): the look has

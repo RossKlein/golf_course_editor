@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -20,6 +21,7 @@ class BuildManager:
         self._timers: dict[str, threading.Timer] = {}
         self._running: set[str] = set()
         self._dirty: set[str] = set()
+        self._held: set[str] = set()
 
     @staticmethod
     def _key(bundle) -> str:
@@ -40,11 +42,39 @@ class BuildManager:
             self._timers[key] = timer
             timer.start()
 
+    @contextmanager
+    def exclusive(self, bundle, timeout: float = 60.0):
+        """Hold the bundle's builds while something rewrites its files (a crop): a waiting build is dropped, a running one is waited for, and
+        none starts until the block ends. Nothing is built for the edits made inside; the caller schedules a build after."""
+        key = self._key(bundle)
+        with self._lock:
+            waiting = self._timers.pop(key, None)
+            if waiting is not None:
+                waiting.cancel()
+            self._held.add(key)
+        try:
+            end = time.time() + timeout
+            while True:
+                with self._lock:
+                    if key not in self._running:
+                        break
+                if time.time() > end:
+                    raise TimeoutError("a build is still running")
+                time.sleep(0.02)
+            yield
+        finally:
+            with self._lock:
+                self._held.discard(key)
+
     def run_now(self, bundle) -> BuildStatus:
         """Build now, on the calling thread. If a build is already running, ask it to go again and return."""
         key = self._key(bundle)
         with self._lock:
-            self._timers.pop(key, None)
+            waiting = self._timers.pop(key, None)
+            if waiting is not None:
+                waiting.cancel()  # the build that was waiting for the debounce is this one, so it must not run again
+            if key in self._held:
+                return self._status.get(key, BuildStatus()).model_copy()  # the bundle is being rewritten; its owner schedules the build after
             if key in self._running:
                 self._dirty.add(key)
                 return self._status.get(key, BuildStatus()).model_copy()
@@ -71,7 +101,7 @@ class BuildManager:
             out = build_bundle(bundle)
             new = prev.model_copy(update={
                 "id": prev.id + 1, "state": "done", "finished": time.time(), "report": out.report, "notes": out.notes,
-                "error": None, "ms": out.ms, "regions": out.regions, "holes": out.holes,
+                "error": None, "ms": out.ms, "regions": out.regions, "holes": out.holes, "trees": out.trees, "files": out.files,
             })
         except (DesignError, ValidationError, ValueError, OSError) as exc:
             # the previous bundle is untouched; say why. `id` does not change, so the viewer does not reload.

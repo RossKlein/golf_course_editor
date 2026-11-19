@@ -15,7 +15,9 @@ def aerial_meta(stack_rel: str, view: TifView, course: Course) -> AerialMeta:
     a, b, c, d, e, f = view.transform
     if b or d or a <= 0 or e >= 0:
         raise ValueError("stack must be north-up")
-    return AerialMeta(stack=stack_rel, x0=c - course.originEasting, z0=course.originNorthing - f,
+    # The transform is in the CRS's units. resX/resZ are metres, so a foot grid's offset is scaled into course metres.
+    return AerialMeta(stack=stack_rel, x0=(c - course.originEasting) * view.resX / a,
+                      z0=(course.originNorthing - f) * view.resZ / -e,
                       res=view.resX, width=view.rgb.width, height=view.rgb.height)
 
 

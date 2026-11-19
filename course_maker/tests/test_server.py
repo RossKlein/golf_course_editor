@@ -125,6 +125,57 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/bundle/build", params=q).status_code, 200)
         self.assertEqual(self.client.get("/api/bundle", params=q).json()["look"]["surfaces"]["fairway"]["stripe"], 3.0)
 
+    def test_the_design_comes_with_the_look_and_the_look_can_be_saved(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        def without_nulls(v):  # the design is sent with its nulls; course.json and the default look are not
+            if isinstance(v, dict):
+                return {k: without_nulls(x) for k, x in v.items() if x is not None}
+            return v
+
+        look = without_nulls(self.client.get("/api/bundle/design", params=q).json()["look"])
+        self.assertEqual(look, self.client.get("/api/look/default").json())
+        look["surfaces"]["fairway"]["color"] = [1, 0, 0]
+        look["relief"]["exaggeration"] = 7
+        self.assertEqual(self.client.put("/api/bundle/look", params=q, json=look).status_code, 204)
+        self.assertEqual(without_nulls(self.client.get("/api/bundle/design", params=q).json()["look"]), look)
+        course = self.client.get("/api/bundle", params=q).json()
+        self.assertEqual(course["look"], look)
+        self.assertEqual(course["name"], "Augusta")  # nothing else in course.json changed
+        self.assertEqual(list((self.root / "bundles/augusta").glob("*.tmp")), [])
+        self.assertEqual(self.client.get("/api/bundle/build", params=q).json()["id"], 0)  # a look builds nothing
+
+    def test_a_look_out_of_range_is_refused_with_the_field_named_and_changes_nothing(self):
+        self.bake()
+        q = {"path": "bundles/augusta"}
+        before = (self.root / "bundles/augusta/course.json").read_bytes()
+        look = self.client.get("/api/look/default").json()
+        look["surfaces"]["green"]["grain"] = 2
+        res = self.client.put("/api/bundle/look", params=q, json=look)
+        self.assertEqual(res.status_code, 422)
+        self.assertIn("grain", json.dumps(res.json()))
+        self.assertEqual((self.root / "bundles/augusta/course.json").read_bytes(), before)
+
+    def test_a_look_saved_while_a_build_runs_is_not_lost_to_it(self):
+        from unittest import mock
+
+        from course_maker.build import build as build_module
+        from course_maker.build.look import read_look, write_look
+
+        self.bake()
+        folder = self.root / "bundles/augusta"
+        newer = read_look(folder).model_copy(deep=True)
+        newer.sky = (0.1, 0.2, 0.3)
+        real_validate = build_module.validate_bundle
+
+        def save_during_build(staging):
+            write_look(folder, newer)  # as the look editor would, after the build read course.json and before it replaces it
+            return real_validate(staging)
+
+        with mock.patch.object(build_module, "validate_bundle", save_during_build):
+            self.assertEqual(self.client.post("/api/bundle/build", params={"path": "bundles/augusta"}).status_code, 200)
+        self.assertEqual(read_look(folder).sky, (0.1, 0.2, 0.3))
+
     def test_bundle_aerial_is_placed_in_course_coordinates(self):
         self.bake()
         meta = self.client.get("/api/bundle/aerial", params={"path": "bundles/augusta"}).json()
@@ -148,7 +199,7 @@ class ServerTests(unittest.TestCase):
     def test_bake_refuses_a_geographic_dem(self):
         res = self.bake(stack="dem.tif")
         self.assertEqual(res.status_code, 422)
-        self.assertIn("projected raster in metres", res.json()["detail"])
+        self.assertIn("projected raster", res.json()["detail"])
 
     def test_bake_request_is_validated_by_its_model(self):
         self.assertEqual(self.bake(name="   ").status_code, 422)

@@ -28,28 +28,41 @@ DEFAULT_ATTRIBUTION = "Elevation: USGS 3DEP. Imagery: NAIP."
 EDGE_MARGIN_M = 1.0  # keep grid points inside the stack so bilinear resampling never reads past its edge
 
 
+def _metres_per_unit(crs) -> float:
+    """Metres per horizontal unit of a projected CRS. A foot grid is accepted; degrees are not."""
+    if crs is None or crs.is_geographic:
+        raise ValueError("baking needs a projected raster with an elevation band, such as a course_stack.tif")
+    factor = float(crs.linear_units_factor[1])
+    if not math.isfinite(factor) or factor <= 0:
+        raise ValueError("baking needs a projected raster with an elevation band, such as a course_stack.tif")
+    return factor
+
+
 def macro_grid_from_stack(stack_path) -> tuple[np.ndarray, float, float, str]:
     """Resample the stack's elevation band onto the 1 m macro grid.
 
-    The grid's sample (col, row) is at UTM easting = E0 + col, northing = N0 - row, so +x is east and
-    +z is south, with the course origin at the north-west sample.
-    Returns (heights float64 [rows, cols], E0, N0, crs).
+    Sample (col, row) is 1 m east and row metres south of the north-west corner. E0 and N0, the corner's
+    position, stay in the CRS's own units (metres, or US survey feet), so +1 course metre is one CRS unit
+    only when the CRS is in metres.
+    Returns (heights float64 [rows, cols], E0, N0, crs). Elevation values are copied as stored; a stack's
+    elevation band is metres even when its CRS measures the ground in feet.
     """
     with rasterio.open(stack_path) as ds:
-        if ds.crs is None or ds.crs.is_geographic or abs(ds.crs.linear_units_factor[1] - 1) > 1e-9:
-            raise ValueError("baking needs a projected raster in metres, such as course_stack.tif (UTM)")
+        unit = _metres_per_unit(ds.crs)
         if ds.transform.b or ds.transform.d or ds.transform.a <= 0 or ds.transform.e >= 0:
             raise ValueError("stack must be north-up (no rotation)")
-        band = (list(ds.descriptions).index("elevation_m") + 1) if "elevation_m" in ds.descriptions else ds.count
-        width_m, height_m = ds.width * ds.transform.a, ds.height * -ds.transform.e
+        names = [(d or "").lower() for d in ds.descriptions]
+        band = names.index("elevation_m") + 1 if "elevation_m" in names else ds.count
+        width_m, height_m = ds.width * ds.transform.a * unit, ds.height * -ds.transform.e * unit
         cols = math.floor(width_m - 2 * EDGE_MARGIN_M + 1e-9) + 1
         rows = math.floor(height_m - 2 * EDGE_MARGIN_M + 1e-9) + 1
         if cols < 2 or rows < 2:
             raise ValueError("stack is too small")
-        e0, n0 = ds.transform.c + EDGE_MARGIN_M, ds.transform.f - EDGE_MARGIN_M
+        step = 1.0 / unit  # CRS units between samples that are 1 m apart on the ground
+        e0, n0 = ds.transform.c + EDGE_MARGIN_M * step, ds.transform.f - EDGE_MARGIN_M * step
         elev = np.full((rows, cols), np.nan, np.float32)
         # dst pixel centres land exactly on the grid points
-        reproject(rasterio.band(ds, band), elev, dst_transform=Affine(1, 0, e0 - 0.5, 0, -1, n0 + 0.5),
+        reproject(rasterio.band(ds, band), elev, dst_transform=Affine(step, 0, e0 - step / 2, 0, -step, n0 + step / 2),
                   dst_crs=ds.crs, src_nodata=np.nan, dst_nodata=np.nan, resampling=Resampling.bilinear)
         crs = ds.crs.to_string()
     if np.isnan(elev).any():
@@ -101,6 +114,8 @@ def _write_bundle(stack_path: Path, out: Path, name: str, attribution: str) -> C
         class_=Grid(file=f["class"], cols=cw, rows=ch, res=S.CLASS_RES),
         bounds=Grid(file=f["bounds"], cols=bw, rows=bh, res=S.BOUNDS_RES), trees=TreesRef(file=f["trees"], count=0), holes=[],
     )
+    from ..build.water import publish_water
+    course = publish_water(out, course)
     course.write(out / "course.json")
     return course
 

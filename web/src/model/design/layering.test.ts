@@ -5,7 +5,7 @@ import { ringArea } from "../../core/geometry/geometry";
 import { coveringRegions, visibleGeometry } from "./layering";
 
 const rect = (x: number, z: number, w: number, h: number): Pt[] => [[x, z], [x + w, z], [x + w, z + h], [x, z + h], [x, z]];
-const reg = (id: string, cls: number, outer: Pt[]): Region => ({ id, class: cls, hole: null, outer, inner: [], note: null });
+const reg = (id: string, cls: number, outer: Pt[]): Region => ({ id, class: cls, hole: null, outer, inner: [], note: null, trees: null });
 const area = (g: Pt[][][]) => g.reduce((a, poly) => a + ringArea(poly[0]) - poly.slice(1).reduce((b, h) => b + ringArea(h), 0), 0);
 
 describe("coveringRegions", () => {

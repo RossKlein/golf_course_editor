@@ -1,5 +1,5 @@
 import type { BuildStatus } from "../core/api/api";
-import { CLASS_NAMES } from "../scene/bundleScene";
+import { CLASS_OPTIONS } from "../scene/bundleScene";
 import type { BundleData } from "../scene/bundleScene";
 import { OWNED } from "../views/map2d/design/olRegions";
 import { ringArea } from "../core/geometry/geometry";
@@ -8,7 +8,7 @@ import ReportView from "./ReportView";
 import HolesPanel from "./HolesPanel";
 import type { Formatter } from "../core/units/units";
 
-function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number }) {
+function RegionInspector({ fmt, holeCount, isRange }: { fmt: Formatter; holeCount: number; isRange: boolean }) {
   const selected = useDesign((s) => s.selected);
   const regions = useDesign((s) => s.doc.regions);
   if (!selected.length) return <p className="muted">Nothing selected. In the Course editor, press <kbd>V</kbd> and click a region.</p>;
@@ -27,11 +27,12 @@ function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number
       <h2>{one ? "Region" : `${rs.length} regions`}</h2>
       <label>
         Surface
-        <select value={one ? one.class : ""} onChange={(e) => { const cls = Number(e.target.value); apply("Change surface", (r) => ({ class: cls, hole: OWNED.includes(cls) ? r.hole : null })); }}>
+        <select value={one ? one.class : ""} onChange={(e) => { const cls = Number(e.target.value); apply("Change surface", (r) => ({ class: cls, hole: OWNED.includes(cls) && !isRange ? r.hole : null })); }}>
           {!one && <option value="">(mixed)</option>}
-          {CLASS_NAMES.map((n, i) => <option key={n} value={i}>{n}</option>)}
+          {CLASS_OPTIONS.map((c) => <option key={c.cls} value={c.cls}>{c.name}</option>)}
         </select>
       </label>
+      {isRange ? null : (
       <label>
         Hole
         <select
@@ -44,6 +45,7 @@ function RegionInspector({ fmt, holeCount }: { fmt: Formatter; holeCount: number
           {Array.from({ length: Math.max(holeCount, ...rs.map((r) => r.hole ?? 0)) }, (_, i) => i + 1).map((n) => <option key={n} value={n}>Hole {n}</option>)}
         </select>
       </label>
+      )}
       {one && (
         <table className="info"><tbody>
           <tr><td>Area</td><td>{fmt.area(ringArea(one.outer as never) - one.inner.reduce((a, h) => a + ringArea(h as never), 0))}</td></tr>
@@ -130,7 +132,7 @@ export default function DataTab({ data, build, fmt, editor, hole, onHole, onAddH
   const holeCount = useDesign((s) => s.doc.layout.holes.length);
   return (
     <>
-      {editor === "bounds" ? <BoundsInspector fmt={fmt} hole={hole} holeCount={holeCount} /> : <RegionInspector fmt={fmt} holeCount={holeCount} />}
+      {editor === "bounds" ? <BoundsInspector fmt={fmt} hole={hole} holeCount={holeCount} /> : <RegionInspector fmt={fmt} holeCount={holeCount} isRange={data.course.kind === "range"} />}
       <BuildInfo build={build} />
       <h2>Problems</h2>
       <ReportView report={build?.report ?? data.report} />

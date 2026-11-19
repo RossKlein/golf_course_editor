@@ -1,6 +1,8 @@
 import type BaseLayer from "ol/layer/Base";
 import type { Formatter } from "../core/units/units";
 import type { HeightSession } from "./heightSession";
+import type { Look, Report } from "../core/api/api";
+import type { LookChange } from "../terrain/look/diff";
 import type { TerrainRenderer } from "../terrain/terrain";
 import type { Rect } from "../core/geometry/coords";
 
@@ -34,8 +36,13 @@ export type TerrainSource = {
   redraw: () => void;
   /** Be told whenever the heights change (a brush stamp, an undo, a redo), so a view can redraw. Returns a way to stop. */
   watch: (listener: () => void) => () => void;
-  /** Where the trees come from: the bundle's own, or (when it has none yet) a preview scattered over its woods. */
-  treeInfo?: { preview: boolean };
+  /** The look on screen, for views that read part of it each frame (the relief's exaggeration and shading). Bundles only. */
+  look?: () => Look;
+  /** Show these trees (trees.bin's bytes) in place of the bundle's, without changing the bundle: a preview of unsaved forest settings. Bundles only. */
+  previewTrees?: (bytes: ArrayBuffer) => void;
+  /** Show a new look and redraw. Returns what had to be redone. Bundles only: a raster has no look of its own to edit. */
+  applyLook?: (look: Look) => LookChange;
+  previewWater?: (look: Look) => Promise<void>;
   /** Sculpting, for bundles whose GPU can do it. */
   sculpt?: HeightSession;
 };
@@ -54,8 +61,11 @@ export type Scene = {
   layers: SceneLayer[];
   readout: (x: number, z: number, f: Formatter) => ReadoutLine[];
   /** Re-read what a build changed (class, ownership, bounds, holes). Bundles only. */
-  refresh?: () => Promise<void>;
+  refresh?: (build?: RefreshInfo) => Promise<void>;
 };
+
+/** What a refresh is told about the build that finished: which files changed (nothing else is fetched), and its validation report. Without it, everything is read again. */
+export type RefreshInfo = { changed: ReadonlySet<string> | "all"; report?: Report | null };
 
 export type LayerState = Record<string, { visible: boolean; opacity: number }>;
 

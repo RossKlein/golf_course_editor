@@ -1,9 +1,13 @@
+import type Feature from "ol/Feature";
 import type Map from "ol/Map";
+import type MapBrowserEvent from "ol/MapBrowserEvent";
 import { useEffect, useMemo, useRef } from "react";
 import type { EditorState } from "../../core/api/api";
 import type { Command } from "../../commands/keymap";
 import { ringsOf } from "../../views/map2d/design/olRegions";
 import type { DesignLayers } from "../../views/map2d/design/useDesignLayers";
+import { classNameOf } from "../../scene/bundleScene";
+import { cutBounds } from "../../model/design/cut";
 import { addBoundsArea, designStore, removeBoundsAreas, updateBoundsArea, useDesign } from "../../model/design/store";
 import type { Pt } from "../../core/geometry/coords";
 import { holeCommands, makeHoleNav } from "../_shared/holeNav";
@@ -13,7 +17,11 @@ export const BOUNDS_TOOLS = [
   { id: "select", label: "Select", key: "v", hint: "Click an area to select it. Drag a corner to move it, drag along an edge to add a point. Right-click a corner to remove it, or inside an area to delete it" },
   { id: "draw", label: "Polygon", key: "d", hint: "Click to outline where this hole may be played from; click the first point or press Enter to finish. Add as many areas as you need" },
   { id: "freehand", label: "Freehand", key: "Shift+D", hint: "Drag to draw, lift and keep going as often as you like. Enter finishes the outline, Backspace removes the last stroke, Esc cancels. Middle-drag pans." },
+  { id: "subtract", label: "Subtract", key: "x", hint: "Click a surface, such as a lake, to take its shape out of this hole's areas. Needs Hole or Course features showing. Esc returns to Select" },
 ] as const;
+
+/** The tools that draw or edit the areas themselves, as opposed to Subtract, which picks a surface. */
+const POLYGON_TOOLS = ["select", "draw", "freehand"];
 
 /** What to show under the bounds, in the order the toggle cycles. */
 export const FEATURE_MODES = [
@@ -50,7 +58,7 @@ export function useBoundsEditor({ map, layers, active, editor, patch, say }: Pro
   }, [active, holeCount, editor.hole]);
 
   useEffect(() => {
-    if (!map || !layers || !active || !BOUNDS_TOOLS.some((t) => t.id === tool)) return;
+    if (!map || !layers || !active || !POLYGON_TOOLS.includes(tool)) return;
     const { bounds, regions } = layers;
     const reference = editor.boundsFeatures !== "off";
     const snapSources = [bounds.context.getSource()!, ...(reference ? [regions.source] : [])];
@@ -73,13 +81,39 @@ export function useBoundsEditor({ map, layers, active, editor, patch, say }: Pro
         return [outer, ...inner];
       })),
     };
-    const tools = installPolygonTools({ map, tool, target, snap: editor.snap, smoothing: () => latest.current.editor.smoothing, say });
+    const tools = installPolygonTools({ map, tool: tool as "select" | "draw" | "freehand", target, snap: editor.snap, smoothing: () => latest.current.editor.smoothing, say });
     controlsRef.current = tools.controls;
     return () => {
       tools.dispose();
       controlsRef.current = null;
     };
   }, [map, layers, active, tool, editor.snap, editor.boundsFeatures, say]);
+
+  // Subtract: a click on a surface takes its outline out of the active hole's areas
+  useEffect(() => {
+    if (!map || !layers || !active || tool !== "subtract") return;
+    const el = map.getTargetElement() as HTMLElement | undefined;
+    const previous = el?.style.cursor ?? "";
+    if (el) el.style.cursor = "crosshair";
+    const onClick = (e: MapBrowserEvent) => {
+      if (latest.current.editor.boundsFeatures === "off") return say("Show Hole or Course features (H F) so there is a surface to click.");
+      let top: Feature | null = null;
+      map.forEachFeatureAtPixel(e.pixel, (f) => {
+        if (!top || ((f.get("z") as number) ?? 0) > ((top.get("z") as number) ?? 0)) top = f as Feature;
+      }, { layerFilter: (l) => l === layers.regions.layer });
+      const region = top ? designStore.getState().doc.regions[(top as Feature).getId() as string] : undefined;
+      if (!region) return say("Click a surface to take out of this hole's bounds.");
+      const hole = latest.current.editor.hole;
+      const name = classNameOf(region.class);
+      const s = cutBounds(`Subtract ${name} from hole ${hole}'s bounds`, region.outer as Pt[], hole);
+      say(!s.touched ? `That ${name} does not overlap hole ${hole}'s bounds.` : `Took the ${name} out of ${s.touched} bounds area${s.touched > 1 ? "s" : ""}.`);
+    };
+    map.on("singleclick", onClick);
+    return () => {
+      map.un("singleclick", onClick);
+      if (el) el.style.cursor = previous;
+    };
+  }, [map, layers, active, tool, say]);
 
   const nav = useMemo(() => makeHoleNav({ map, patch: (p) => latest.current.patch(p), say, withBounds: true, added: "Draw where it may be played from." }), [map, say]);
 
@@ -113,5 +147,5 @@ export function useBoundsEditor({ map, layers, active, editor, patch, say }: Pro
     }),
   );
 
-  return { commands, goHole: nav.goHole, newHole: nav.newHole, leftDragPans: !active || tool === "select" };
+  return { commands, goHole: nav.goHole, newHole: nav.newHole, leftDragPans: !active || tool === "select" || tool === "subtract" };
 }

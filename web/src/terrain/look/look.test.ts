@@ -7,19 +7,33 @@ describe("the look as the shader's table", () => {
   const table = packSurfaces(testLook.surfaces);
   const row = (i: number) => Array.from(table.slice(i * FLOATS_PER_SURFACE, (i + 1) * FLOATS_PER_SURFACE));
 
-  it("has a row of five vec4s for each surface", () => {
-    expect(FLOATS_PER_SURFACE).toBe(20);
-    expect(table.length).toBe(SURFACES * 20);
+  it("has a row of six vec4s for each surface", () => {
+    expect(FLOATS_PER_SURFACE).toBe(24);
+    expect(table.length).toBe(SURFACES * 24);
   });
 
-  it("lays a surface out as (color, stripe), (color2, grain), (earth, mottle), (shade, speckle, tuft), (bump, map)", () => {
+  it("lays a surface out as (color, stripe), (color2, grain), (earth, mottle), (shade, speckle, tuft), (bump, map, height, tuft density), (tuft clumping)", () => {
     const fairway = row(1).map((v) => Math.round(v * 1000) / 1000);
-    expect(fairway).toEqual([0.5, 0.86, 0.3, 2.4, 0.66, 0.95, 0.44, 0.55, 0.5, 0.86, 0.3, 0, 1, 0, 0, 0, 0.35, 0, 0, 0]);
+    expect(fairway).toEqual([0.5, 0.86, 0.3, 2.4, 0.66, 0.95, 0.44, 0.55, 0.5, 0.86, 0.3, 0, 1, 0, 0, 0, 0.35, 0, 0.015, 1, 0, 0, 0, 0]);
     const bunker = row(5).map((v) => Math.round(v * 1000) / 1000);
-    expect(bunker.slice(12)).toEqual([1, 0.1, 0.07, 0, 0.25, 1, 0, 0]); // a bunker is shaded by its slope, and its detail is grain
+    expect(bunker.slice(12)).toEqual([1, 0.1, 0.07, 0, 0.25, 1, 0, 1, 0, 0, 0, 0]); // a bunker is shaded by its slope, and its detail is grain
     const woods = row(8).map((v) => Math.round(v * 1000) / 1000);
     expect(woods.slice(8, 12)).toEqual([0.42, 0.31, 0.2, 1.6]);
     expect(woods[15]).toBe(0.7);
+  });
+
+  it("puts the grass height, in metres, after the bump's map, for the step where surfaces meet", () => {
+    expect(row(0)[18]).toBeCloseTo(0.06); // rough
+    expect(row(2)[18]).toBeCloseTo(0.004); // green
+    expect(row(6)[18]).toBe(0); // water has no grass
+  });
+
+  it("puts the standing grass's density in the bump's row and its clumping in a row of its own, for the forest floor", () => {
+    const woods = row(8);
+    expect(woods[19]).toBeCloseTo(0.55);
+    expect(woods[20]).toBeCloseTo(0.7);
+    expect(row(0)[19]).toBe(1); // the rough grows every clump it is given, evenly
+    expect(row(0)[20]).toBe(0);
   });
 
   it("gives a colour a surface lacks the surface's own colour, so a stripe or mottle is never missing one", () => {

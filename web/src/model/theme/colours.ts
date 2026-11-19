@@ -4,6 +4,9 @@ export const CLASS_COLORS: [number, number, number][] = [
   [106, 143, 58], [143, 209, 79], [31, 170, 89], [127, 199, 122], [224, 184, 74],
   [241, 227, 160], [59, 130, 196], [154, 154, 154], [47, 90, 42],
 ];
+/** Class 255: no ground. Not a surface, so it is not in the look and not counted among the classes above. */
+export const VOID_CLASS = 255;
+CLASS_COLORS[VOID_CLASS] = [34, 34, 48];
 
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   const k = (n: number) => (n + h / 30) % 12;

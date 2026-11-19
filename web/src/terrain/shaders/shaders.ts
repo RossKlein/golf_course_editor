@@ -14,6 +14,7 @@
 
 import { preprocess } from "../../gfx/shader/preprocess";
 import { BUMP_RANGE } from "../surfaces/bump";
+import { EDGE_FULL_STEP, EDGE_SHADE_AMBIENT, EDGE_SPREAD_BASE, EDGE_SPREAD_PER_METRE } from "../surfaces/grassEdge";
 import { SPECKLE_SIZE } from "../surfaces/speckle";
 import brushFrag from "../sculpt/brush.frag.glsl?raw";
 import flatFrag from "../passes/flat/flat.frag.glsl?raw";
@@ -32,6 +33,7 @@ import sunFrag from "../lighting/sun.frag.glsl?raw";
 import treeShadeFrag from "../lighting/treeShade.frag.glsl?raw";
 import reliefFrag from "../relief/relief.frag.glsl?raw";
 import shadow from "./shadow.glsl?raw";
+import noise from "./noise.glsl?raw";
 import tree from "./tree.glsl?raw";
 import depthFrag from "../passes/shadow/depth.frag.glsl?raw";
 import depthVert from "../passes/shadow/depth.vert.glsl?raw";
@@ -39,9 +41,9 @@ import treesFrag from "../passes/trees/trees.frag.glsl?raw";
 import treesVert from "../passes/trees/trees.vert.glsl?raw";
 import tuftsFrag from "../passes/tufts/tufts.frag.glsl?raw";
 import tuftsVert from "../passes/tufts/tufts.vert.glsl?raw";
-import { EDGE_BLOCK, EDGE_TAPS_MAX, MAX_SHADOW_SLICES, RELIEF_TAPS_MAX, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SKY_DIRS, SKY_STEPS, SUN_REACH, SUN_STEPS, SUN_TEXELS, SURFACES, TUFT_TILE } from "../limits";
+import { BLADE_VERTS, EDGE_BLOCK, EDGE_TAPS_MAX, LAKE_EDGE_METRES, LAKE_EDGE_SMOOTH, LAKE_EDGE_SOFTEN, MAX_SHADOW_SLICES, RELIEF_TAPS_MAX, SELF_SHADOW_REACH, SELF_SHADOW_STEPS, SKY_DIRS, SKY_STEPS, SOIL_CONTRAST, SOIL_FINE_METRES, SOIL_FINER_METRES, SOIL_FINEST_METRES, SOIL_GRAIN_METRES, SOIL_HOLE_SHARE, SUN_REACH, SUN_STEPS, SUN_TEXELS, SURFACES, TUFT_EDGE_MARGIN, TUFT_PATCH_METRES, TUFT_TILE } from "../limits";
 
-const chunks = { "head.glsl": head, "height.glsl": height, "lighting.glsl": lighting, "overlays.glsl": overlays, "look.glsl": look, "shadow.glsl": shadow, "tree.glsl": tree };
+const chunks = { "head.glsl": head, "height.glsl": height, "lighting.glsl": lighting, "overlays.glsl": overlays, "look.glsl": look, "noise.glsl": noise, "shadow.glsl": shadow, "tree.glsl": tree };
 
 const SHADOWS = { MAX_SHADOW_SLICES };
 
@@ -53,8 +55,8 @@ const program = (vertex: string, fragment: string, defines: Record<string, numbe
 /** Every program's finished source, ready to compile. */
 export const SHADERS = {
   flat: program(fullscreenVert, flatFrag),
-  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, BUMP_RANGE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, EDGE_TAPS_MAX, EDGE_BLOCK, ...SHADOWS }),
-  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, SURFACES, ...SHADOWS }),
+  ground: program(groundVert, groundFrag, { SPECKLE_SIZE, BUMP_RANGE, SURFACES, SELF_SHADOW_STEPS, SELF_SHADOW_REACH, EDGE_TAPS_MAX, EDGE_BLOCK, EDGE_SPREAD_BASE, EDGE_SPREAD_PER_METRE, EDGE_FULL_STEP, EDGE_SHADE_AMBIENT, SOIL_GRAIN_METRES, SOIL_FINE_METRES, SOIL_FINER_METRES, SOIL_FINEST_METRES, SOIL_CONTRAST, SOIL_HOLE_SHARE, LAKE_EDGE_METRES, LAKE_EDGE_SOFTEN, LAKE_EDGE_SMOOTH, ...SHADOWS }),
+  tufts: program(tuftsVert, tuftsFrag, { TUFT_TILE, EDGE_BLOCK, BLADE_VERTS, TUFT_PATCH_METRES, TUFT_EDGE_MARGIN, SURFACES, ...SHADOWS }),
   trees: program(treesVert, treesFrag, SHADOWS),
   shadowDepth: program(depthVert, depthFrag),
   brush: program(fullscreenVert, brushFrag),

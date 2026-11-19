@@ -13,6 +13,9 @@ Joins the app's data to what is drawn. A `Scene` is what the map shows for somet
 - `heightSession.ts`: sculpting, saved and undone through the design store
 - `useDesignSession.ts`: loading and saving the design, and the build status
 - `editorState/`: the saved editor state (`.course_maker/editor.json`) merged with a scene's layers, and its persistence hook
+- `lookApplier.ts`, `useLookBinding.ts`, `lookSession.ts`, `useLookEditing.ts`: what happens to a change of look. The applier waits for a finishing event or a 300 ms pause, then applies the look to the renderer and saves it; the binding connects it to the design store; the session is how the panel reads its state and says an edit is finished; the editing hook is how a control changes the look
+- `treePreview.ts`, `useTreesPreview.ts`: showing the trees of unsaved forest settings as a slider is dragged, one request at a time
+- `buildFiles.ts`: which files a finished build changed (it reports a hash of each), so a refresh reads only those; `palette.ts`: colouring the class map's images through a table
 - `drape.ts`: painting the design's surfaces and outlines to canvases for the 3D view
 - `selection.ts`: which file is open, kept in the URL hash
 

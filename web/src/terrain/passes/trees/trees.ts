@@ -37,7 +37,9 @@ export type TreesView = {
 export type TreeStats = { chunks: number; chunksAll: number; trees: number; treesAll: number };
 
 export class TreesPass {
-  private made: { generation: number; look: Look; program: Program | null; depth: Program | null; models: Model[] } | null = null;
+  private made: { generation: number; program: Program | null; depth: Program | null; models: Model[] } | null = null;
+  /** The models are out of date with the look: rebuild them before the next draw. */
+  private stale = false;
   private groups: Float32Array[] = [];
   private chunks: TreeChunk[][] = [];
   private dirty = true;
@@ -49,6 +51,11 @@ export class TreesPass {
     this.groups = chunked.map((c) => c.sorted);
     this.chunks = chunked.map((c) => c.chunks);
     this.dirty = true;
+  }
+
+  /** The trees it holds, grouped by kind (the order within a kind is its chunks'). */
+  get packed(): readonly Float32Array[] {
+    return this.groups;
   }
 
   get count() {
@@ -97,9 +104,9 @@ export class TreesPass {
       models.push({ vao, vertices: mesh.positions.length / 3, instances, count: 0, radius, canopyVao, crown: crownOfMesh(mesh.positions) });
     }
     gl.bindVertexArray(null);
+    this.stale = false;
     this.made = {
       generation: g.generation,
-      look,
       models,
       program: tryProgram(() => compileProgram(gl, SHADERS.trees.vertex, SHADERS.trees.fragment, "trees")),
       depth: tryProgram(() => compileProgram(gl, SHADERS.shadowDepth.vertex, SHADERS.shadowDepth.fragment, "tree shadows")),
@@ -107,10 +114,15 @@ export class TreesPass {
     this.dirty = true;
   }
 
-  /** Build what is missing (the models are rebuilt when the look changes) and upload the trees if they changed. */
+  /** The tree models in the look changed (the renderer knows when, by comparing looks): rebuild them before the next draw. */
+  invalidateModels() {
+    this.stale = true;
+  }
+
+  /** Build what is missing (the models are rebuilt when they were invalidated) and upload the trees if they changed. */
   private ready(g: Gl, look: Look) {
     const { gl } = g;
-    if (!this.made || this.made.generation !== g.generation || this.made.look !== look) this.make(g, look);
+    if (!this.made || this.made.generation !== g.generation || this.stale) this.make(g, look);
     const made = this.made!;
     if (this.dirty) {
       this.dirty = false;

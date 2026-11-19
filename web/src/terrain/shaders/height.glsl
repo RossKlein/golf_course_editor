@@ -46,9 +46,12 @@ vec2 gradientAt(vec2 p, float s) {
 // distance, and its mipmaps average it as the ground gets far away. Without it (a GPU that cannot bake it) the slope comes
 // from differences of heights s metres either side, which is faceted but works.
 vec2 reliefAt(vec2 p, float s) {
+  vec2 slope = vec2(0.0);
   if (uReliefOn > 0.5) {
     vec2 f = (p - uOrigin) / uRes + 0.5; // a sample's centre is its pixel's centre
-    return texture(uReliefMap, f / vec2(uGrid)).xy;
+    slope = texture(uReliefMap, f / vec2(uGrid)).xy;
+  } else {
+    slope = gradientAt(p, s);
   }
-  return gradientAt(p, s);
+  return slope;
 }

@@ -209,7 +209,7 @@ What the look holds, from the inventory in section 1:
   grains, and their share). The forest floor is a surface with an `earth` colour to mix with the rough and a patchiness
   strength, not a special case in the shader.
 - **grass**: the tile texture (a file in the bundle), how many metres it covers, how far surface edges are wobbled (0 by default: edges are clean and are never blended), and how many metres of the class map are averaged to draw an edge as a smooth curve.
-- **tufts**: per surface class, a height factor (0 for none), so "grows on rough and woods, shorter in woods" is data; and
+- **tufts**: per surface class, a height factor (0 for none), a density and a clumping, so "grows on rough and woods, shorter and patchy in woods" is data; and
   the root and tip colours, base height, and width ratio.
 - **trees**: the model kinds, each a short list of primitives (a frustum or a blob: size, position, colour). Tree models are
   data too. When the game's own tree models arrive from the Rally_Club project, they replace these entries.
@@ -482,11 +482,22 @@ the ground and the grass, with light `(1 - A) * sun + A * sky` where `A` is the 
 colour exactly. Tree shadows are baked a tile at a time at a fixed density, the three-map look made independent of the view.
 See `docs/baked-lighting-plan.md` for the plan, what each step found, and what was left out.
 
+**Afterwards: the Look editor.** *(visual)*
+Every field of the course's look has a control, in a card floating over the 3D view (`editors/look/`). A change is shown in the
+panel at once, applied to the course after a pause or when the hand lets go, then saved to `course.json`: see
+`docs/look-editor-plan.md` for the sequence (`scene/lookApplier.ts`), what each field costs to apply (`terrain/look/diff.ts` makes
+`setLook` redo only what changed) and why the look is saved on its own route (`build/look.py`). Relief exaggeration and shading
+became look fields (`relief.exaggeration`, `relief.shading`), so the game can reproduce what the editor shows.
+
+**Afterwards: the Trees editor.** *(visual)*
+The Trees tab plants forests per woods patch, places single trees and draws clearings (`editors/trees/`). The build writes `trees.bin` from the
+settings (`course_maker/build/trees.py`), so the viewer's 5 m preview scatter is gone: it re-fetches `trees.bin` after each build and only re-bakes
+the lighting when the bytes changed. See `docs/tree-editor-plan.md`, section 15 for where it differs from the plan.
+
 ### After the plan
 
 These become cheap once the steps are done, and are not part of them:
 
-- a **Look editor** (colour pickers and sliders that update the 3D view live, undone through the design store);
 - the game loading a bundle through `terrain/course/` and drawing it with `terrain/`;
 - the game's own tree models replacing the look's primitive-based ones;
 - landmark models (clubhouse and so on) as shadow casters; wind, and tree level-of-detail.

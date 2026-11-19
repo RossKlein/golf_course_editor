@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type BuildStatus } from "../core/api/api";
+import { changedFiles, type BuildFiles } from "./buildFiles";
 import type { Scene } from "./scene";
 import { boundsList, designStore, docFromApi, emptyDoc, regionList } from "../model/design/store";
 
@@ -20,11 +21,13 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
   const [build, setBuild] = useState<BuildStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const saved = useRef({ regions: "", layout: "", bounds: "" });
+  const saved = useRef({ regions: "", layout: "", bounds: "", trees: "" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
+  // The build the viewer is showing, shared by the poll and buildNow so a build is refreshed once, not by both: its id, and the hash of each file.
+  const shown = useRef<{ id: number | null; files: BuildFiles | null }>({ id: null, files: null });
 
   const flush = useCallback(async (keepalive = false) => {
     if (timer.current) clearTimeout(timer.current);
@@ -34,11 +37,13 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
     const regions = JSON.stringify(regionList(doc));
     const layout = JSON.stringify(doc.layout);
     const bounds = JSON.stringify(boundsList(doc));
+    const trees = JSON.stringify(doc.trees);
     const mine = generation.current;
     const jobs: Promise<void>[] = [];
     if (regions !== saved.current.regions) jobs.push(api.saveRegions(bundle, regionList(doc), keepalive).then(() => void (saved.current.regions = regions)));
     if (layout !== saved.current.layout) jobs.push(api.saveLayout(bundle, doc.layout, keepalive).then(() => void (saved.current.layout = layout)));
     if (bounds !== saved.current.bounds) jobs.push(api.saveBounds(bundle, boundsList(doc), keepalive).then(() => void (saved.current.bounds = bounds)));
+    if (trees !== saved.current.trees) jobs.push(api.saveTrees(bundle, doc.trees, keepalive).then(() => void (saved.current.trees = trees)));
     if (!jobs.length) return;
     setSave({ kind: "saving" });
     try {
@@ -65,7 +70,7 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
       (d) => {
         if (cancelled) return;
         designStore.getState().reset(docFromApi(d));
-        saved.current = { regions: JSON.stringify(d.regions.regions), layout: JSON.stringify(d.layout), bounds: JSON.stringify(d.bounds.areas) };
+        saved.current = { regions: JSON.stringify(d.regions.regions), layout: JSON.stringify(d.layout), bounds: JSON.stringify(d.bounds.areas), trees: JSON.stringify(d.trees) };
         setReady(true);
       },
       (e: Error) => !cancelled && setLoadError(e.message),
@@ -96,11 +101,24 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
     };
   }, [ready, flush]);
 
+  /** Show a finished build: reload only the files it changed. A build already shown, or one that changed nothing the viewer reads, costs nothing. */
+  const show = useCallback(async (status: BuildStatus, asked = false) => {
+    const before = shown.current;
+    if (before.id !== null && status.id <= before.id) return; // already shown (buildNow and the poll can both see the same build)
+    shown.current = { id: status.id, files: status.files };
+    // The poll's first look at the server's builds only notes where it stands: the scene was loaded just now, from files at least as new.
+    // A build that was asked for always shows, against whatever the viewer has (everything, if it has seen no build yet).
+    if (before.id === null && !asked) return;
+    const changed = changedFiles(before.files, status.files);
+    if (changed !== "all" && !changed.size) return;
+    await sceneRef.current?.refresh?.({ changed, report: status.report });
+  }, []);
+
   // follow builds
   useEffect(() => {
     if (!bundle || !ready) return;
     let cancelled = false;
-    let lastId: number | null = null;
+    shown.current = { id: null, files: null };
     let busy = false;
     const poll = async () => {
       if (busy || cancelled || document.visibilityState === "hidden") return;
@@ -109,8 +127,7 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
         const status = await api.buildStatus(bundle);
         if (cancelled) return;
         setBuild(status);
-        if (lastId !== null && status.id > lastId) await sceneRef.current?.refresh?.();
-        lastId = status.id;
+        await show(status);
       } catch {
         // the server may be restarting; try again next tick
       } finally {
@@ -123,14 +140,15 @@ export function useDesignSession(bundle: string | null, scene: Scene | null) {
       cancelled = true;
       clearInterval(t);
     };
-  }, [bundle, ready]);
+  }, [bundle, ready, show]);
 
   const buildNow = useCallback(async () => {
     if (!bundle) return;
     await flush();
-    setBuild(await api.buildNow(bundle));
-    await sceneRef.current?.refresh?.();
-  }, [bundle, flush]);
+    const status = await api.buildNow(bundle);
+    setBuild(status);
+    await show(status, true);
+  }, [bundle, flush, show]);
 
-  return { save, build, loadError, ready, buildNow };
+  return { save, build, loadError, ready, buildNow, flush };
 }
